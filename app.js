@@ -1405,25 +1405,22 @@ function renderAdmin() {
   }
 
   el.innerHTML = `
-    <div class="team-list-table">
+    <div class="admin-player-team-selector-cards" style="margin-bottom:0;">
       ${teams.map(t => {
-        const logoHtml = t.logo ? `<img src="${esc(t.logo)}" alt="">` : (t.emoji || '⚽');
-        const meta = [t.season, t.motto].filter(Boolean).map(esc).join(' · ');
+        const logoHtml = t.logo ? `<img src="${esc(t.logo)}" alt="" style="width:36px;height:36px;border-radius:50%;object-fit:cover;border:1.5px solid var(--bd);">` : `<span style="font-size:26px;">${t.emoji || '⚽'}</span>`;
+        const tCount = t.pc != null ? t.pc : allPlayersCache.filter(p => p.teamId === t.id).length;
         return `
-          <div class="team-list-row" onclick="promptPw('${t.id}')">
-            <div class="team-list-left">
-              <div class="team-list-logo">${logoHtml}</div>
-              <div class="team-list-info">
-                <div class="team-list-name">${esc(t.name)}</div>
+          <div class="admin-player-team-card" onclick="promptPw('${t.id}')" style="justify-content:space-between;">
+            <div style="display:flex;align-items:center;gap:12px;min-width:0;">
+              <div style="flex-shrink:0;">${logoHtml}</div>
+              <div style="min-width:0;">
+                <div style="font-weight:700;font-size:14px;color:var(--tx);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(t.name)}</div>
+                <div style="font-size:12px;color:var(--mt);">${tCount} Players</div>
               </div>
             </div>
-            <div class="team-list-right" onclick="event.stopPropagation();">
-              <div class="team-list-count" onclick="promptPw('${t.id}')">${t.pc || 0} Players</div>
-              <button type="button" class="obtn" style="font-size:12px;font-weight:600;padding:6px 12px;background:#1a5c1a;color:#fff;border-radius:8px;" onclick="promptPw('${t.id}')">Enter Team →</button>
-              <div class="team-list-actions">
-                <button type="button" class="squad-act-chip" title="Edit team" onclick="adminRequestPin('editteam','${t.id}')">✏️</button>
-                <button type="button" class="squad-act-chip remove" title="Delete team" onclick="adminRequestPin('delteam','${t.id}')">🗑️</button>
-              </div>
+            <div onclick="event.stopPropagation();" style="display:flex;align-items:center;gap:6px;">
+              <button type="button" class="obtn" style="font-size:11px;padding:4px 8px;" onclick="openEditTeam('${t.id}')" title="Edit team">✏️</button>
+              <button type="button" class="obtn d" style="font-size:11px;padding:4px 8px;" onclick="promptDelTeam('${t.id}')" title="Delete team">🗑️</button>
             </div>
           </div>
         `;
@@ -1457,31 +1454,15 @@ function getPlayerPosCategory(pos) {
 
 let activeAdminPlayerTeamId = null;
 
-function selectAdminPlayerTeam(teamId) {
-  activeAdminPlayerTeamId = teamId;
-  const filter = $('admin-player-filter-team');
-  if (filter) filter.value = teamId || '';
+function toggleAdminPlayerTeam(teamId) {
+  if (activeAdminPlayerTeamId === teamId) {
+    activeAdminPlayerTeamId = null;
+  } else {
+    activeAdminPlayerTeamId = teamId;
+  }
   renderAdminPlayers();
 }
-window.selectAdminPlayerTeam = selectAdminPlayerTeam;
-
-function openEditPlayerFromAdmin(teamId, playerIdOrName) {
-  curTeam = teams.find(t => t.id === teamId);
-  if (!curTeam) return;
-  initTeamSquadData();
-  let listType = 'playingXi';
-  let idx = (teamSquadData.playingXi || []).findIndex(p => p && (p.id === playerIdOrName || p.name === playerIdOrName));
-  if (idx === -1) {
-    listType = 'bench';
-    idx = (teamSquadData.bench || []).findIndex(p => p && (p.id === playerIdOrName || p.name === playerIdOrName));
-  }
-  if (idx === -1) {
-    openAddSquadMemberModal('playingXi');
-    return;
-  }
-  openEditSquadMemberModal(listType, idx);
-}
-window.openEditPlayerFromAdmin = openEditPlayerFromAdmin;
+window.toggleAdminPlayerTeam = toggleAdminPlayerTeam;
 
 function renderAdminPlayers() {
   const el = $('admin-player-grid');
@@ -1508,23 +1489,21 @@ function renderAdminPlayers() {
   const query = String($('admin-player-search')?.value || '').toLowerCase().trim();
   const filterTeamId = filter?.value || '';
 
-  // Determine active selected team for the card selector
   if (filterTeamId) {
     activeAdminPlayerTeamId = filterTeamId;
-  } else if (!activeAdminPlayerTeamId && teams.length) {
-    activeAdminPlayerTeamId = teams[0].id;
-  } else if (activeAdminPlayerTeamId && !teams.some(t => t.id === activeAdminPlayerTeamId) && teams.length) {
-    activeAdminPlayerTeamId = teams[0].id;
+  } else if (query && !activeAdminPlayerTeamId && teams.length) {
+    const matchT = teams.find(t => allPlayersCache.some(p => p.teamId === t.id && (p.name || '').toLowerCase().includes(query)));
+    if (matchT) activeAdminPlayerTeamId = matchT.id;
   }
 
-  // 1. Team Cards Row (Clicking a card switches the selected team)
+  // 1. Team Cards Row (Initially only these team cards are visible)
   let html = '<div class="admin-player-team-selector-cards">';
   teams.forEach(t => {
     const isSelected = (t.id === activeAdminPlayerTeamId);
     const logoHtml = t.logo ? `<img src="${esc(t.logo)}" alt="" style="width:36px;height:36px;border-radius:50%;object-fit:cover;border:1.5px solid var(--bd);">` : `<span style="font-size:26px;">${t.emoji || '⚽'}</span>`;
     const tCount = allPlayersCache.filter(p => p.teamId === t.id).length;
     html += `
-      <div class="admin-player-team-card ${isSelected ? 'active' : ''}" onclick="selectAdminPlayerTeam('${t.id}')">
+      <div class="admin-player-team-card ${isSelected ? 'active' : ''}" onclick="toggleAdminPlayerTeam('${t.id}')">
         <div style="display:flex;align-items:center;gap:12px;min-width:0;">
           <div style="flex-shrink:0;">${logoHtml}</div>
           <div style="min-width:0;">
@@ -1532,20 +1511,25 @@ function renderAdminPlayers() {
             <div style="font-size:12px;color:var(--mt);">${tCount} Players</div>
           </div>
         </div>
-        ${isSelected ? '<span style="color:#1a5c1a;font-size:18px;font-weight:800;">✓</span>' : ''}
+        ${isSelected ? '<span style="color:#1a5c1a;font-size:18px;font-weight:800;">✓</span>' : '<span style="color:var(--mt);font-size:12px;">▼</span>'}
       </div>
     `;
   });
   html += '</div>';
 
-  // 2. Selected Team & Players
-  const selectedTeam = teams.find(t => t.id === activeAdminPlayerTeamId) || teams[0];
-  if (!selectedTeam) {
-    el.innerHTML = html + '<div class="admin-player-empty">No team selected.</div>';
+  // 2. If no team card is selected, show only the cards!
+  if (!activeAdminPlayerTeamId) {
+    el.innerHTML = html;
     return;
   }
 
-  // Filter players for this team matching search query
+  // 3. Selected Team & Players
+  const selectedTeam = teams.find(t => t.id === activeAdminPlayerTeamId) || teams[0];
+  if (!selectedTeam) {
+    el.innerHTML = html;
+    return;
+  }
+
   const matchesQuery = p => {
     if (!query) return true;
     const text = [p.name, p.displayName, p.shortName, p.position, p.jersey, p.playernum, p.role]
@@ -1555,22 +1539,21 @@ function renderAdminPlayers() {
 
   const teamPlayers = allPlayersCache.filter(p => p.teamId === selectedTeam.id && matchesQuery(p));
 
-  // Team header bar with Open Team button and Add Player button
+  // Team header bar with Open Team button
   html += `
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin:6px 0 14px;flex-wrap:wrap;gap:10px;">
       <div style="display:flex;align-items:center;gap:10px;">
         <h3 style="margin:0;font-size:17px;font-weight:800;color:var(--tx);">${esc(selectedTeam.name)} — Squad Playing List</h3>
         <span style="background:#1a5c1a;color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:6px;">${teamPlayers.length} Players</span>
       </div>
-      <div style="display:flex;align-items:center;gap:8px;">
-        <button type="button" class="obtn" style="font-size:12px;padding:6px 12px;" onclick="curTeam = teams.find(t => t.id === '${selectedTeam.id}'); initTeamSquadData(); openAddSquadMemberModal('playingXi');">＋ Add Player</button>
+      <div>
         <button type="button" class="obtn" style="font-size:12px;padding:6px 14px;background:#1a5c1a;color:#fff;border-radius:6px;font-weight:700;" onclick="promptPw('${selectedTeam.id}')">Open Team Dashboard →</button>
       </div>
     </div>
   `;
 
   if (!teamPlayers.length) {
-    html += '<div class="admin-player-empty" style="background:var(--card,#fff);border:1px solid var(--bd);border-radius:12px;padding:30px;text-align:center;">No players registered in this team yet. Click "＋ Add Player" or "Open Team Dashboard" to upload a CSV squad list.</div>';
+    html += '<div class="admin-player-empty" style="background:var(--card,#fff);border:1px solid var(--bd);border-radius:12px;padding:30px;text-align:center;">No players registered in this team yet. Open the Team Dashboard to upload or add players.</div>';
     el.innerHTML = html;
     return;
   }
@@ -1581,7 +1564,6 @@ function renderAdminPlayers() {
   const midList = teamPlayers.filter(p => classifyPos(p.position) === 'MID');
   const fwdList = teamPlayers.filter(p => classifyPos(p.position) === 'FWD');
 
-  // Sort each list by jersey number, then name
   const sortGroup = list => {
     list.sort((a, b) => {
       const jA = parseInt(a.jersey || a.playernum, 10);
@@ -1607,12 +1589,10 @@ function renderAdminPlayers() {
           <table class="admin-player-table">
             <thead>
               <tr>
-                <th style="width:50px;text-align:center;">#</th>
-                <th>Player Name</th>
-                <th>Display Name</th>
-                <th>Position</th>
-                <th>Role / Status</th>
-                <th style="text-align:right;width:90px;">Action</th>
+                <th style="width:60px;text-align:center;">#</th>
+                <th>PLAYER NAME</th>
+                <th>DISPLAY NAME</th>
+                <th style="text-align:center;width:110px;">POSITION</th>
               </tr>
             </thead>
             <tbody>
@@ -1621,9 +1601,6 @@ function renderAdminPlayers() {
                 const pos = posCode(p.position) || p.position || '—';
                 const posCat = getPlayerPosCategory(pos);
                 const dispName = getPlayerDisplayName(p);
-                const statusBadge = p.role
-                  ? `<span style="font-size:11px;padding:2px 7px;border-radius:4px;background:rgba(0,0,0,0.06);color:#475569;font-weight:600;">${esc(p.role)}</span>`
-                  : `<span style="font-size:11px;padding:2px 7px;border-radius:4px;background:#eef5ee;color:#1a5c1a;font-weight:600;">Active</span>`;
                 return `
                   <tr>
                     <td style="text-align:center;font-weight:800;font-family:'Bebas Neue',sans-serif;font-size:18px;color:#1a5c1a;">#${esc(jersey)}</td>
@@ -1638,12 +1615,8 @@ function renderAdminPlayers() {
                     <td>
                       ${dispName ? `<span class="admin-player-disp-pill">${esc(dispName)}</span>` : '<span style="color:var(--mt);font-style:italic;">—</span>'}
                     </td>
-                    <td>
+                    <td style="text-align:center;">
                       <span class="admin-pos-badge admin-pos-${posCat}">${esc(pos)}</span>
-                    </td>
-                    <td>${statusBadge}</td>
-                    <td style="text-align:right;">
-                      <button type="button" class="obtn" style="font-size:11px;padding:3px 9px;" onclick="openEditPlayerFromAdmin('${selectedTeam.id}', '${p.id || p.name}')">✏️ Edit</button>
                     </td>
                   </tr>
                 `;
@@ -3521,6 +3494,17 @@ async function removeSquadMember(listType, index) {
   await persistTeamSquadNow(false);
 }
 
+window.openAddSquadMemberModal = openAddSquadMemberModal;
+window.openEditSquadMemberModal = openEditSquadMemberModal;
+window.confirmAddPlayerToSection = confirmAddPlayerToSection;
+window.moveSquadMember = moveSquadMember;
+window.removeSquadMember = removeSquadMember;
+window.handleModalPhotoPicked = handleModalPhotoPicked;
+window.clearModalPhoto = clearModalPhoto;
+window.triggerSquadCSVUpload = triggerSquadCSVUpload;
+window.promptDelTeam = promptDelTeam;
+window.openEditTeam = openEditTeam;
+
 function triggerSquadCSVUpload() {
   const inp = $('squad-csv-inp');
   if (inp) inp.click();
@@ -3631,6 +3615,7 @@ function downloadSquadCSVTemplate() {
   link.click();
   document.body.removeChild(link);
 }
+window.handleSquadCSVUpload = handleSquadCSVUpload;
 window.downloadSquadCSVTemplate = downloadSquadCSVTemplate;
 window.downloadLineupCSVTemplate = downloadSquadCSVTemplate;
 
