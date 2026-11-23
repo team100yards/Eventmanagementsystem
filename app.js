@@ -1454,12 +1454,14 @@ function getPlayerPosCategory(pos) {
 
 let activeAdminPlayerTeamId = null;
 
+function selectAdminPlayerTeam(teamId) {
+  activeAdminPlayerTeamId = teamId;
+  renderAdminPlayers();
+}
+window.selectAdminPlayerTeam = selectAdminPlayerTeam;
+
 function toggleAdminPlayerTeam(teamId) {
-  if (activeAdminPlayerTeamId === teamId) {
-    activeAdminPlayerTeamId = null;
-  } else {
-    activeAdminPlayerTeamId = teamId;
-  }
+  activeAdminPlayerTeamId = (activeAdminPlayerTeamId === teamId) ? null : teamId;
   renderAdminPlayers();
 }
 window.toggleAdminPlayerTeam = toggleAdminPlayerTeam;
@@ -1496,34 +1498,27 @@ function renderAdminPlayers() {
     if (matchT) activeAdminPlayerTeamId = matchT.id;
   }
 
-  // 1. Team Cards Row (Initially only these team cards are visible)
-  let html = '<div class="admin-player-team-selector-cards">';
+  if (!activeAdminPlayerTeamId && teams.length) {
+    activeAdminPlayerTeamId = teams[0].id;
+  }
+
+  // 1. Sleek horizontal team selector tabs
+  let html = '<div class="admin-player-team-tabs">';
   teams.forEach(t => {
     const isSelected = (t.id === activeAdminPlayerTeamId);
-    const logoHtml = t.logo ? `<img src="${esc(t.logo)}" alt="" style="width:36px;height:36px;border-radius:50%;object-fit:cover;border:1.5px solid var(--bd);">` : `<span style="font-size:26px;">${t.emoji || '⚽'}</span>`;
+    const logoHtml = t.logo ? `<img src="${esc(t.logo)}" class="admin-player-tab-logo" alt="">` : `<span style="font-size:16px;">${t.emoji || '⚽'}</span>`;
     const tCount = allPlayersCache.filter(p => p.teamId === t.id).length;
     html += `
-      <div class="admin-player-team-card ${isSelected ? 'active' : ''}" onclick="toggleAdminPlayerTeam('${t.id}')">
-        <div style="display:flex;align-items:center;gap:12px;min-width:0;">
-          <div style="flex-shrink:0;">${logoHtml}</div>
-          <div style="min-width:0;">
-            <div style="font-weight:700;font-size:14px;color:var(--tx);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(t.name)}</div>
-            <div style="font-size:12px;color:var(--mt);">${tCount} Players</div>
-          </div>
-        </div>
-        ${isSelected ? '<span style="color:#1a5c1a;font-size:18px;font-weight:800;">✓</span>' : '<span style="color:var(--mt);font-size:12px;">▼</span>'}
-      </div>
+      <button type="button" class="admin-player-team-tab ${isSelected ? 'active' : ''}" onclick="activeAdminPlayerTeamId='${t.id}';renderAdminPlayers();">
+        ${logoHtml}
+        <span>${esc(t.name)}</span>
+        <span class="admin-player-tab-count">${tCount}</span>
+      </button>
     `;
   });
   html += '</div>';
 
-  // 2. If no team card is selected, show only the cards!
-  if (!activeAdminPlayerTeamId) {
-    el.innerHTML = html;
-    return;
-  }
-
-  // 3. Selected Team & Players
+  // 2. Selected Team & Players
   const selectedTeam = teams.find(t => t.id === activeAdminPlayerTeamId) || teams[0];
   if (!selectedTeam) {
     el.innerHTML = html;
@@ -1538,6 +1533,36 @@ function renderAdminPlayers() {
   };
 
   const teamPlayers = allPlayersCache.filter(p => p.teamId === selectedTeam.id && matchesQuery(p));
+
+  const curFormation = selectedTeam?.squad?.formation || '4-4-2';
+  const formationList = ['4-3-3', '4-4-2', '4-2-3-1', '3-5-2', '3-4-3', '5-3-2', '4-1-4-1', '4-5-1', '5-4-1', '3-5-1-1'];
+  if (!formationList.includes(curFormation)) formationList.unshift(curFormation);
+  const formationOptionsHtml = formationList.map(f => `<option value="${f}" ${f === curFormation ? 'selected' : ''}>${f}</option>`).join('');
+
+  const tLogo = selectedTeam.logo ? `<img src="${esc(selectedTeam.logo)}" alt="" style="width:36px;height:36px;border-radius:50%;object-fit:cover;border:2px solid #1a5c1a;">` : `<span style="font-size:26px;">${selectedTeam.emoji || '⚽'}</span>`;
+
+  html += `
+    <div class="admin-player-squad-bar">
+      <div class="admin-player-squad-bar-left">
+        ${tLogo}
+        <div>
+          <div class="admin-player-squad-team-title">${esc(selectedTeam.name)}</div>
+          <div class="admin-player-squad-team-meta">${teamPlayers.length} Registered Players</div>
+        </div>
+      </div>
+      <div class="admin-player-squad-bar-right">
+        <div class="squad-formation-selector">
+          <span class="squad-formation-label">Formation:</span>
+          <select id="admin-squad-formation-sel" onchange="changeTeamSquadFormation(this.value)">
+            ${formationOptionsHtml}
+          </select>
+        </div>
+        <button type="button" class="squad-pitch-btn" onclick="curTeam=teams.find(t=>t.id==='${selectedTeam.id}');openTeamFormationVisualizer();" title="Open Tactical Pitch Formation Visualizer">
+          <span>♟️ Pitch</span>
+        </button>
+      </div>
+    </div>
+  `;
 
   if (!teamPlayers.length) {
     html += '<div class="admin-player-empty" style="background:var(--card,#fff);border:1px solid var(--bd);border-radius:12px;padding:30px;text-align:center;">No players registered in this team yet. Open the Team Dashboard to upload or add players.</div>';
@@ -1569,36 +1594,29 @@ function renderAdminPlayers() {
     const pos = posCode(p.position) || p.position || '—';
     const posCat = getPlayerPosCategory(pos);
     const dispName = getPlayerDisplayName(p);
+    const photoImg = p.photo ? `<img src="${esc(p.photo)}" alt="" style="width:24px;height:24px;border-radius:50%;object-fit:cover;vertical-align:middle;margin-right:8px;border:1px solid var(--bd);">` : '';
     return `
       <tr>
-        <td style="text-align:center;font-weight:800;font-family:'Bebas Neue',sans-serif;font-size:18px;color:#1a5c1a;">#${esc(jersey)}</td>
+        <td style="text-align:center;font-weight:800;font-family:'Bebas Neue',sans-serif;font-size:18px;color:#1a5c1a;width:60px;">#${esc(jersey)}</td>
         <td style="font-weight:600;font-size:13.5px;color:var(--tx);">
-          ${esc(p.name || 'Unnamed')}
+          <div style="display:flex;align-items:center;">
+            ${photoImg}
+            <span>${esc(p.name || 'Unnamed')}</span>
+          </div>
         </td>
         <td>
           ${dispName ? `<span class="admin-player-disp-pill">${esc(dispName)}</span>` : '<span style="color:var(--mt);font-style:italic;">—</span>'}
         </td>
-        <td style="text-align:center;">
+        <td style="text-align:center;width:110px;">
           <span class="admin-pos-badge admin-pos-${posCat}">${esc(pos)}</span>
         </td>
       </tr>
     `;
   }).join('');
 
-  const curFormation = selectedTeam?.squad?.formation || '4-4-2';
-
   html += `
-    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-top:14px;margin-bottom:8px;">
-      <div style="font-size:13px;font-weight:700;color:var(--tx);display:flex;align-items:center;gap:8px;">
-        <span style="color:var(--mt);text-transform:uppercase;font-size:11px;letter-spacing:0.5px;">Squad Formation:</span>
-        <span class="admin-player-disp-pill" style="font-size:12.5px;padding:3px 10px;font-weight:800;color:#1a5c1a;background:#eef5ee;border:1px solid #1a5c1a;">${esc(curFormation)}</span>
-      </div>
-      <button type="button" class="obtn" style="padding:6px 12px;font-size:12px;font-weight:700;display:inline-flex;align-items:center;gap:6px;" onclick="curTeam=teams.find(t=>t.id==='${selectedTeam.id}');openTeamFormationVisualizer();">
-        <span>♟️</span><span>Pitch Visualizer</span>
-      </button>
-    </div>
-    <div style="background:var(--card,#fff);border:1px solid var(--bd);border-radius:12px;overflow:hidden;margin-bottom:24px;">
-      <table class="admin-player-table" style="margin:0;">
+    <div class="admin-player-table-wrap">
+      <table class="admin-player-table" style="margin:0;width:100%;border-collapse:collapse;">
         <thead>
           <tr>
             <th style="width:60px;text-align:center;">#</th>
@@ -1609,19 +1627,19 @@ function renderAdminPlayers() {
         </thead>
         <tbody>
           ${gkList.length ? `
-            <tr style="background:rgba(0,0,0,0.02);"><td colspan="4" style="padding:8px 14px;font-size:11px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:var(--mt);border-bottom:1px solid var(--bd);">Goalkeepers · ${gkList.length}</td></tr>
+            <tr class="admin-player-group-hdr"><td colspan="4">🧤 Goalkeepers (${gkList.length})</td></tr>
             ${renderRows(gkList)}
           ` : ''}
           ${defList.length ? `
-            <tr style="background:rgba(0,0,0,0.02);"><td colspan="4" style="padding:8px 14px;font-size:11px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:var(--mt);border-bottom:1px solid var(--bd);">Defenders · ${defList.length}</td></tr>
+            <tr class="admin-player-group-hdr"><td colspan="4">🛡️ Defenders (${defList.length})</td></tr>
             ${renderRows(defList)}
           ` : ''}
           ${midList.length ? `
-            <tr style="background:rgba(0,0,0,0.02);"><td colspan="4" style="padding:8px 14px;font-size:11px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:var(--mt);border-bottom:1px solid var(--bd);">Midfielders · ${midList.length}</td></tr>
+            <tr class="admin-player-group-hdr"><td colspan="4">⚙️ Midfielders (${midList.length})</td></tr>
             ${renderRows(midList)}
           ` : ''}
           ${fwdList.length ? `
-            <tr style="background:rgba(0,0,0,0.02);"><td colspan="4" style="padding:8px 14px;font-size:11px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:var(--mt);border-bottom:1px solid var(--bd);">Forwards · ${fwdList.length}</td></tr>
+            <tr class="admin-player-group-hdr"><td colspan="4">⚡ Strikers / Forwards (${fwdList.length})</td></tr>
             ${renderRows(fwdList)}
           ` : ''}
         </tbody>
@@ -3112,22 +3130,22 @@ function renderSquadPlayingList() {
   let html = `
     <!-- SECTION 1: PLAYING XI -->
     <div class="squad-section-card squad-xi-card">
-      <div class="squad-section-head" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+      <div class="squad-section-head">
         <div class="squad-section-title">
           <span>⚽ PLAYING XI (STARTING XI)</span>
           <span class="squad-badge">${teamSquadData.playingXi.length} / 11 Playing</span>
         </div>
-        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-          <div style="display:flex;align-items:center;gap:6px;background:var(--card,#fff);border:1.5px solid var(--bd);padding:4px 10px;border-radius:8px;">
-            <span style="font-size:11px;font-weight:700;color:var(--mt);text-transform:uppercase;letter-spacing:0.5px;">Formation:</span>
-            <select id="squad-formation-sel" onchange="changeTeamSquadFormation(this.value)" style="border:none;background:transparent;font-weight:800;font-size:13px;color:var(--tx);cursor:pointer;outline:none;">
+        <div class="squad-head-actions">
+          <div class="squad-formation-selector">
+            <span class="squad-formation-label">Formation:</span>
+            <select id="squad-formation-sel" onchange="changeTeamSquadFormation(this.value)">
               ${formationOptionsHtml}
             </select>
           </div>
-          <button type="button" class="squad-btn-secondary" style="padding:6px 12px;font-size:12px;font-weight:700;display:inline-flex;align-items:center;gap:6px;background:#1e4d2b;color:#f4f1e8;border:1px solid #e8b34c;" onclick="openTeamFormationVisualizer()" title="Open Tactical Pitch Formation Visualizer">
-            <span>♟️</span><span>Pitch Visualizer</span>
+          <button type="button" class="squad-pitch-btn" onclick="openTeamFormationVisualizer()" title="Open Tactical Pitch Formation Visualizer">
+            <span>♟️ Pitch</span>
           </button>
-          <button type="button" class="squad-btn-secondary" style="padding:6px 12px;font-size:12px;" onclick="openAddSquadMemberModal('playingXi')">＋ Add Starter</button>
+          <button type="button" class="squad-btn-secondary" onclick="openAddSquadMemberModal('playingXi')">＋ Add Starter</button>
         </div>
       </div>
 
@@ -3144,7 +3162,9 @@ function renderSquadPlayingList() {
           <span>💺 BENCH PLAYERS (SUBSTITUTES)</span>
           <span class="squad-badge bench">${teamSquadData.bench.length} Bench Players</span>
         </div>
-        <button type="button" class="squad-btn-secondary" style="padding:6px 12px;font-size:12px;" onclick="openAddSquadMemberModal('bench')">＋ Add Bench Player</button>
+        <div class="squad-head-actions">
+          <button type="button" class="squad-btn-secondary" onclick="openAddSquadMemberModal('bench')">＋ Add Bench Player</button>
+        </div>
       </div>
       <div class="squad-list-grid">
         ${teamSquadData.bench.length ? teamSquadData.bench.map((p, idx) => renderPlayerRow(p, 'bench', idx)).join('') : '<div class="squad-empty-box">No bench players assigned yet. Use "+ Add Bench Player" or upload a squad list.</div>'}
@@ -3530,7 +3550,7 @@ function openTeamFormationVisualizer() {
   }
   if (!curTeam) return;
   buildFormationSyncPayload(curTeam);
-  window.open('formation-builder.html?v=48.0', '_blank');
+  window.open('formation-builder.html?v=50.0', '_blank');
 }
 window.openTeamFormationVisualizer = openTeamFormationVisualizer;
 
@@ -9519,24 +9539,24 @@ function renderMatchScoreboardEvents() {
     // Show only goals and cards in top scoreboard hero; assists and substitutions (changes) are excluded
     const sideEvents = events.filter(event => event.team === side && (event.type === 'goal' || event.type === 'own_goal' || event.type === 'yellow' || event.type === 'red'));
     if (!sideEvents.length) {
-      feed.innerHTML = '<span class="sb-event-empty">No events yet</span>';
+      feed.innerHTML = '';
       return;
     }
     feed.innerHTML = sideEvents.map(event => {
       const minute = event.minute != null ? `${event.minute}'` : '—';
-      const player = event.playerName || 'Player not named';
-      const pObj = findMatchPlayer(event.playerId) || { name: player };
+      const rawName = event.playerName || 'Player';
+      const pObj = findMatchPlayer(event.playerId) || { name: rawName };
+      const shortName = pObj.displayName || pObj.shortName || pObj.name || rawName;
       const pNum = (pObj.jersey != null && pObj.jersey !== '') ? `#${pObj.jersey} ` : (pObj.number != null && pObj.number !== '' ? `#${pObj.number} ` : '');
-      let icon = '⚽', label = `Goal · ${pNum}${player}`;
+      let icon = '⚽', text = `${pNum}${shortName}`;
       if (event.type === 'own_goal') {
-        const beneficiary = side === 'home' ? (curMatch.away?.name || 'Away') : (curMatch.home?.name || 'Home');
-        icon = '🔁'; label = `Own goal · ${pNum}${player} · goal for ${beneficiary}`;
+        icon = '🔁'; text = `OG · ${pNum}${shortName}`;
       } else if (event.type === 'yellow') {
-        icon = '🟨'; label = `Yellow card · ${pNum}${player}`;
+        icon = '🟨'; text = `${pNum}${shortName}`;
       } else if (event.type === 'red') {
-        icon = '🟥'; label = `Red card · ${pNum}${player}`;
+        icon = '🟥'; text = `${pNum}${shortName}`;
       }
-      return `<div class="sb-event-item" title="${esc(label)}"><span class="sb-event-ico">${icon}</span><span class="sb-event-min">${esc(minute)}</span><span>${esc(label)}</span></div>`;
+      return `<div class="sb-event-item" title="${esc(minute)} ${esc(text)}"><span class="sb-event-ico">${icon}</span><span class="sb-event-min">${esc(minute)}</span><span class="sb-event-text">${esc(text)}</span></div>`;
     }).join('');
   });
 }
