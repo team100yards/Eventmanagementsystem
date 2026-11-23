@@ -661,6 +661,16 @@
         return true;
       }
 
+      // Check if match sheet or live view or match creator is open in a standalone / new window
+      if (params.get('match') || params.get('live') || params.get('score') || params.get('createMatch') || params.get('newMatch')) {
+        document.documentElement.classList.remove('cms-studio-locked');
+        if (document.body) document.body.classList.remove('cms-studio-locked');
+        const sLogin = document.getElementById('s-login');
+        if (sLogin) sLogin.classList.remove('active');
+        this.closeAllModals();
+        return true;
+      }
+
       // On main index dashboard:
       if (isIndex) {
         const sLogin = document.getElementById('s-login');

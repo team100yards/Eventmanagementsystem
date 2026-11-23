@@ -15,9 +15,9 @@
   <meta name="twitter:card" content="summary_large_image">
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600;700;800&display=swap"
     rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=38.0">
+  <link rel="stylesheet" href="style.css?v=39.0">
   <link rel="stylesheet" href="cms-tokens.css">
-  <link rel="stylesheet" href="cms-nav.css?v=38.0">
+  <link rel="stylesheet" href="cms-nav.css?v=39.0">
   <script>
     (function () {
       try {
@@ -457,11 +457,12 @@
 
           <!-- 1. TEAMS SECTION -->
           <div class="dash-section active" id="adm-page-teams" role="tabpanel" aria-labelledby="dash-nav-teams">
-            <div class="dash-section-header">
+            <div class="dash-section-header" style="display:flex;align-items:center;justify-content:space-between;">
               <div class="dash-section-title">🏟️ Teams <span class="dash-count-badge" id="adm-teams-badge">0</span>
               </div>
+              <button type="button" class="squad-btn-primary" style="padding:7px 14px;font-size:12px;font-weight:700;" onclick="openM('m-create')">＋ New Team</button>
             </div>
-            <div class="tgrid" id="tgrid"></div>
+            <div class="tgrid list-view" id="tgrid"></div>
           </div>
 
           <!-- 2. PLAYERS SECTION -->
@@ -849,9 +850,9 @@
           <button class="squad-btn-primary" style="background:#0f5132;" id="squad-ai-scan-btn"
             onclick="$('squad-ai-photo-inp').click()">📷 Scan Squad Photo (AI)</button>
           <button class="squad-btn-primary" onclick="triggerSquadCSVUpload()">⬆️ Upload Squad (CSV)</button>
-          <button class="squad-btn-secondary" onclick="openAddSquadMemberModal('playingXi')">＋ Add Player
+          <button class="squad-btn-secondary" onclick="openAddSquadMemberModal('playingXi')">＋ Add Starter
             Manually</button>
-          <button class="squad-btn-secondary" onclick="openAddSquadMemberModal('management')">🧑‍💼 Add Management
+          <button class="squad-btn-secondary" onclick="openAddSquadMemberModal('bench')">＋ Add Bench Player
             Manually</button>
           <button class="squad-btn-outline" onclick="downloadSquadCSVTemplate()">📥 Sample CSV Template</button>
           <button class="squad-btn-save" onclick="saveSquadPlayingList()">💾 SAVE SQUAD</button>
@@ -1090,11 +1091,6 @@
                 id="ms-home-subs-cnt">0</span>)</div>
             <div class="ms-player-list" id="ms-home-subs"></div>
           </div>
-          <div>
-            <div class="lc-title" style="margin:16px 0 8px;">Match Day Staff (<span id="ms-home-staff-cnt">0</span>)
-            </div>
-            <div class="ms-player-list" id="ms-home-staff"></div>
-          </div>
         </div>
 
         <!-- CENTER: MATCH REPORT & MATCH EVENT LOG -->
@@ -1204,11 +1200,6 @@
             <div class="lc-title" style="margin:16px 0 8px;">Game Changers / Bench (<span
                 id="ms-away-subs-cnt">0</span>)</div>
             <div class="ms-player-list" id="ms-away-subs"></div>
-          </div>
-          <div>
-            <div class="lc-title" style="margin:16px 0 8px;">Match Day Staff (<span id="ms-away-staff-cnt">0</span>)
-            </div>
-            <div class="ms-player-list" id="ms-away-staff"></div>
           </div>
         </div>
       </div>
@@ -1354,54 +1345,16 @@
     <div class="tabs">
       <div class="tab active" id="pv-tab-squad" onclick="showPubTab('squad')">🏆 Squad</div>
       <div class="tab" id="pv-tab-lineup" onclick="showPubTab('lineup')">🎯 Playing List</div>
-      <div class="tab" id="pv-tab-chat" onclick="showPubTab('chat')">💬 Discussion</div>
     </div>
     <div class="tmain" id="pv-tmain">
       <div id="pv-page-squad" class="page active">
         <div id="pv-squad-content"></div>
       </div>
       <div id="pv-page-lineup" class="page">
-        <div class="page-with-chat">
-          <!-- Main Lineup Column -->
-          <div class="main-content-col">
-            <div class="macts" style="margin-bottom:14px;flex-wrap:wrap;">
-              <button class="mc" onclick="openPubFormationVisualizer()">🧩 Formation Visualizer</button>
-              <button class="mc" id="btn-toggle-chat-pub" onclick="toggleLineupChat('pub')">💬 Hide Chat</button>
-            </div>
-            <div id="pv-lineup-content"></div>
-          </div>
-
-          <!-- Right Chat Column -->
-          <div class="chat-sidebar-col">
-            <div class="ssec chat-sidebar-card">
-              <div class="lc-title" style="margin-top:0;margin-bottom:8px;font-size:15px;flex-shrink:0;">💬 Team Chat
-                &amp; Notices</div>
-              <div class="chat-container chat-container-sidebar">
-                <div class="chat-pinned chat-pinned-box-pub" style="display:none;">
-                  <div class="chat-pinned-icon">📌</div>
-                  <div class="chat-pinned-body">
-                    <div class="chat-pinned-title">PINNED ANNOUNCEMENT</div>
-                    <div class="chat-pinned-text chat-pinned-text-pub"></div>
-                  </div>
-                </div>
-                <div class="chat-messages chat-msgs-pub" id="chat-msgs-pub"></div>
-                <div class="chat-id-bar">
-                  <div class="chat-id-badge">
-                    <span style="color:var(--mt);">Posting as:</span>
-                    <strong class="chat-current-name" style="color:#1a5c1a;">Visitor</strong>
-                    <span class="chat-current-badge chat-role-badge member">MEMBER</span>
-                  </div>
-                  <button class="chat-id-change" onclick="openChatIdentityModal()">Change Name / Player</button>
-                </div>
-                <div class="chat-input-row">
-                  <input type="text" class="chat-input chat-inp-pub" placeholder="Type a message to chat with the team…"
-                    onkeydown="if(event.key==='Enter')sendPubChat(this)">
-                  <button class="chat-send-btn" onclick="sendPubChat(this)" title="Send">➤</button>
-                </div>
-              </div>
-            </div>
-          </div>
+        <div class="macts" style="margin-bottom:14px;flex-wrap:wrap;">
+          <button class="mc" onclick="openPubFormationVisualizer()">🧩 Formation Visualizer</button>
         </div>
+        <div id="pv-lineup-content"></div>
       </div>
       <div id="pv-page-formation" class="page">
         <div class="macts" style="margin-bottom:14px;flex-wrap:wrap;">
@@ -1410,90 +1363,6 @@
         <iframe id="pv-formation-frame" src="formation-builder.html" title="Formation Visualizer" allow="fullscreen"
           allowfullscreen
           style="width:100%;height:calc(100vh - 140px);min-height:750px;border:none;border-radius:14px;display:block;"></iframe>
-      </div>
-      <div id="pv-page-chat" class="page">
-        <div class="discuss-top-bar" style="margin-bottom:12px;">
-          <div class="discuss-top-bar-left">
-            <div class="lc-title" style="margin:0;font-size:15px;">💬 Team Discussion &amp; Notices</div>
-          </div>
-          <div class="discuss-top-bar-right">
-            <button class="discuss-copy-btn" onclick="copyDiscussLink(this)" title="Copy public discussion URL">📋 Copy
-              Discussion Link</button>
-            <button class="discuss-wa-btn" onclick="shareDiscussWhatsApp()" title="Share on WhatsApp">📱
-              WhatsApp</button>
-          </div>
-        </div>
-        <div class="chat-container">
-          <div id="discuss-pinned-box-pv" class="chat-pinned" style="display:none;">
-            <div class="chat-pinned-icon">📌</div>
-            <div class="chat-pinned-body">
-              <div class="chat-pinned-title">PINNED ANNOUNCEMENT</div>
-              <div id="discuss-pinned-text-pv" class="chat-pinned-text"></div>
-            </div>
-          </div>
-          <div class="chat-messages" id="discuss-msgs-pv"></div>
-          <div class="chat-id-bar">
-            <div class="chat-id-badge">
-              <span style="color:var(--mt);">Posting as:</span>
-              <strong class="chat-current-name" style="color:#1a5c1a;">Visitor</strong>
-              <span class="chat-current-badge chat-role-badge member">MEMBER</span>
-            </div>
-            <button class="chat-id-change" onclick="openChatIdentityModal()">Change Name / Player</button>
-          </div>
-          <div class="chat-input-row">
-            <input type="text" id="discuss-inp-pv" class="chat-input"
-              placeholder="Type a message to discuss with the team…"
-              onkeydown="if(event.key==='Enter')sendPubDiscuss(this)">
-            <button class="chat-send-btn" onclick="sendPubDiscuss(this)" title="Send">➤</button>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ══ PUBLIC DEDICATED DISCUSSION BOARD ══ -->
-  <div id="s-public-discuss" class="screen">
-    <div class="topbar">
-      <div class="rb" id="pd-badge"
-        style="width:38px;height:38px;font-size:19px;flex-shrink:0;margin:0 10px 0 0;background:rgba(26,92,26,.1);border:1.5px solid #1a5c1a;border-radius:50%;display:flex;align-items:center;justify-content:center;">
-        💬</div>
-      <div style="flex:1;min-width:0;">
-        <div
-          style="font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:1px;color:var(--tx);line-height:1.1;"
-          id="pd-tname">LOADING…</div>
-        <div style="font-size:11.5px;color:var(--mt);" id="pd-motto">Team Discussion Board</div>
-      </div>
-      <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
-        <button class="discuss-copy-btn" onclick="copyDiscussLink(this)" style="padding:6px 12px;font-size:12px;">📋
-          Copy Link</button>
-        <button class="discuss-wa-btn" style="padding:6px 12px;font-size:12px;" onclick="shareDiscussWhatsApp()">📱
-          WhatsApp</button>
-      </div>
-    </div>
-    <div class="tmain">
-      <div class="chat-container" style="height:calc(100vh - 120px);">
-        <div id="discuss-pinned-box-screen" class="chat-pinned" style="display:none;">
-          <div class="chat-pinned-icon">📌</div>
-          <div class="chat-pinned-body">
-            <div class="chat-pinned-title">PINNED ANNOUNCEMENT</div>
-            <div id="discuss-pinned-text-screen" class="chat-pinned-text"></div>
-          </div>
-        </div>
-        <div class="chat-messages" id="discuss-msgs-screen"></div>
-        <div class="chat-id-bar">
-          <div class="chat-id-badge">
-            <span style="color:var(--mt);">Posting as:</span>
-            <strong class="chat-current-name" style="color:#1a5c1a;">Visitor</strong>
-            <span class="chat-current-badge chat-role-badge member">MEMBER</span>
-          </div>
-          <button class="chat-id-change" onclick="openChatIdentityModal()">Change Name / Player</button>
-        </div>
-        <div class="chat-input-row">
-          <input type="text" id="discuss-inp-screen" class="chat-input"
-            placeholder="Type a message or question to discuss with the team…"
-            onkeydown="if(event.key==='Enter')sendPubScreenDiscuss(this)">
-          <button class="chat-send-btn" onclick="sendPubScreenDiscuss(this)" title="Send">➤</button>
-        </div>
       </div>
     </div>
   </div>
@@ -1840,9 +1709,9 @@
         </div>
       </div>
       <div class="field"><label>Motto</label><input type="text" id="ct-motto" placeholder="One Team, One Dream"></div>
-      <div class="field"><label>Team Password <span>*</span></label>
+      <div class="field"><label>Team Password <small style="text-transform:none;letter-spacing:0;font-weight:400;color:var(--mt);">(optional)</small></label>
         <div class="pw-wrap"><input type="password" id="ct-pass"
-            placeholder="Managers use this to enter the team"><button class="pw-eye"
+            placeholder="Optional (leave blank for no password)"><button class="pw-eye"
             onclick="tpw('ct-pass',this)">👁</button></div>
       </div>
       <p id="ct-err" class="merr"></p>
@@ -2076,28 +1945,7 @@
     </div>
   </div>
 
-  <!-- CHAT IDENTITY MODAL -->
-  <div class="mov" id="m-chat-identity" onclick="if(event.target===this)closeM('m-chat-identity')">
-    <div class="mbox">
-      <div class="mico">💬</div>
-      <div class="mtit">JOIN DISCUSSION</div>
-      <div class="mdesc">Select your name from the squad or enter your name.</div>
-      <div class="field" style="text-align:left;">
-        <label>Select From Team Squad</label>
-        <select id="chat-id-select" onchange="handleChatSelectChange(this)">
-          <option value="">-- Or enter custom name below --</option>
-        </select>
-      </div>
-      <div class="field" style="text-align:left;">
-        <label>Your Name</label>
-        <input type="text" id="chat-id-name" placeholder="e.g. Alex (Midfielder / Parent / Fan)">
-      </div>
-      <div class="macts">
-        <button class="mc" onclick="closeM('m-chat-identity')">CANCEL</button>
-        <button class="mok" onclick="saveChatIdentity()">JOIN CHAT</button>
-      </div>
-    </div>
-  </div>
+
 
   <!-- CREATE TOURNAMENT MODAL -->
   <div class="mov" id="m-create-tournament">
@@ -2520,9 +2368,14 @@
             <label style="font-size:11px;font-weight:700;color:var(--mt);text-transform:uppercase;">Formation</label>
             <div id="aml-formation-row"></div>
           </div>
-          <div style="align-self:flex-end;">
+          <div style="align-self:flex-end;display:flex;gap:6px;flex-wrap:wrap;">
             <button type="button" class="obtn" style="padding:10px 14px;font-size:12px;font-weight:700;"
               onclick="importTeamPlayingListToMatch()">📥 Re-import Team Playing List</button>
+            <input type="file" id="aml-csv-inp" accept=".csv" style="display:none;" onchange="handleMatchLineupCSVUpload(this)">
+            <button type="button" class="obtn" style="padding:10px 14px;font-size:12px;font-weight:700;background:#15803d;color:#fff;"
+              onclick="$('aml-csv-inp').click()">⬆️ Upload Lineup (CSV)</button>
+            <button type="button" class="obtn" style="padding:10px 14px;font-size:12px;"
+              onclick="downloadSquadCSVTemplate()">📥 Sample CSV Template</button>
           </div>
         </div>
       </div>
@@ -2544,11 +2397,6 @@
               <p class="lu-hint">Pick players to add to bench.</p>
             </div>
           </div>
-        </div>
-        <div class="ssec" style="padding:14px;">
-          <div class="lc-title" style="margin-top:0;">Match Day Management Staff (<span id="aml-staffcount">0</span>)
-          </div>
-          <div id="aml-staff" class="lu-list"></div>
         </div>
       </div>
       <div class="macts" style="margin-top:14px;flex-shrink:0;">
@@ -2757,7 +2605,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-check-compat.js"></script>
-  <script src="cms-auth.js?v=38.0"></script>
+  <script src="cms-auth.js?v=39.0"></script>
   <script>
     window.firebaseAiLogicLoadState = 'loading';
     window.firebaseAiLogicReady = new Promise((resolve, reject) => {
@@ -2772,8 +2620,8 @@
     });
     window.firebaseAiLogicReady.catch(() => { });
   </script>
-  <script src="app.js?v=38.0"></script>
-  <script src="cms-nav.js?v=38.0"></script>
+  <script src="app.js?v=39.0"></script>
+  <script src="cms-nav.js?v=39.0"></script>
   <script type="module">
     import('./firebase-ai-logic.js?v=6').catch(error => {
       window.rejectFirebaseAiLogicModule?.(error instanceof Error ? error : new Error(String(error || 'Firebase AI Logic module import failed.')));
@@ -2822,8 +2670,13 @@
         </select>
       </div>
       <div class="field">
-        <label>Name</label>
-        <input type="text" id="pl-add-name" placeholder="Player or staff name">
+        <label>Full Name</label>
+        <input type="text" id="pl-add-name" placeholder="Full name">
+      </div>
+      <div class="field">
+        <label>Display Name / Short Name <span
+            style="color:var(--mt);font-weight:400;text-transform:none;letter-spacing:0;">(shows on lineup &amp; formation pitch)</span></label>
+        <input type="text" id="pl-add-display-name" placeholder="e.g. C. Ronaldo or Ronaldo">
       </div>
       <div class="field" id="pl-add-role-field">
         <label id="pl-add-role-label">Position / Role</label>

@@ -297,8 +297,6 @@ function assignToFormation(players, slots) {
 function FormationBuilder() {
   const [manualPlayers, setManualPlayers] = useState([]);
   const [formationKey, setFormationKey] = useState("4-3-3");
-  const [showZones, setShowZones] = useState(true);
-  const [showThirds, setShowThirds] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const LINE_GROUPS = ["GK", "DEF", "MID", "FWD"];
   const [activeLines, setActiveLines] = useState(LINE_GROUPS);
@@ -309,14 +307,16 @@ function FormationBuilder() {
   const [syncInfo, setSyncInfo] = useState("");
   const pitchRef = useRef(null);
   const [pitchHeight, setPitchHeight] = useState(null);
-  const [showChat, setShowChat] = useState(() => {
-    try { return localStorage.getItem("cms_fb_chat") !== "hidden"; } catch(e) { return true; }
-  });
-  const [chatMsgs, setChatMsgs] = useState([]);
-  const [isCoach, setIsCoach] = useState(false);
-  const [myChatId, setMyChatId] = useState({ name: 'Visitor', role: 'member' });
-  const [chatInputText, setChatInputText] = useState('');
-  const chatMessagesEndRef = useRef(null);
+  const [selectedBenchPlayer, setSelectedBenchPlayer] = useState(null);
+  const [draggedBenchId, setDraggedBenchId] = useState(null);
+
+  const formatShortName = (raw) => {
+    if (!raw) return "";
+    const parts = String(raw).trim().split(/\s+/).filter(Boolean);
+    if (parts.length <= 1) return raw;
+    if (parts.length === 2) return `${parts[0][0]}. ${parts[1]}`;
+    return `${parts[0][0]}. ${parts[parts.length - 1]}`;
+  };
 
   // ---------- Exact Match XI slot data (the source of truth for pitch placement) ----------
   // exactStarters[i] lines up 1:1 with FORMATIONS[syncedFormationKey][i] — this is what
@@ -386,6 +386,8 @@ function FormationBuilder() {
       setManualPlayers(flat.map((p) => ({
         id: p.id || `sync-${Math.random().toString(36).slice(2, 8)}`,
         name: p.name || "",
+        displayName: p.displayName || p.shortName || formatShortName(p.name),
+        shortName: p.shortName || p.displayName || formatShortName(p.name),
         number: (p.number != null && p.number !== "") ? String(p.number) : ((p.jersey != null && p.jersey !== "") ? String(p.jersey) : "-"),
         position: p.position || "ST",
         type: p.type,
@@ -400,18 +402,14 @@ function FormationBuilder() {
       const incoming = (data.players || []).map((p, idx) => ({
         id: p.id || `sync-${Math.random().toString(36).slice(2, 8)}`,
         name: p.name || "",
+        displayName: p.displayName || p.shortName || formatShortName(p.name),
+        shortName: p.shortName || p.displayName || formatShortName(p.name),
         number: (p.number != null && p.number !== "") ? String(p.number) : ((p.jersey != null && p.jersey !== "") ? String(p.jersey) : "-"),
         position: p.position || "ST",
         type: idx < startCount ? "start" : "sub",
       }));
       setManualPlayers(incoming);
     }
-    const incomingMgmt = (data.management || []).map((m) => ({
-      id: m.id || `mg-${Math.random().toString(36).slice(2, 8)}`,
-      name: m.name || "",
-      role: m.role || "Other",
-    }));
-    setManagement(incomingMgmt.length ? incomingMgmt : [{ id: "mg-1", name: "", role: "Head Coach" }]);
     setIsDirty(false);
     setPanelOpen(true);
     setSyncInfo(data.source || "Synced from Football Forum");
@@ -424,16 +422,6 @@ function FormationBuilder() {
       const data = e.data;
       if (!data || typeof data !== "object") return;
       if (data.type === "ff-sync") applySyncPayload(data);
-      if (data.type === "ff-chat-sync") {
-        if (Array.isArray(data.msgs)) setChatMsgs(data.msgs);
-        if (typeof data.isCoach === "boolean") setIsCoach(data.isCoach);
-        if (data.currentId) setMyChatId(data.currentId);
-        setTimeout(() => {
-          if (chatMessagesEndRef.current) {
-            chatMessagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
-          }
-        }, 50);
-      }
     };
     window.addEventListener("message", handleMessage);
     // First load cached team formation from localStorage if available
@@ -510,14 +498,6 @@ function FormationBuilder() {
     };
   }, []);
 
-  const toggleChatVisibility = () => {
-    setShowChat(prev => {
-      const next = !prev;
-      try { localStorage.setItem("cms_fb_chat", next ? "visible" : "hidden"); } catch(e) {}
-      return next;
-    });
-  };
-
   useEffect(() => {
     const updatePitchHeight = () => {
       if (pitchRef.current) {
@@ -547,59 +527,6 @@ function FormationBuilder() {
     };
   }, [formationKey, isFullscreen]);
 
-  const sendChatMessage = (e) => {
-    if (e) e.preventDefault();
-    const text = chatInputText.trim();
-    if (!text) return;
-    setChatInputText('');
-    try {
-      if (window.parent && window.parent !== window) {
-        window.parent.postMessage({ type: "ff-chat-send", text }, "*");
-      }
-    } catch(err) {}
-  };
-
-  const togglePinMessage = (msgId, currentPinned) => {
-    try {
-      if (window.parent && window.parent !== window) {
-        window.parent.postMessage({ type: "ff-chat-pin", msgId, currentPinned }, "*");
-      }
-    } catch(err) {}
-  };
-
-  const deleteChatMessage = (msgId) => {
-    try {
-      if (window.parent && window.parent !== window) {
-        window.parent.postMessage({ type: "ff-chat-delete", msgId }, "*");
-      }
-    } catch(err) {}
-  };
-
-  const clearAllChat = () => {
-    try {
-      if (window.parent && window.parent !== window) {
-        window.parent.postMessage({ type: "ff-chat-clear" }, "*");
-      }
-    } catch(err) {}
-  };
-
-  const openIdentityModal = () => {
-    try {
-      if (window.parent && window.parent !== window) {
-        window.parent.postMessage({ type: "ff-chat-change-id" }, "*");
-      }
-    } catch(err) {}
-  };
-
-  const formatTime = (iso) => {
-    if (!iso) return '';
-    try {
-      const d = new Date(iso);
-      if (isNaN(d.getTime())) return '';
-      return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    } catch(e) { return ''; }
-  };
-
   const updateManualRow = (id, field, value) => {
     setIsDirty(true);
     setManualPlayers((prev) => prev.map((p) => (p.id === id ? { ...p, [field]: value } : p)));
@@ -618,22 +545,6 @@ function FormationBuilder() {
     setManualPlayers((prev) => prev.filter((p) => p.id !== id));
   };
 
-  const MANAGEMENT_ROLES = ["Head Coach", "Assistant Coach", "Goalkeeping Coach", "Fitness Coach", "Physiotherapist", "Team Manager", "Kit Manager", "Analyst", "Other"];
-  const [management, setManagement] = useState([
-    { id: "mg-1", name: "", role: "Head Coach" },
-  ]);
-
-  const addManagementRow = () => {
-    setManagement((prev) => [...prev, { id: `mg-${Math.random().toString(36).slice(2, 8)}`, name: "", role: "Other" }]);
-  };
-  const updateManagementRow = (id, field, value) => {
-    setManagement((prev) => prev.map((m) => (m.id === id ? { ...m, [field]: value } : m)));
-  };
-  const removeManagementRow = (id) => {
-    setManagement((prev) => prev.filter((m) => m.id !== id));
-  };
-  const managementFilled = useMemo(() => management.filter((m) => m.name.trim()), [management]);
-
   const canonicalizePlayer = (p) => {
     if (!p) return null;
     const canonical = canonicalize(p.position);
@@ -641,6 +552,8 @@ function FormationBuilder() {
       id: p.id,
       number: (p.number != null && p.number !== "") ? String(p.number) : ((p.jersey != null && p.jersey !== "") ? String(p.jersey) : "-"),
       name: p.name,
+      displayName: p.displayName || p.shortName || formatShortName(p.name),
+      shortName: p.shortName || p.displayName || formatShortName(p.name),
       rawPosition: p.position,
       type: p.type,
       canonical,
@@ -659,7 +572,104 @@ function FormationBuilder() {
   const slots = FORMATIONS[formationKey];
 
   const { filled, subs } = useMemo(() => {
-    return assignToFormation(players, slots);
+    const curSlots = FORMATIONS[formationKey] || FORMATIONS["4-3-3"];
+    if (exactStarters && exactStarters.length && !isDirty) {
+      const filledSlots = curSlots.map((slot, i) => {
+        const p = exactStarters[i] || null;
+        if (!p) return { slot, player: null };
+        const canonical = canonicalize(p.position || slot.code);
+        return {
+          slot,
+          player: {
+            id: p.id || `st-${i}`,
+            name: p.name || "",
+            displayName: p.displayName || p.shortName || formatShortName(p.name),
+            shortName: p.shortName || p.displayName || formatShortName(p.name),
+            number: (p.number != null && p.number !== "") ? String(p.number) : ((p.jersey != null && p.jersey !== "") ? String(p.jersey) : "-"),
+            rawPosition: p.position || slot.code,
+            canonical,
+            group: GROUP[canonical] || "MID",
+            side: SIDE[canonical] || "C",
+            type: "start"
+          }
+        };
+      });
+      const remainingSubs = (exactSubs || []).map((p, i) => {
+        const canonical = canonicalize(p.position || "ST");
+        return {
+          id: p.id || `sub-${i}`,
+          name: p.name || "",
+          displayName: p.displayName || p.shortName || formatShortName(p.name),
+          shortName: p.shortName || p.displayName || formatShortName(p.name),
+          number: (p.number != null && p.number !== "") ? String(p.number) : ((p.jersey != null && p.jersey !== "") ? String(p.jersey) : "-"),
+          rawPosition: p.position || "ST",
+          canonical,
+          group: GROUP[canonical] || "MID",
+          side: SIDE[canonical] || "C",
+          type: "sub"
+        };
+      });
+      return { filled: filledSlots, subs: remainingSubs };
+    }
+    return assignToFormation(players, curSlots);
+  }, [players, slots, exactStarters, exactSubs, isDirty, formationKey]);
+
+  const swapBenchWithStarter = (benchPlayer, starterIndex) => {
+    if (!benchPlayer) return;
+    const starterToReplace = filled[starterIndex]?.player || (exactStarters ? exactStarters[starterIndex] : null);
+
+    let newStarters = exactStarters ? [...exactStarters] : filled.map(f => f.player);
+    let newSubs = exactSubs ? [...exactSubs] : [...subs];
+
+    const benchIdx = newSubs.findIndex(p => p && (p.id === benchPlayer.id || p.name === benchPlayer.name));
+    if (benchIdx !== -1) {
+      if (starterToReplace) {
+        newSubs[benchIdx] = { ...starterToReplace, type: "sub" };
+      } else {
+        newSubs.splice(benchIdx, 1);
+      }
+    }
+
+    newStarters[starterIndex] = { ...benchPlayer, type: "start" };
+
+    setExactStarters(newStarters);
+    setExactSubs(newSubs);
+    setIsDirty(true);
+
+    const flat = [
+      ...newStarters.filter(Boolean).map(p => ({ ...p, type: "start" })),
+      ...newSubs.filter(Boolean).map(p => ({ ...p, type: "sub" }))
+    ];
+    setManualPlayers(flat.map(p => ({
+      id: p.id || `sync-${Math.random().toString(36).slice(2, 8)}`,
+      name: p.name || "",
+      displayName: p.displayName || p.shortName || formatShortName(p.name),
+      shortName: p.shortName || p.displayName || formatShortName(p.name),
+      number: (p.number != null && p.number !== "") ? String(p.number) : ((p.jersey != null && p.jersey !== "") ? String(p.jersey) : "-"),
+      position: p.rawPosition || p.position || "ST",
+      type: p.type
+    })));
+
+    setSelectedBenchPlayer(null);
+    setDraggedBenchId(null);
+
+    try {
+      const payload = {
+        formation: formationKey,
+        starters: newStarters,
+        subs: newSubs,
+        customPos,
+        ballPos
+      };
+      localStorage.setItem('ems_active_formation_payload', JSON.stringify(payload));
+      if (window.parent && window.parent !== window) {
+        window.parent.postMessage({ type: "ff-lineup-updated", starters: newStarters, subs: newSubs }, "*");
+      }
+      if (window.opener && !window.opener.closed) {
+        window.opener.postMessage({ type: "ff-lineup-updated", starters: newStarters, subs: newSubs }, "*");
+      }
+    } catch(e) {}
+  };
   }, [players, slots]);
 
   const handlePrint = () => window.print();
@@ -903,31 +913,6 @@ function FormationBuilder() {
             </div>
 
             <div className="flex items-center gap-3 flex-wrap">
-              <label className="flex items-center gap-1.5 oswald" style={{ fontSize: 13, color: C.creamSoft, letterSpacing: "0.02em", cursor: "pointer" }}>
-                <input type="checkbox" checked={showZones} onChange={(e) => setShowZones(e.target.checked)} />
-                Position zones
-              </label>
-              <label className="flex items-center gap-1.5 oswald" style={{ fontSize: 13, color: C.creamSoft, letterSpacing: "0.02em", cursor: "pointer" }}>
-                <input type="checkbox" checked={showThirds} onChange={(e) => setShowThirds(e.target.checked)} />
-                Pitch thirds
-              </label>
-              <button
-                onClick={toggleChatVisibility}
-                className="oswald"
-                style={{
-                  fontSize: 12,
-                  letterSpacing: "0.02em",
-                  fontWeight: 700,
-                  color: showChat ? C.cream : C.ink,
-                  background: showChat ? "rgba(244,241,232,0.14)" : C.amber,
-                  border: `1px solid ${showChat ? C.border : C.amber}`,
-                  borderRadius: 6,
-                  padding: "6px 12px",
-                  cursor: "pointer"
-                }}
-              >
-                {showChat ? "💬 Hide Chat" : "💬 Show Chat"}
-              </button>
               <button
                 onClick={toggleFullscreen}
                 className="oswald"
@@ -938,21 +923,21 @@ function FormationBuilder() {
             </div>
           </div>
           <div className="oswald" style={{ fontSize: 11, color: "rgba(143,191,159,0.75)", marginTop: 6, letterSpacing: "0.02em" }}>
-            Drag any jersey or the ball to fine-tune the picture. Tap GK / DEF / MID / FWD to combine lines.
+            Drag any jersey or the ball to fine-tune positions. Drag bench players onto the pitch or tap to swap into the Starting XI.
           </div>
         </div>
 
-        {/* SYMMETRIC STAGE: FOOTBALL GROUND (Left) & TEAM CHAT BOX (Right) */}
+        {/* SYMMETRIC STAGE: FOOTBALL GROUND (Left) & BENCH / GAME CHANGERS (Right) */}
         <div
-          className={showChat ? "grid grid-cols-1 md:grid-cols-2 gap-6 print-grid mb-8" : "flex justify-center print-grid mb-8"}
+          className="grid grid-cols-1 md:grid-cols-2 gap-6 print-grid mb-8"
           style={{ alignItems: "start" }}
         >
           {/* LEFT: THE FOOTBALL GROUND (Pitch) */}
           <div
             className="print-pitch-wrap w-full flex flex-col justify-start"
             style={{
-              maxWidth: showChat ? "100%" : (isFullscreen ? "calc((100vh - 140px) * 0.68)" : 680),
-              margin: showChat ? "0" : "0 auto",
+              maxWidth: "100%",
+              margin: "0 auto",
               ...(isFullscreen ? { maxHeight: "calc(100vh - 140px)", display: "flex", alignItems: "center" } : {})
             }}
           >
@@ -1000,50 +985,6 @@ function FormationBuilder() {
                 </g>
               </svg>
 
-              {/* pitch thirds */}
-              {showThirds && (
-                <>
-                  <div className="absolute no-print" style={{ left: 0, top: "0%", width: "100%", height: "33.33%", background: "rgba(220,38,38,0.20)", borderBottom: "1px dashed rgba(220,38,38,0.55)", pointerEvents: "none" }}>
-                    <div className="oswald" style={{ position: "absolute", top: 6, left: 8, fontSize: 10, letterSpacing: "0.15em", color: "#F4F1E8", opacity: 0.85 }}>ATTACKING THIRD</div>
-                  </div>
-                  <div className="absolute no-print" style={{ left: 0, top: "33.33%", width: "100%", height: "33.34%", background: "rgba(234,179,8,0.18)", borderBottom: "1px dashed rgba(234,179,8,0.55)", pointerEvents: "none" }}>
-                    <div className="oswald" style={{ position: "absolute", top: 6, left: 8, fontSize: 10, letterSpacing: "0.15em", color: "#F4F1E8", opacity: 0.85 }}>MIDDLE THIRD</div>
-                  </div>
-                  <div className="absolute no-print" style={{ left: 0, top: "66.67%", width: "100%", height: "33.33%", background: "rgba(37,99,235,0.18)", pointerEvents: "none" }}>
-                    <div className="oswald" style={{ position: "absolute", top: 6, left: 8, fontSize: 10, letterSpacing: "0.15em", color: "#F4F1E8", opacity: 0.85 }}>DEFENSIVE THIRD</div>
-                  </div>
-                </>
-              )}
-
-              {/* zones */}
-              {showZones &&
-                filled.map(({ slot, player }, i) => {
-                  const code = player ? player.canonical : slot.code;
-                  const group = GROUP[code] || "MID";
-                  if (!activeLines.includes(group)) return null;
-                  const [rw, rh] = CODE_ZONE_SIZE[code] || ZONE_SIZE[group];
-                  const color = CODE_COLORS[code] || ZONE_COLORS[group];
-                  const anchorY = CODE_ZONE_ANCHOR[code] != null ? CODE_ZONE_ANCHOR[code] : 0.5;
-                  const pos = getPos(slot, i);
-                  return (
-                    <div
-                      key={`zone-${i}`}
-                      className="absolute"
-                      style={{
-                        left: `${pos.x}%`,
-                        top: `${pos.y}%`,
-                        width: `${rw}%`,
-                        height: `${rh}%`,
-                        transform: `translate(-50%,-${anchorY * 100}%)`,
-                        borderRadius: 14,
-                        background: `radial-gradient(ellipse at center, ${hexToRgba(color, 0.32)} 0%, ${hexToRgba(color, 0.08)} 75%, transparent 100%)`,
-                        border: `2px dashed ${hexToRgba(color, 0.65)}`,
-                        pointerEvents: "none",
-                      }}
-                    />
-                  );
-                })}
-
               {/* players */}
               {filled.map(({ slot, player }, i) => {
                 const pos = getPos(slot, i);
@@ -1053,41 +994,66 @@ function FormationBuilder() {
                 const group = GROUP[code] || "MID";
                 const groupColor = CODE_COLORS[code] || ZONE_COLORS[group];
                 const dimmed = !activeLines.includes(group);
+                const displayName = player ? (player.displayName || player.shortName || formatShortName(player.name)) : slot.label;
+                const isTargetForSwap = selectedBenchPlayer != null;
+
                 return (
                   <div
                     key={`slot-${i}`}
                     className="token absolute flex flex-col items-center"
                     onPointerDown={(e) => {
+                      if (selectedBenchPlayer) return;
                       e.preventDefault();
                       setDragKey(key);
                     }}
                     onTouchStart={(e) => {
+                      if (selectedBenchPlayer) return;
                       e.preventDefault();
                       setDragKey(key);
+                    }}
+                    onClick={() => {
+                      if (selectedBenchPlayer) {
+                        swapBenchWithStarter(selectedBenchPlayer, i);
+                      }
+                    }}
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                    }}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      const pId = e.dataTransfer.getData("text/plain") || draggedBenchId;
+                      const bPlayer = subs.find(x => x.id === pId);
+                      if (bPlayer) swapBenchWithStarter(bPlayer, i);
                     }}
                     style={{
                       left: `${pos.x}%`,
                       top: `${pos.y}%`,
                       transform: "translate(-50%,-50%)",
-                      cursor: dragging ? "grabbing" : "grab",
+                      cursor: isTargetForSwap ? "pointer" : (dragging ? "grabbing" : "grab"),
                       zIndex: dragging ? 20 : 10,
                       userSelect: "none",
                       opacity: dimmed ? 0.25 : 1,
+                      padding: isTargetForSwap ? "6px" : "2px",
+                      borderRadius: "14px",
+                      background: isTargetForSwap ? "rgba(232,179,76,0.2)" : "transparent",
+                      border: isTargetForSwap ? "2px dashed #E8B34C" : "none",
+                      transition: "all 0.15s ease",
+                      animation: isTargetForSwap ? "pulse 1.4s infinite" : "none"
                     }}
                   >
-                    <svg width="40" height="40" viewBox="0 0 64 64" style={{ filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.4))", pointerEvents: "none" }}>
+                    <svg width="52" height="52" viewBox="0 0 64 64" style={{ filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.5))", pointerEvents: "none" }}>
                       <path
                         d="M20,6 L8,14 L14,26 L20,22 L20,58 L44,58 L44,22 L50,26 L56,14 L44,6 L38,10 Q32,16 26,10 Z"
                         fill={player ? C.cream : "rgba(244,241,232,0.25)"}
                         stroke={groupColor}
-                        strokeWidth="2.5"
+                        strokeWidth="2.8"
                         strokeLinejoin="round"
                       />
                       <text
-                        x="32" y="42"
+                        x="32" y="41"
                         textAnchor="middle"
-                        fontSize="18"
-                        fontWeight="700"
+                        fontSize="20"
+                        fontWeight="800"
                         fill={C.ink}
                         style={{ fontFamily: "'JetBrains Mono', monospace" }}
                       >
@@ -1095,12 +1061,12 @@ function FormationBuilder() {
                       </text>
                     </svg>
                     <div
-                      className="oswald text-center leading-tight truncate"
-                      style={{ fontSize: 11, color: C.cream, marginTop: 4, maxWidth: 70, pointerEvents: "none" }}
+                      className="oswald text-center leading-tight truncate font-bold"
+                      style={{ fontSize: 12, color: C.cream, marginTop: 4, maxWidth: 86, pointerEvents: "none", textShadow: "0 1px 3px rgba(0,0,0,0.9)" }}
                     >
-                      {player ? player.name : slot.label}
+                      {displayName}
                     </div>
-                    <div style={{ fontSize: 9, color: groupColor, letterSpacing: "0.02em", pointerEvents: "none", fontWeight: 700 }}>{player ? player.canonical : slot.label}</div>
+                    <div style={{ fontSize: 9.5, color: groupColor, letterSpacing: "0.02em", pointerEvents: "none", fontWeight: 700 }}>{player ? player.canonical : slot.label}</div>
                   </div>
                 );
               })}
@@ -1154,8 +1120,7 @@ function FormationBuilder() {
             </div>
           </div>
 
-          {/* RIGHT: THE LIVE TEAM CHAT BOX (Exact equal length to Pitch) */}
-          {showChat && (
+          {/* RIGHT: BENCH / GAME CHANGERS PANEL (Exact equal height to Pitch) */}
           <div
             className="no-print flex flex-col"
             style={{
@@ -1169,181 +1134,120 @@ function FormationBuilder() {
               boxSizing: "border-box"
             }}
           >
-            {/* Chat Header */}
+            {/* Bench Header */}
             <div className="flex items-center justify-between px-4 py-3 border-b flex-shrink-0" style={{ borderColor: C.border, background: "rgba(19,43,28,0.85)" }}>
               <div className="flex items-center gap-2">
-                <span style={{ fontSize: 18 }}>💬</span>
+                <span style={{ fontSize: 18 }}>💺</span>
                 <div>
-                  <div className="oswald" style={{ fontSize: 14, letterSpacing: "0.15em", color: C.cream, fontWeight: 700 }}>TEAM CHAT & NOTICES</div>
+                  <div className="oswald" style={{ fontSize: 14, letterSpacing: "0.15em", color: C.cream, fontWeight: 700 }}>
+                    BENCH / GAME CHANGERS ({subs.length})
+                  </div>
                   <div style={{ fontSize: 11, color: C.sage }}>
-                    Posting as: <strong style={{ color: C.amber }}>{isCoach ? (myChatId.name || "Head Coach") : (myChatId.name || "Visitor")}</strong> {(!isCoach) && <button onClick={openIdentityModal} style={{ textDecoration: "underline", color: C.cream, marginLeft: 6, background: "none", border: "none", cursor: "pointer", fontSize: 11 }}>Change</button>}
+                    Drag &amp; drop onto pitch or tap to swap with Starting XI
                   </div>
                 </div>
               </div>
-              {isCoach && (
-                <button
-                  onClick={clearAllChat}
-                  className="oswald"
-                  style={{ fontSize: 11, color: "#E88A6D", background: "rgba(220,38,38,0.12)", border: "1px solid rgba(220,38,38,0.3)", borderRadius: 6, padding: "4px 8px", cursor: "pointer" }}
-                >
-                  🗑️ Clear
-                </button>
-              )}
             </div>
 
-            {/* Pinned Notice Card */}
-            {chatMsgs.find(m => m.pinned) && (() => {
-              const pinnedMsg = chatMsgs.find(m => m.pinned);
-              return (
-                <div className="flex items-start gap-2 px-4 py-2 border-b flex-shrink-0" style={{ borderColor: C.border, background: "rgba(232,179,76,0.12)" }}>
-                  <span style={{ fontSize: 15 }}>📌</span>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div className="oswald" style={{ fontSize: 10, letterSpacing: "0.1em", color: C.amber, fontWeight: 700 }}>PINNED ANNOUNCEMENT</div>
-                    <div style={{ fontSize: 12, color: C.cream, wordBreak: "break-word" }}>{pinnedMsg.senderName} ({formatTime(pinnedMsg.createdAt)}): {pinnedMsg.text}</div>
+            {/* Active Swap Selection Banner */}
+            {selectedBenchPlayer && (
+              <div className="px-4 py-2 border-b flex items-center justify-between flex-shrink-0" style={{ borderColor: C.amber, background: "rgba(232,179,76,0.18)" }}>
+                <div className="flex items-center gap-2">
+                  <span>🔄</span>
+                  <div style={{ fontSize: 12, color: C.cream }}>
+                    Selected: <strong style={{ color: C.amber }}>#{selectedBenchPlayer.number} {selectedBenchPlayer.displayName || selectedBenchPlayer.name}</strong>. Tap any player on pitch to swap!
                   </div>
-                  {isCoach && (
-                    <button onClick={() => togglePinMessage(pinnedMsg.id, true)} style={{ color: C.sage, background: "none", border: "none", cursor: "pointer", fontSize: 12 }}>✕</button>
-                  )}
                 </div>
-              );
-            })()}
+                <button onClick={() => setSelectedBenchPlayer(null)} style={{ background: "none", border: "none", color: C.sage, cursor: "pointer", fontSize: 12 }}>✕ Cancel</button>
+              </div>
+            )}
 
-            {/* Scrollable Messages Stream */}
-            <div className="chat-scroll flex-1 overflow-y-auto p-4 flex flex-col gap-3" style={{ minHeight: 0 }}>
-              {chatMsgs.length === 0 ? (
+            {/* Bench Scrollable Player Stream */}
+            <div className="chat-scroll flex-1 overflow-y-auto p-3 flex flex-col gap-2" style={{ minHeight: 0 }}>
+              {subs.length === 0 ? (
                 <div className="m-auto text-center py-8" style={{ color: C.sage }}>
-                  <div style={{ fontSize: 32, marginBottom: 6 }}>💬</div>
-                  <div className="oswald" style={{ fontSize: 14, color: C.creamSoft }}>No messages yet</div>
-                  <div style={{ fontSize: 11.5, marginTop: 4, opacity: 0.8 }}>Start a tactical discussion with the squad!</div>
+                  <div style={{ fontSize: 32, marginBottom: 6 }}>💺</div>
+                  <div className="oswald" style={{ fontSize: 14, color: C.creamSoft }}>No players on the bench</div>
+                  <div style={{ fontSize: 11.5, marginTop: 4, opacity: 0.8 }}>All available squad players are currently in the starting XI.</div>
                 </div>
               ) : (
-                chatMsgs.map((m) => {
-                  const isMine = isCoach ? (m.senderRole === 'coach') : (m.senderName === myChatId.name);
-                  const isCoachMsg = m.senderRole === 'coach';
-                  const roleLabel = (m.senderRole || 'member').toUpperCase();
-                  const timeStr = formatTime(m.createdAt);
-                  let avatar = '💬';
-                  if (isCoachMsg) avatar = '👑';
-                  else if (m.senderRole === 'player') avatar = '⚽';
-                  else if (m.senderRole === 'staff') avatar = '🧑‍💼';
+                subs.map((p) => {
+                  const isSelected = selectedBenchPlayer?.id === p.id;
+                  const dispName = p.displayName || p.shortName || formatShortName(p.name);
+                  const code = canonicalize(p.rawPosition || p.position);
+                  const group = GROUP[code] || "MID";
+                  const groupColor = CODE_COLORS[code] || ZONE_COLORS[group];
 
                   return (
-                    <div key={m.id} className={`flex gap-2.5 items-start ${isMine ? 'flex-row-reverse self-end' : 'self-start'}`} style={{ maxWidth: "88%" }}>
-                      <div className="flex items-center justify-center rounded-full flex-shrink-0" style={{ width: 28, height: 28, background: "rgba(244,241,232,0.1)", border: `1px solid ${C.border}`, fontSize: 12 }}>
-                        {avatar}
-                      </div>
-                      <div className="flex flex-col gap-0.5" style={{ alignItems: isMine ? "flex-end" : "flex-start" }}>
-                        <div className="flex items-center gap-1.5" style={{ fontSize: 10, color: C.sage }}>
-                          <span style={{ fontWeight: 700, color: C.cream }}>{m.senderName}</span>
-                          <span className="mono rounded px-1" style={{ fontSize: 8.5, background: isCoachMsg ? "rgba(232,179,76,0.2)" : "rgba(244,241,232,0.1)", color: isCoachMsg ? C.amber : C.sage }}>{roleLabel}</span>
+                    <div
+                      key={p.id}
+                      draggable={true}
+                      onDragStart={(e) => {
+                        e.dataTransfer.setData("text/plain", p.id);
+                        setDraggedBenchId(p.id);
+                      }}
+                      onClick={() => setSelectedBenchPlayer(isSelected ? null : p)}
+                      className="flex items-center justify-between p-2.5 rounded-lg transition-all"
+                      style={{
+                        background: isSelected ? "rgba(232,179,76,0.22)" : "rgba(30,77,43,0.45)",
+                        border: `1.5px solid ${isSelected ? C.amber : C.border}`,
+                        cursor: "grab",
+                        boxShadow: isSelected ? "0 0 10px rgba(232,179,76,0.3)" : "none"
+                      }}
+                      title="Drag to pitch or click to swap"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div
+                          className="mono font-bold text-center flex items-center justify-center rounded"
+                          style={{
+                            background: "rgba(244,241,232,0.1)",
+                            border: `1px solid ${C.border}`,
+                            color: C.amber,
+                            fontSize: 14,
+                            width: 32,
+                            height: 32,
+                            flexShrink: 0
+                          }}
+                        >
+                          {p.number}
                         </div>
-                        <div className="rounded-xl px-3 py-2 relative group" style={{
-                          background: isMine ? "#1A5C1A" : "rgba(30,77,43,0.6)",
-                          border: `1px solid ${isMine ? "#237A23" : C.border}`,
-                          color: C.cream,
-                          fontSize: 13,
-                          lineHeight: 1.35,
-                          wordBreak: "break-word",
-                          borderTopLeftRadius: !isMine ? 2 : 12,
-                          borderTopRightRadius: isMine ? 2 : 12,
-                        }}>
-                          {isCoach && (
-                            <div className="hidden group-hover:flex absolute -top-3 right-1 gap-1 px-1.5 py-0.5 rounded" style={{ background: C.panel, border: `1px solid ${C.border}`, fontSize: 10 }}>
-                              <button onClick={() => togglePinMessage(m.id, !!m.pinned)} style={{ color: C.amber, background: "none", border: "none", cursor: "pointer", fontSize: 10 }}>{m.pinned ? '📌 Unpin' : '📌 Pin'}</button>
-                              <button onClick={() => deleteChatMessage(m.id)} style={{ color: "#E88A6D", background: "none", border: "none", cursor: "pointer", fontSize: 10 }}>🗑️</button>
-                            </div>
+                        <div className="min-w-0">
+                          <div className="truncate font-semibold" style={{ color: C.cream, fontSize: 13 }}>{dispName}</div>
+                          {dispName !== p.name && (
+                            <div className="truncate opacity-60" style={{ fontSize: 10, color: C.sage }}>{p.name}</div>
                           )}
-                          <div>{m.text}</div>
-                          <div style={{ fontSize: 9, opacity: 0.6, marginTop: 3, textAlign: "right" }}>{timeStr} {m.pinned ? '📌' : ''}</div>
                         </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <span
+                          className="rounded px-2 py-0.5 font-bold"
+                          style={{ fontSize: 10, background: hexToRgba(groupColor, 0.2), color: groupColor, border: `1px solid ${hexToRgba(groupColor, 0.4)}` }}
+                        >
+                          {p.rawPosition || p.position}
+                        </span>
+                        <button
+                          type="button"
+                          className="oswald"
+                          style={{
+                            fontSize: 11,
+                            padding: "4px 8px",
+                            borderRadius: 5,
+                            background: isSelected ? C.amber : "rgba(244,241,232,0.12)",
+                            color: isSelected ? C.ink : C.cream,
+                            border: "none",
+                            cursor: "pointer",
+                            fontWeight: 700
+                          }}
+                        >
+                          {isSelected ? "Tap Pitch" : "⇄ Swap"}
+                        </button>
                       </div>
                     </div>
                   );
                 })
               )}
-              <div ref={chatMessagesEndRef} />
             </div>
-
-            {/* Message Input Row */}
-            <form onSubmit={sendChatMessage} className="flex gap-2 p-3 border-t flex-shrink-0" style={{ borderColor: C.border, background: "rgba(19,43,28,0.95)" }}>
-              <input
-                type="text"
-                placeholder={isCoach ? "Post a message as Coach…" : "Type a message to chat with the team…"}
-                value={chatInputText}
-                onChange={(e) => setChatInputText(e.target.value)}
-                className="flex-1 px-3.5 py-2 rounded-full text-sm outline-none"
-                style={{ background: C.bg, border: `1px solid ${C.border}`, color: C.cream }}
-              />
-              <button
-                type="submit"
-                className="w-9 h-9 rounded-full flex items-center justify-center text-white flex-shrink-0 cursor-pointer hover:scale-105 transition-transform"
-                style={{ background: "#1A5C1A", border: "none", boxShadow: "0 2px 8px rgba(0,0,0,0.3)" }}
-                title="Send"
-              >
-                ➤
-              </button>
-            </form>
-          </div>
-          )}
-        </div>
-
-        {/* GAME CHANGERS + MANAGEMENT SECTION (Below the Pitch & Chat stage) */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Substitutes */}
-          <div>
-            <div className="oswald" style={{ fontSize: 12, letterSpacing: "0.3em", color: C.sage, marginBottom: 8 }}>
-              GAME CHANGERS · {subs.length}
-            </div>
-            {subs.length === 0 ? (
-              <div style={{ fontSize: 14, color: "rgba(143,191,159,0.7)", fontStyle: "italic", background: C.panel, border: `1px solid ${C.border}`, borderRadius: 6, padding: "12px 16px" }}>No players left on the bench.</div>
-            ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                {subs.map((p) => (
-                  <div
-                    key={p.id}
-                    className="flex items-center gap-3"
-                    style={{ background: C.panel, border: `1px solid ${C.border}`, borderRadius: 6, padding: "8px 12px" }}
-                  >
-                    <div className="mono font-bold text-center" style={{ color: C.amber, fontSize: 14, width: 24 }}>{p.number}</div>
-                    <div style={{ minWidth: 0 }}>
-                      <div className="truncate" style={{ color: C.cream, fontSize: 13 }}>{p.name}</div>
-                      <div style={{ fontSize: 10, color: C.sage, letterSpacing: "0.02em" }}>{p.rawPosition}</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Management / Staff */}
-          <div>
-            <div className="oswald" style={{ fontSize: 12, letterSpacing: "0.3em", color: C.sage, marginBottom: 8 }}>
-              MANAGEMENT / STAFF · {managementFilled.length}
-            </div>
-            {managementFilled.length === 0 ? (
-              <div style={{ fontSize: 14, color: "rgba(143,191,159,0.7)", fontStyle: "italic", background: C.panel, border: `1px solid ${C.border}`, borderRadius: 6, padding: "12px 16px" }}>No management staff assigned.</div>
-            ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                {managementFilled.map((m) => (
-                  <div
-                    key={m.id}
-                    className="flex items-center gap-3"
-                    style={{ background: C.panel, border: `1px solid ${C.border}`, borderRadius: 6, padding: "8px 12px" }}
-                  >
-                    <div
-                      className="flex items-center justify-center"
-                      style={{ width: 26, height: 26, borderRadius: "50%", background: "rgba(139,95,191,0.25)", border: `1px solid ${ZONE_COLORS.GK}`, flexShrink: 0 }}
-                    >
-                      <span style={{ fontSize: 12 }}>👔</span>
-                    </div>
-                    <div style={{ minWidth: 0 }}>
-                      <div className="truncate" style={{ color: C.cream, fontSize: 13 }}>{m.name}</div>
-                      <div style={{ fontSize: 10, color: C.sage, letterSpacing: "0.02em" }}>{m.role}</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
           </div>
         </div>
       </div>

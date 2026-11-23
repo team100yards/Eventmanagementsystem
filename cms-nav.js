@@ -12,7 +12,7 @@
     { id: 'teams', name: 'Teams & Clubs', icon: '🏟️', url: 'index.html?tab=teams', desc: 'Team rosters, crests, squad lists & coaches' },
     { id: 'players', name: 'Players Directory', icon: '👥', url: 'index.html?tab=players', desc: 'Player database, stats, photos & numbers' },
     { id: 'desk', name: 'Live Match Phone Desk', icon: '📱', url: 'match-phone.html', desc: 'Pitchside mobile operator desk for live scoring' },
-    { id: 'formation', name: 'Formation Visualizer', icon: '♟️', url: 'formation-builder.html', desc: 'Tactical pitch lineup builder & visualizer' }
+    { id: 'formation', name: 'Formation Visualizer', icon: '♟️', url: 'index.html?tab=formation', desc: 'Tactical pitch lineup builder & visualizer' }
   ];
 
   function getCurrentTool() {
@@ -392,7 +392,7 @@
             `;
           }
           return `
-            <a href="${t.url}" class="cms-nav-link ${isActive ? 'active' : ''}" title="${t.desc}">
+            <a href="${t.url}" class="cms-nav-link ${isActive ? 'active' : ''}" data-tool-id="${t.id}" onclick="return window.handleCMSNavToolClick ? window.handleCMSNavToolClick('${t.id}','${t.url}',event) : true;" title="${t.desc}">
               <span>${t.icon}</span>
               <span>${t.name}</span>
             </a>

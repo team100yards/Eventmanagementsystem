@@ -52,6 +52,20 @@ const AK = 'fhq_adm', PK = 'fhq_pin', DA = 'admin123', DP = '1234', DAP = '1234'
 const DPOS = ['GK', 'RB', 'LB', 'CB', 'RWB', 'LWB', 'CDM', 'CM', 'CAM', 'RM', 'LM', 'RW', 'LW', 'CF', 'ST'];
 const POS_FULL = { GK: 'Goalkeeper', RB: 'Right Back', LB: 'Left Back', CB: 'Centre Back', RWB: 'Right Wing Back', LWB: 'Left Wing Back', CDM: 'Central Defensive Midfielder', CM: 'Central Midfielder', CAM: 'Central Attacking Midfielder', RM: 'Right Midfielder', LM: 'Left Midfielder', RW: 'Right Winger', LW: 'Left Winger', CF: 'Centre Forward', ST: 'Striker' };
 
+function getPlayerDisplayName(p) {
+  if (!p) return '';
+  if (typeof p === 'string') return p;
+  if (p.displayName && String(p.displayName).trim()) return String(p.displayName).trim();
+  if (p.shortName && String(p.shortName).trim()) return String(p.shortName).trim();
+  const raw = String(p.name || '').trim();
+  if (!raw) return '';
+  const parts = raw.split(/\s+/).filter(Boolean);
+  if (parts.length <= 1) return raw;
+  if (parts.length === 2) return `${parts[0][0]}. ${parts[1]}`;
+  return `${parts[0][0]}. ${parts[parts.length - 1]}`;
+}
+window.getPlayerDisplayName = getPlayerDisplayName;
+
 let curTeam = null, teams = [], players = [], unsub = null, pos = [...DPOS];
 let pvId = null, pvTeam = null, pvPlayers = [], pvUnsub = null, pvMergedFormationKeys = [];
 let pubId = null, pubTeam = null, pfPhotoData = null;
@@ -1034,6 +1048,8 @@ function aggregateAllPlayers(rawFsPlayers = []) {
             teamId: teamId,
             teamName: teamName,
             name: pName,
+            displayName: p.displayName || p.shortName || null,
+            shortName: p.shortName || p.displayName || null,
             jersey: num,
             playernum: num,
             position: p.position || 'ST',
@@ -1058,6 +1074,8 @@ function aggregateAllPlayers(rawFsPlayers = []) {
             teamId: teamId,
             teamName: teamName,
             name: pName,
+            displayName: p.displayName || p.shortName || null,
+            shortName: p.shortName || p.displayName || null,
             jersey: num,
             playernum: num,
             position: p.position || 'SUB',
@@ -1083,6 +1101,8 @@ function aggregateAllPlayers(rawFsPlayers = []) {
             teamId: teamId,
             teamName: teamName,
             name: pName,
+            displayName: p.displayName || p.shortName || null,
+            shortName: p.shortName || p.displayName || null,
             jersey: num,
             playernum: num,
             position: p.position || slot.role || 'ST',
@@ -1107,6 +1127,8 @@ function aggregateAllPlayers(rawFsPlayers = []) {
             teamId: teamId,
             teamName: teamName,
             name: pName,
+            displayName: p.displayName || p.shortName || null,
+            shortName: p.shortName || p.displayName || null,
             jersey: num,
             playernum: num,
             position: p.position || 'SUB',
@@ -1131,6 +1153,8 @@ function aggregateAllPlayers(rawFsPlayers = []) {
             teamId: teamId,
             teamName: teamName,
             name: pName,
+            displayName: p.displayName || p.shortName || null,
+            shortName: p.shortName || p.displayName || null,
             jersey: num,
             playernum: num,
             position: p.position || 'ST',
@@ -1230,10 +1254,10 @@ async function loadAdmin() {
     try {
       const initParams = new URLSearchParams(window.location.search);
       const targetStatus = initParams.get('status');
-      const targetTab = initParams.get('tab');
+      const targetTab = initParams.get('tab') || currentAdminTab || 'teams';
       if (targetStatus && (targetStatus === 'live' || targetStatus === 'scheduled')) {
         navigateAdminDashboard(targetStatus);
-      } else if (targetTab && ['teams', 'players', 'tournaments', 'matches', 'formation'].includes(targetTab)) {
+      } else if (['teams', 'players', 'tournaments', 'matches', 'formation'].includes(targetTab)) {
         showAdminTab(targetTab);
       }
     } catch(urlErr) {}
@@ -1246,7 +1270,17 @@ async function loadAdmin() {
 function showAdminTab(tab) {
   const validTabs = ['teams', 'players', 'tournaments', 'matches', 'formation'];
   if (!validTabs.includes(tab)) return;
+  // Ensure the main admin screen is shown regardless of previous screen
+  ss('s-admin');
   currentAdminTab = tab;
+  try {
+    const currentUrl = new URL(window.location.href);
+    if (!currentUrl.searchParams.get('match') && !currentUrl.searchParams.get('live') && !currentUrl.searchParams.get('createMatch')) {
+      currentUrl.searchParams.set('tab', tab);
+      window.history.replaceState(null, '', currentUrl.toString());
+    }
+  } catch (e) {}
+
   validTabs.forEach(name => {
     const selected = name === tab;
     const tile = $('dash-nav-' + name);
@@ -1260,6 +1294,21 @@ function showAdminTab(tab) {
       panel.hidden = !selected;
     }
   });
+
+  // Sync topbar CMS links if present
+  document.querySelectorAll('.cms-nav-link').forEach(link => {
+    const tid = link.getAttribute('data-tool-id');
+    if (tid) {
+      const isMatch = (tid === tab) || (tid === 'dashboard' && tab === 'teams');
+      link.classList.toggle('active', isMatch);
+    }
+  });
+  const pill = document.querySelector('.cms-nav-active-tool-pill span:last-child');
+  if (pill && window.CMSNav && Array.isArray(window.CMSNav.tools)) {
+    const toolObj = window.CMSNav.tools.find(x => x.id === tab || (x.id === 'dashboard' && tab === 'teams'));
+    if (toolObj) pill.textContent = toolObj.name;
+  }
+
   if (tab === 'players') renderAdminPlayers();
   if (tab === 'tournaments') renderAdminTournaments();
   if (tab === 'matches') renderAdminMatches();
@@ -1344,18 +1393,67 @@ function renderAdmin() {
 
   const el = $('tgrid');
   if (!el) return;
-  el.innerHTML = teams.map(t => `
-    <div class="tc" onclick="promptPw('${t.id}')">
-      <div class="tc-acts">
-        <div class="tc-edit" title="Edit team" onclick="event.stopPropagation();adminRequestPin('editteam','${t.id}')">✏️</div>
-        <div class="tc-del" title="Delete team" onclick="event.stopPropagation();adminRequestPin('delteam','${t.id}')">🗑️</div>
-      </div>
-      <div class="tc-badge">${t.logo ? `<img src="${esc(t.logo)}" alt="">` : (t.emoji || '⚽')}</div>
-      <div class="tc-name">${esc(t.name)}</div>
-      <div class="tc-meta">${esc(t.season || '')}${t.motto ? ' · ' + esc(t.motto) : ''}</div>
-      <div class="tc-count"><strong>${t.pc || 0}</strong>Players</div>
-    </div>`).join('') +
-    `<div class="add-tc" onclick="openM('m-create')"><div style="font-size:30px;">＋</div><span style="font-size:13px;font-weight:700;letter-spacing:1px;">New Team</span></div>`;
+
+  if (!teams.length) {
+    el.innerHTML = `
+      <div class="team-list-empty" onclick="openM('m-create')" style="padding:40px 20px;text-align:center;border:2px dashed var(--bd);border-radius:14px;cursor:pointer;background:var(--card);">
+        <div style="font-size:36px;margin-bottom:8px;">🏟️＋</div>
+        <div style="font-size:16px;font-weight:700;color:#1a5c1a;">Create Your First Team</div>
+        <p style="font-size:12px;color:var(--mt);margin-top:4px;">Add a team, set up the roster, and manage lineups.</p>
+      </div>`;
+    return;
+  }
+
+  el.innerHTML = `
+    <div class="team-list-table">
+      ${teams.map(t => {
+        const logoHtml = t.logo ? `<img src="${esc(t.logo)}" alt="">` : (t.emoji || '⚽');
+        const meta = [t.season, t.motto].filter(Boolean).map(esc).join(' · ');
+        return `
+          <div class="team-list-row" onclick="promptPw('${t.id}')">
+            <div class="team-list-left">
+              <div class="team-list-logo">${logoHtml}</div>
+              <div class="team-list-info">
+                <div class="team-list-name">${esc(t.name)}</div>
+                ${meta ? `<div class="team-list-meta">${meta}</div>` : ''}
+              </div>
+            </div>
+            <div class="team-list-right" onclick="event.stopPropagation();">
+              <div class="team-list-count" onclick="promptPw('${t.id}')">${t.pc || 0} Players</div>
+              <button type="button" class="obtn" style="font-size:12px;font-weight:600;padding:6px 12px;background:#1a5c1a;color:#fff;border-radius:8px;" onclick="promptPw('${t.id}')">Enter Team →</button>
+              <div class="team-list-actions">
+                <button type="button" class="squad-act-chip" title="Edit team" onclick="adminRequestPin('editteam','${t.id}')">✏️</button>
+                <button type="button" class="squad-act-chip remove" title="Delete team" onclick="adminRequestPin('delteam','${t.id}')">🗑️</button>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('')}
+    </div>
+  `;
+}
+
+const POS_RANK_MAP = {
+  'GK': 1, 'GOALKEEPER': 1, 'GOALIE': 1,
+  'RB': 10, 'LB': 11, 'CB': 12, 'RWB': 13, 'LWB': 14, 'DEF': 15, 'DF': 15, 'DEFENDER': 15, 'SW': 16,
+  'CDM': 20, 'CM': 21, 'CAM': 22, 'RM': 23, 'LM': 24, 'MID': 25, 'MF': 25, 'MIDFIELDER': 25, 'DM': 26, 'AM': 27,
+  'RW': 30, 'LW': 31, 'CF': 32, 'ST': 33, 'FWD': 34, 'FW': 34, 'FORWARD': 34, 'ATT': 34, 'ATTACKER': 34,
+  'SUB': 50, 'BENCH': 51
+};
+
+function getPlayerPosRank(pos) {
+  if (!pos) return 99;
+  const p = String(pos).toUpperCase().trim();
+  return POS_RANK_MAP[p] || 40;
+}
+
+function getPlayerPosCategory(pos) {
+  const p = String(pos || '').toUpperCase().trim();
+  if (['GK', 'GOALKEEPER', 'GOALIE'].includes(p)) return 'gk';
+  if (['CB', 'LB', 'RB', 'LWB', 'RWB', 'DF', 'DEF', 'DEFENDER', 'SW'].includes(p)) return 'def';
+  if (['CDM', 'CM', 'CAM', 'RM', 'LM', 'MF', 'MID', 'MIDFIELDER', 'AM', 'DM'].includes(p)) return 'mid';
+  if (['ST', 'CF', 'LW', 'RW', 'FW', 'FWD', 'FORWARD', 'ATT', 'ATTACKER', 'SS', 'WINGER'].includes(p)) return 'fwd';
+  return 'sub';
 }
 
 function renderAdminPlayers() {
@@ -1382,34 +1480,147 @@ function renderAdminPlayers() {
 
   const query = String($('admin-player-search')?.value || '').toLowerCase().trim();
   const teamId = filter?.value || '';
-  const visible = allPlayersCache.filter(player => {
-    if (teamId && player.teamId !== teamId) return false;
-    const team = teams.find(item => item.id === player.teamId);
-    const text = [player.name, team?.name, player.teamName, player.position, player.jersey, player.playernum, player.role]
-      .map(value => String(value || '').toLowerCase()).join(' ');
-    return !query || text.includes(query);
-  }).sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
 
-  if (!visible.length) {
+  // Filter players by query and optional teamId
+  const matchesQuery = p => {
+    if (!query) return true;
+    const team = teams.find(item => item.id === p.teamId);
+    const text = [p.name, p.displayName, p.shortName, team?.name, p.teamName, p.position, p.jersey, p.playernum, p.role]
+      .map(value => String(value || '').toLowerCase()).join(' ');
+    return text.includes(query);
+  };
+
+  const visiblePlayers = allPlayersCache.filter(matchesQuery);
+
+  if (!visiblePlayers.length) {
     el.innerHTML = '<div class="admin-player-empty">No players match your search or team filter.</div>';
     return;
   }
 
-  el.innerHTML = visible.map(player => {
-    const team = teams.find(item => item.id === player.teamId);
-    const teamDisplayName = team?.name || player.teamName || 'Unassigned team';
-    const jersey = player.jersey || player.playernum || '—';
-    const pos = posCode(player.position) || player.position || '—';
-    const roleBadge = player.role ? `<span style="display:inline-block;margin-left:6px;font-size:10px;padding:2px 6px;border-radius:4px;background:rgba(255,255,255,0.08);color:#94a3b8;font-weight:600;">${esc(player.role)}</span>` : '';
-    return `<article class="admin-player-card">
-      <div class="admin-player-avatar">${player.photo ? `<img src="${esc(player.photo)}" alt="">` : '👤'}</div>
-      <div class="admin-player-copy">
-        <strong>${esc(player.name || 'Unnamed player')}${roleBadge}</strong>
-        <span>${esc(teamDisplayName)}</span>
+  // Determine which teams to render
+  const targetTeams = (teamId ? teams.filter(t => t.id === teamId) : teams);
+
+  let html = '<div class="admin-player-teams-container">';
+
+  targetTeams.forEach(t => {
+    const tPlayers = visiblePlayers.filter(p => p.teamId === t.id);
+    if (!tPlayers.length && (query || teamId)) return; // skip empty teams during search
+
+    // Sort players by position rank, then jersey, then name
+    tPlayers.sort((a, b) => {
+      const rankA = getPlayerPosRank(a.position);
+      const rankB = getPlayerPosRank(b.position);
+      if (rankA !== rankB) return rankA - rankB;
+      const jA = parseInt(a.jersey || a.playernum, 10);
+      const jB = parseInt(b.jersey || b.playernum, 10);
+      if (!isNaN(jA) && !isNaN(jB) && jA !== jB) return jA - jB;
+      return String(a.name || '').localeCompare(String(b.name || ''));
+    });
+
+    const logoHtml = t.logo ? `<img src="${esc(t.logo)}" alt="">` : (t.emoji || '⚽');
+    const meta = [t.season, t.motto].filter(Boolean).map(esc).join(' · ');
+
+    html += `
+      <div class="admin-team-player-block">
+        <div class="admin-team-player-header" onclick="promptPw('${t.id}')">
+          <div class="admin-team-player-hleft">
+            <div class="admin-team-player-badge">${logoHtml}</div>
+            <div>
+              <div class="admin-team-player-title">${esc(t.name)}</div>
+              ${meta ? `<div class="admin-team-player-sub">${meta}</div>` : ''}
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;">
+            <span class="admin-team-player-count">${tPlayers.length} Players</span>
+            <button type="button" class="obtn" style="font-size:11px;padding:4px 10px;background:#1a5c1a;color:#fff;border-radius:6px;" onclick="event.stopPropagation();promptPw('${t.id}')">Open Team →</button>
+          </div>
+        </div>
+        <div class="admin-team-player-list">
+          ${tPlayers.length ? tPlayers.map(p => {
+            const jersey = p.jersey || p.playernum || '—';
+            const pos = posCode(p.position) || p.position || '—';
+            const posCat = getPlayerPosCategory(pos);
+            const dispName = getPlayerDisplayName(p);
+            const hasDiffDisp = dispName && dispName.toLowerCase() !== String(p.name || '').toLowerCase();
+            const roleBadge = p.role ? `<span style="font-size:10px;padding:2px 6px;border-radius:4px;background:rgba(0,0,0,0.06);color:#475569;font-weight:600;">${esc(p.role)}</span>` : '';
+            return `
+              <div class="admin-team-player-row">
+                <div class="admin-team-player-left">
+                  <div class="admin-team-player-num">#${esc(jersey)}</div>
+                  <div class="admin-team-player-avatar">${p.photo ? `<img src="${esc(p.photo)}" alt="">` : '👤'}</div>
+                  <div style="min-width:0;">
+                    <div class="admin-team-player-name">
+                      ${esc(p.name || 'Unnamed player')}
+                      ${hasDiffDisp ? `<span class="admin-team-player-dispname">(${esc(dispName)})</span>` : ''}
+                    </div>
+                  </div>
+                </div>
+                <div class="admin-team-player-right">
+                  ${roleBadge}
+                  <span class="admin-pos-badge admin-pos-${posCat}">${esc(pos)}</span>
+                </div>
+              </div>
+            `;
+          }).join('') : '<div style="padding:14px 18px;color:var(--mt);font-size:12px;font-style:italic;">No players registered in this team yet.</div>'}
+        </div>
       </div>
-      <div class="admin-player-meta"><strong>#${esc(jersey)}</strong><span>${esc(pos)}</span></div>
-    </article>`;
-  }).join('');
+    `;
+  });
+
+  // Handle unassigned players (no teamId or team not found)
+  const unassigned = visiblePlayers.filter(p => !p.teamId || !teams.some(t => t.id === p.teamId));
+  if (unassigned.length && !teamId) {
+    unassigned.sort((a, b) => {
+      const rankA = getPlayerPosRank(a.position);
+      const rankB = getPlayerPosRank(b.position);
+      if (rankA !== rankB) return rankA - rankB;
+      return String(a.name || '').localeCompare(String(b.name || ''));
+    });
+
+    html += `
+      <div class="admin-team-player-block">
+        <div class="admin-team-player-header">
+          <div class="admin-team-player-hleft">
+            <div class="admin-team-player-badge">👤</div>
+            <div>
+              <div class="admin-team-player-title">Unassigned Players</div>
+              <div class="admin-team-player-sub">Players not currently linked to any team squad</div>
+            </div>
+          </div>
+          <span class="admin-team-player-count">${unassigned.length} Players</span>
+        </div>
+        <div class="admin-team-player-list">
+          ${unassigned.map(p => {
+            const jersey = p.jersey || p.playernum || '—';
+            const pos = posCode(p.position) || p.position || '—';
+            const posCat = getPlayerPosCategory(pos);
+            const dispName = getPlayerDisplayName(p);
+            const hasDiffDisp = dispName && dispName.toLowerCase() !== String(p.name || '').toLowerCase();
+            return `
+              <div class="admin-team-player-row">
+                <div class="admin-team-player-left">
+                  <div class="admin-team-player-num">#${esc(jersey)}</div>
+                  <div class="admin-team-player-avatar">${p.photo ? `<img src="${esc(p.photo)}" alt="">` : '👤'}</div>
+                  <div style="min-width:0;">
+                    <div class="admin-team-player-name">
+                      ${esc(p.name || 'Unnamed player')}
+                      ${hasDiffDisp ? `<span class="admin-team-player-dispname">(${esc(dispName)})</span>` : ''}
+                    </div>
+                  </div>
+                </div>
+                <div class="admin-team-player-right">
+                  <span class="admin-pos-badge admin-pos-${posCat}">${esc(pos)}</span>
+                </div>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      </div>
+    `;
+  }
+
+  html += '</div>';
+  el.innerHTML = html;
 }
 
 function renderAdminTournaments() {
@@ -2540,20 +2751,15 @@ async function saveAdminPin() {
 
 function promptPw(id) {
   curTeam = teams.find(t => t.id === id);
-  const b = $('tpw-badge'); b.innerHTML = curTeam.logo ? `<img src="${esc(curTeam.logo)}" alt="">` : (curTeam.emoji || '⚽');
-  $('tpw-name').textContent = (curTeam.name || 'TEAM').toUpperCase();
-  $('tpw').value = ''; $('tpwerr').style.display = 'none';
-  ss('s-team-pw');
+  if (!curTeam) return;
+  pos = curTeam.positions || [...DPOS];
+  enterTeam();
 }
 
 function doTeamLogin() {
   if (!curTeam) { ss('s-login'); return; }
-  const p = $('tpw').value;
-  if (p === (curTeam.password || 'team123')) {
-    $('tpwerr').style.display = 'none'; $('tpw').value = '';
-    pos = curTeam.positions || [...DPOS];
-    enterTeam();
-  } else { $('tpwerr').style.display = 'block'; $('tpw').value = ''; }
+  pos = curTeam.positions || [...DPOS];
+  enterTeam();
 }
 
 function enterTeam() {
@@ -2812,7 +3018,7 @@ function renderSquadPlayingList() {
   const el = $('squad-content'); if (!el) return;
   if (!curTeam) return;
 
-  if (!teamSquadData.playingXi.length && !teamSquadData.bench.length && !teamSquadData.management.length) {
+  if (!teamSquadData.playingXi.length && !teamSquadData.bench.length) {
     initTeamSquadData();
   }
 
@@ -2826,22 +3032,17 @@ function renderSquadPlayingList() {
     const photoImg = p.photo ? `<img src="${esc(p.photo)}" class="squad-avatar-img" alt="">` : '👤';
     const jerseyDisplay = p.jersey != null && p.jersey !== '' ? `<div class="squad-jersey">#${esc(p.jersey)}</div>` : '';
     const posBadge = p.position ? `<span class="squad-pos-pill">${esc(p.position)}</span>` : '';
+    const dispName = getPlayerDisplayName(p);
+    const hasDiffDisp = dispName && dispName.toLowerCase() !== String(p.name || '').toLowerCase();
 
     let moveButtons = '';
     if (listType === 'playingXi') {
       moveButtons = `
         <button type="button" class="squad-act-chip" onclick="moveSquadMember('playingXi','bench',${idx})" title="Move to Bench">⬇️ Bench</button>
-        <button type="button" class="squad-act-chip" onclick="moveSquadMember('playingXi','management',${idx})" title="Move to Staff">🧑‍💼 Staff</button>
-      `;
-    } else if (listType === 'bench') {
-      moveButtons = `
-        <button type="button" class="squad-act-chip" onclick="moveSquadMember('bench','playingXi',${idx})" title="Move to Playing XI">⬆️ Playing XI</button>
-        <button type="button" class="squad-act-chip" onclick="moveSquadMember('bench','management',${idx})" title="Move to Staff">🧑‍💼 Staff</button>
       `;
     } else {
       moveButtons = `
-        <button type="button" class="squad-act-chip" onclick="moveSquadMember('management','playingXi',${idx})" title="Move to Playing XI">⚽ XI</button>
-        <button type="button" class="squad-act-chip" onclick="moveSquadMember('management','bench',${idx})" title="Move to Bench">💺 Bench</button>
+        <button type="button" class="squad-act-chip" onclick="moveSquadMember('bench','playingXi',${idx})" title="Move to Playing XI">⬆️ Playing XI</button>
       `;
     }
 
@@ -2854,7 +3055,10 @@ function renderSquadPlayingList() {
           </div>
           ${jerseyDisplay}
           <div>
-            <div class="squad-name">${esc(p.name)}</div>
+            <div class="squad-name">
+              ${esc(p.name)}
+              ${hasDiffDisp ? `<span style="font-size:12px;color:var(--mt);font-weight:normal;margin-left:4px;">(${esc(dispName)})</span>` : ''}
+            </div>
             <div style="display:flex;align-items:center;gap:6px;margin-top:2px;">
               ${posBadge}
               ${p.role ? `<span class="squad-pos-pill" style="background:#e2e8f0;color:#2d3748;">${esc(p.role)}</span>` : ''}
@@ -2921,20 +3125,6 @@ function renderSquadPlayingList() {
         ${teamSquadData.bench.length ? teamSquadData.bench.map((p, idx) => renderPlayerRow(p, 'bench', idx)).join('') : '<div class="squad-empty-box">No bench players assigned yet. Use "+ Add Bench Player" or upload a squad list.</div>'}
       </div>
     </div>
-
-    <!-- SECTION 3: MANAGEMENT -->
-    <div class="squad-section-card">
-      <div class="squad-section-head">
-        <div class="squad-section-title">
-          <span>🧑‍💼 TEAM MANAGEMENT &amp; STAFF</span>
-          <span class="squad-badge mgmt">${teamSquadData.management.length} Staff Members</span>
-        </div>
-        <button type="button" class="squad-btn-secondary" style="padding:6px 12px;font-size:12px;" onclick="openAddSquadMemberModal('management')">＋ Add Staff Member</button>
-      </div>
-      <div class="squad-list-grid">
-        ${teamSquadData.management.length ? teamSquadData.management.map((s, idx) => renderPlayerRow(s, 'management', idx)).join('') : '<div class="squad-empty-box">No management staff assigned yet. Add coach, manager, physio, kit staff, etc.</div>'}
-      </div>
-    </div>
   `;
 
   el.innerHTML = html;
@@ -2984,13 +3174,14 @@ let squadModalTargetType = 'playingXi';
 let squadModalEditIndex = -1;
 
 function openAddSquadMemberModal(targetType) {
-  squadModalTargetType = targetType;
+  squadModalTargetType = (targetType === 'bench') ? 'bench' : 'playingXi';
   squadModalEditIndex = -1;
   modalPhotoData = null;
 
   const titEl = $('pl-add-tit');
   const descEl = $('pl-add-desc');
   const nameInp = $('pl-add-name');
+  const dispInp = $('pl-add-display-name');
   const roleInp = $('pl-add-role');
   const jerseyInp = $('pl-add-jersey');
   const jerseyField = $('pl-add-jersey-field');
@@ -3001,17 +3192,13 @@ function openAddSquadMemberModal(targetType) {
 
   if (errEl) { errEl.textContent = ''; errEl.style.display = 'none'; }
   if (nameInp) nameInp.value = '';
+  if (dispInp) dispInp.value = '';
   if (roleInp) roleInp.value = '';
   if (jerseyInp) jerseyInp.value = '';
   if (photoPrev) photoPrev.innerHTML = '👤';
   if (photoClear) photoClear.style.display = 'none';
 
-  if (targetType === 'management') {
-    if (titEl) titEl.textContent = 'ADD MANAGEMENT STAFF';
-    if (descEl) descEl.textContent = 'Add coach, physio, manager or support staff member.';
-    if (roleLabel) roleLabel.textContent = 'Role / Title (e.g. Head Coach, Physio)';
-    if (jerseyField) jerseyField.style.display = 'none';
-  } else if (targetType === 'bench') {
+  if (squadModalTargetType === 'bench') {
     if (titEl) titEl.textContent = 'ADD BENCH PLAYER';
     if (descEl) descEl.textContent = 'Add a substitute player to the bench.';
     if (roleLabel) roleLabel.textContent = 'Position (e.g. ST, CB, GK)';
@@ -3032,10 +3219,10 @@ function openAddSquadMemberModal(targetType) {
 }
 
 function openEditSquadMemberModal(listType, index) {
-  squadModalTargetType = listType;
+  squadModalTargetType = (listType === 'bench') ? 'bench' : 'playingXi';
   squadModalEditIndex = index;
 
-  const item = teamSquadData[listType] && teamSquadData[listType][index];
+  const item = teamSquadData[squadModalTargetType] && teamSquadData[squadModalTargetType][index];
   if (!item) return;
 
   modalPhotoData = item.photo || null;
@@ -3043,6 +3230,7 @@ function openEditSquadMemberModal(listType, index) {
   const titEl = $('pl-add-tit');
   const descEl = $('pl-add-desc');
   const nameInp = $('pl-add-name');
+  const dispInp = $('pl-add-display-name');
   const roleInp = $('pl-add-role');
   const jerseyInp = $('pl-add-jersey');
   const jerseyField = $('pl-add-jersey-field');
@@ -3053,6 +3241,7 @@ function openEditSquadMemberModal(listType, index) {
 
   if (errEl) { errEl.textContent = ''; errEl.style.display = 'none'; }
   if (nameInp) nameInp.value = item.name || '';
+  if (dispInp) dispInp.value = item.displayName || item.shortName || '';
   if (roleInp) roleInp.value = item.position || item.role || '';
   if (jerseyInp) jerseyInp.value = item.jersey || '';
 
@@ -3064,17 +3253,10 @@ function openEditSquadMemberModal(listType, index) {
     if (photoClear) photoClear.style.display = 'none';
   }
 
-  if (listType === 'management') {
-    if (titEl) titEl.textContent = 'EDIT MANAGEMENT STAFF';
-    if (descEl) descEl.textContent = 'Update details for staff member.';
-    if (roleLabel) roleLabel.textContent = 'Role / Title';
-    if (jerseyField) jerseyField.style.display = 'none';
-  } else {
-    if (titEl) titEl.textContent = 'EDIT PLAYER DETAILS';
-    if (descEl) descEl.textContent = 'Update name, jersey, position or photograph.';
-    if (roleLabel) roleLabel.textContent = 'Position (e.g. ST, CB, GK)';
-    if (jerseyField) jerseyField.style.display = 'block';
-  }
+  if (titEl) titEl.textContent = 'EDIT SQUAD PLAYER';
+  if (descEl) descEl.textContent = 'Update name, display name, jersey, position or photograph.';
+  if (roleLabel) roleLabel.textContent = 'Position (e.g. ST, CB, GK)';
+  if (jerseyField) jerseyField.style.display = 'block';
 
   const sel = $('pl-add-player-sel');
   if (sel) {
@@ -3123,6 +3305,8 @@ function clearModalPhoto() {
 
 function confirmAddPlayerToSection() {
   const name = String($('pl-add-name')?.value || '').trim();
+  const rawDisp = String($('pl-add-display-name')?.value || '').trim();
+  const displayName = rawDisp || getPlayerDisplayName({ name });
   const role = String($('pl-add-role')?.value || '').trim();
   const jersey = String($('pl-add-jersey')?.value || '').trim();
   const errEl = $('pl-add-err');
@@ -3138,40 +3322,28 @@ function confirmAddPlayerToSection() {
     const item = teamSquadData[squadModalTargetType] && teamSquadData[squadModalTargetType][squadModalEditIndex];
     if (item) {
       item.name = name;
-      if (squadModalTargetType === 'management') {
-        item.role = role || 'Staff';
-      } else {
-        item.position = role || 'ST';
-        item.jersey = jersey || '';
-      }
+      item.displayName = displayName;
+      item.shortName = displayName;
+      item.position = role || 'ST';
+      item.jersey = jersey || '';
       if (modalPhotoData !== undefined) {
         item.photo = modalPhotoData;
       }
     }
   } else {
-    if (squadModalTargetType === 'management') {
-      teamSquadData.management.push({
-        id: pId,
-        name,
-        role: role || 'Staff',
-        photo: modalPhotoData || null
-      });
-    } else if (squadModalTargetType === 'bench') {
-      teamSquadData.bench.push({
-        id: pId,
-        name,
-        position: role || 'ST',
-        jersey: jersey || '',
-        photo: modalPhotoData || null
-      });
+    const newEntry = {
+      id: pId,
+      name,
+      displayName,
+      shortName: displayName,
+      position: role || 'ST',
+      jersey: jersey || '',
+      photo: modalPhotoData || null
+    };
+    if (squadModalTargetType === 'bench') {
+      teamSquadData.bench.push(newEntry);
     } else {
-      teamSquadData.playingXi.push({
-        id: pId,
-        name,
-        position: role || 'ST',
-        jersey: jersey || '',
-        photo: modalPhotoData || null
-      });
+      teamSquadData.playingXi.push(newEntry);
     }
   }
 
@@ -3183,15 +3355,10 @@ function moveSquadMember(fromType, toType, index) {
   if (!teamSquadData[fromType] || !teamSquadData[fromType][index]) return;
   const item = teamSquadData[fromType].splice(index, 1)[0];
 
-  if (toType === 'playingXi') {
-    item.position = item.position || item.role || 'ST';
-  } else if (toType === 'bench') {
-    item.position = item.position || item.role || 'ST';
-  } else if (toType === 'management') {
-    item.role = item.role || item.position || 'Staff';
-  }
+  const targetType = (toType === 'bench') ? 'bench' : 'playingXi';
+  item.position = item.position || 'ST';
 
-  teamSquadData[toType].push(item);
+  teamSquadData[targetType].push(item);
   renderSquadPlayingList();
 }
 
@@ -3227,9 +3394,10 @@ async function handleSquadCSVUpload(input) {
       return idx;
     };
 
-    const secCol = findCol('section', 'category', 'type', 'status');
-    const nameCol = findCol('name', 'player name', 'player', 'member', 'staff');
-    const roleCol = findCol('role', 'position', 'pos', 'role/position', 'designation');
+    const secCol = findCol('status', 'section', 'category', 'type');
+    const nameCol = findCol('name', 'player name', 'player', 'member');
+    const dispCol = findCol('display name', 'displayname', 'short name', 'shortname', 'display', 'short');
+    const roleCol = findCol('position', 'pos', 'role', 'playing position', 'role/position');
     const jerseyCol = findCol('jersey', 'jersey #', 'jersey number', 'number', '#', 'no');
 
     if (nameCol === -1) {
@@ -3240,7 +3408,6 @@ async function handleSquadCSVUpload(input) {
 
     const newXi = [];
     const newBench = [];
-    const newMgmt = [];
 
     const getVal = (r, idx) => (idx >= 0 && idx < r.length) ? String(r[idx] || '').trim() : '';
 
@@ -3253,52 +3420,34 @@ async function handleSquadCSVUpload(input) {
       const roleVal = getVal(r, roleCol);
       const roleLower = roleVal.toLowerCase();
       const jerseyVal = getVal(r, jerseyCol);
+      const rawDisp = getVal(r, dispCol);
+      const displayName = rawDisp || getPlayerDisplayName({ name });
 
+      // Skip staff/management if present in file
       const isStaffKeyword = roleLower.includes('coach') || roleLower.includes('manager') || roleLower.includes('physio') || roleLower.includes('doctor') || roleLower.includes('staff') || roleLower.includes('kit') || roleLower.includes('trainer') || roleLower.includes('assistant');
       const isStaffSection = secVal.includes('management') || secVal.includes('staff');
+      if (isStaffSection || isStaffKeyword) continue;
 
       const id = 'sq_' + Math.random().toString(36).substr(2, 8);
+      const playerItem = {
+        id,
+        name,
+        displayName,
+        shortName: displayName,
+        position: roleVal || 'ST',
+        jersey: jerseyVal || '',
+        photo: null
+      };
 
-      if (isStaffSection || isStaffKeyword) {
-        newMgmt.push({
-          id,
-          name,
-          role: roleVal || 'Staff',
-          photo: null
-        });
-      } else if (secVal.includes('11') || secVal.includes('eleven') || secVal.includes('start') || secVal.includes('first') || secVal.includes('playing')) {
-        newXi.push({
-          id,
-          name,
-          position: roleVal || 'ST',
-          jersey: jerseyVal || '',
-          photo: null
-        });
-      } else if (secVal.includes('bench') || secVal.includes('sub') || secVal.includes('reserve')) {
-        newBench.push({
-          id,
-          name,
-          position: roleVal || 'ST',
-          jersey: jerseyVal || '',
-          photo: null
-        });
+      if (secVal.includes('11') || secVal.includes('eleven') || secVal.includes('start') || secVal.includes('first') || secVal.includes('playing') || secVal === '1') {
+        newXi.push(playerItem);
+      } else if (secVal.includes('bench') || secVal.includes('sub') || secVal.includes('reserve') || secVal === '0') {
+        newBench.push(playerItem);
       } else {
         if (newXi.length < 11) {
-          newXi.push({
-            id,
-            name,
-            position: roleVal || 'ST',
-            jersey: jerseyVal || '',
-            photo: null
-          });
+          newXi.push(playerItem);
         } else {
-          newBench.push({
-            id,
-            name,
-            position: roleVal || 'ST',
-            jersey: jerseyVal || '',
-            photo: null
-          });
+          newBench.push(playerItem);
         }
       }
     }
@@ -3306,11 +3455,11 @@ async function handleSquadCSVUpload(input) {
     teamSquadData = {
       playingXi: newXi,
       bench: newBench,
-      management: newMgmt
+      management: []
     };
 
     renderSquadPlayingList();
-    alert(`🎉 Successfully uploaded squad from CSV!\n\n⚽ Playing XI: ${newXi.length} players\n💺 Bench: ${newBench.length} players\n🧑‍💼 Management: ${newMgmt.length} staff\n\nClick "SAVE SQUAD" to persist changes.`);
+    alert(`🎉 Successfully uploaded squad from CSV!\n\n⚽ Playing XI: ${newXi.length} players\n💺 Bench: ${newBench.length} players\n\nClick "SAVE SQUAD" to persist changes.`);
   } catch (e) {
     console.error('Squad CSV error:', e);
     alert('Failed to parse CSV file: ' + (e.message || e));
@@ -3319,36 +3468,109 @@ async function handleSquadCSVUpload(input) {
 }
 
 function downloadSquadCSVTemplate() {
-  const csvContent = "Section,Jersey,Name,Position/Role,Notes\n" +
-    "Playing XI,1,David Raya,GK,Goalkeeper\n" +
-    "Playing XI,2,William Saliba,CB,Center Back\n" +
-    "Playing XI,6,Gabriel Magalhaes,CB,Center Back\n" +
-    "Playing XI,4,Ben White,RB,Right Back\n" +
-    "Playing XI,12,Jurrien Timber,LB,Left Back\n" +
-    "Playing XI,5,Thomas Partey,CDM,Defensive Mid\n" +
-    "Playing XI,41,Declan Rice,CM,Central Mid\n" +
-    "Playing XI,8,Martin Odegaard,CAM,Playmaker\n" +
-    "Playing XI,7,Bukayo Saka,RW,Right Winger\n" +
-    "Playing XI,11,Gabriel Martinelli,LW,Left Winger\n" +
-    "Playing XI,29,Kai Havertz,ST,Striker\n" +
-    "Bench,32,Neto,GK,Sub Goalkeeper\n" +
-    "Bench,17,Oleksandr Zinchenko,LB,Sub Defender\n" +
-    "Bench,20,Jorginho,CM,Sub Midfielder\n" +
-    "Bench,9,Gabriel Jesus,ST,Sub Forward\n" +
-    "Bench,19,Leandro Trossard,LW,Sub Forward\n" +
-    "Management,,Mikel Arteta,Head Coach,Manager\n" +
-    "Management,,Albert Stuivenberg,Assistant Coach,Coach\n" +
-    "Management,,Gary O'Driscoll,Head Physio,Medical\n";
-
+  const csvContent = "Status,Jersey,Name,Display Name,Position\n";
   const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.setAttribute('href', url);
-  link.setAttribute('download', `${(curTeam?.name || 'team').toLowerCase().replace(/\s+/g, '_')}_squad_template.csv`);
+  link.setAttribute('download', 'squad_lineup_template.csv');
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
 }
+window.downloadSquadCSVTemplate = downloadSquadCSVTemplate;
+window.downloadLineupCSVTemplate = downloadSquadCSVTemplate;
+
+async function handleMatchLineupCSVUpload(input) {
+  const file = input.files && input.files[0];
+  if (!file) return;
+
+  try {
+    const text = await file.text();
+    const rows = parseCSVRows(text);
+    if (rows.length < 2) {
+      alert('CSV file has no data rows.');
+      input.value = '';
+      return;
+    }
+
+    const h = rows[0].map(x => x.toLowerCase().trim());
+    const findCol = (...keys) => {
+      let idx = h.findIndex(col => keys.some(k => col === k));
+      if (idx !== -1) return idx;
+      idx = h.findIndex(col => keys.some(k => col.includes(k)));
+      return idx;
+    };
+
+    const secCol = findCol('status', 'section', 'category', 'type');
+    const nameCol = findCol('name', 'player name', 'player', 'member');
+    const dispCol = findCol('display name', 'displayname', 'short name', 'shortname', 'display', 'short');
+    const posCol = findCol('position', 'pos', 'role', 'playing position', 'role/position');
+    const jerseyCol = findCol('jersey', 'jersey #', 'jersey number', 'number', '#', 'no');
+
+    if (nameCol === -1) {
+      alert('CSV must contain a "Name" column.');
+      input.value = '';
+      return;
+    }
+
+    const getVal = (r, idx) => (idx >= 0 && idx < r.length) ? String(r[idx] || '').trim() : '';
+
+    const newStarters = [];
+    const newBench = [];
+
+    for (let i = 1; i < rows.length; i++) {
+      const r = rows[i];
+      const name = getVal(r, nameCol);
+      if (!name) continue;
+
+      const secVal = getVal(r, secCol).toLowerCase();
+      const posVal = getVal(r, posCol) || 'ST';
+      const jerseyVal = getVal(r, jerseyCol);
+      const rawDisp = getVal(r, dispCol);
+      const dispName = rawDisp || getPlayerDisplayName({ name });
+
+      const playerObj = {
+        id: 'usr_' + Date.now() + Math.random().toString(36).substr(2, 6),
+        name,
+        displayName: dispName,
+        shortName: dispName,
+        position: posVal,
+        matchPosition: posCode(posVal),
+        jersey: jerseyVal,
+        photo: null
+      };
+
+      if (secVal.includes('bench') || secVal.includes('sub') || secVal.includes('reserve') || secVal === '0') {
+        newBench.push(playerObj);
+      } else if (secVal.includes('start') || secVal.includes('xi') || secVal.includes('playing') || secVal.includes('first') || secVal === '1') {
+        newStarters.push(playerObj);
+      } else {
+        if (newStarters.length < amlAside) {
+          newStarters.push(playerObj);
+        } else {
+          newBench.push(playerObj);
+        }
+      }
+    }
+
+    const flat = flattenFormation(amlFormation);
+    amlSlots = flat.map((_, i) => newStarters[i] || null);
+    if (newStarters.length > flat.length) {
+      newBench.unshift(...newStarters.slice(flat.length));
+    }
+    amlSubs = newBench;
+    amlStaff = [];
+
+    renderAdjustLineupModal();
+    alert(`🎉 Successfully loaded match lineup from CSV!\n\n⚽ Starting XI: ${amlSlots.filter(Boolean).length} players\n💺 Bench: ${amlSubs.length} players`);
+  } catch (err) {
+    console.error('Match Lineup CSV Error:', err);
+    alert('Failed to parse CSV file: ' + (err.message || err));
+  }
+  input.value = '';
+}
+window.handleMatchLineupCSVUpload = handleMatchLineupCSVUpload;
 
 async function handleSquadAIPhotoUpload(input) {
   const file = input?.files?.[0];
@@ -5845,13 +6067,13 @@ function clearCtLogo() {
 }
 
 async function createTeam() {
-  const name = $('ct-name').value.trim(), pass = $('ct-pass').value, err = $('ct-err');
+  const name = $('ct-name').value.trim(), pass = $('ct-pass').value.trim(), err = $('ct-err');
   if (!name) { err.textContent = 'Team name is required.'; err.style.display = 'block'; return; }
-  if (!pass || pass.length < 4) { err.textContent = 'Password must be at least 4 characters.'; err.style.display = 'block'; return; }
+  if (pass && pass.length < 4) { err.textContent = 'If provided, password must be at least 4 characters.'; err.style.display = 'block'; return; }
   const okBtn = document.querySelector('#m-create .mok');
   okBtn.textContent = 'CREATING…'; okBtn.disabled = true; err.style.display = 'none';
   try {
-    await addDoc(collection(db, 'teams'), { name, season: $('ct-season').value.trim(), motto: $('ct-motto').value.trim(), emoji: $('ct-emoji').value, password: pass, positions: [...DPOS], logo: ctLogoData || null, createdAt: new Date().toISOString() });
+    await addDoc(collection(db, 'teams'), { name, season: $('ct-season').value.trim(), motto: $('ct-motto').value.trim(), emoji: $('ct-emoji').value, password: pass || '', positions: [...DPOS], logo: ctLogoData || null, createdAt: new Date().toISOString() });
     ctLogoData = null; $('ct-logo-inp').value = ''; $('ct-logo-preview').innerHTML = '⚽'; closeM('m-create');['ct-name', 'ct-season', 'ct-motto', 'ct-pass'].forEach(id => $(id).value = ''); err.style.display = 'none';
     await loadAdmin();
   } catch (e) {
@@ -10034,6 +10256,7 @@ function renderMatchSquad(side, sideData, teamObj) {
   function renderPlayerRow(p, isStarter, idx) {
     const pid = p.playerId || p.id;
     const pname = p.name || 'Player';
+    const dispName = getPlayerDisplayName(p) || pname;
     const pos = p.position || p.role || '—';
     const jersey = p.jersey != null && p.jersey !== '' ? p.jersey : (idx + 1);
 
@@ -10067,7 +10290,7 @@ function renderMatchSquad(side, sideData, teamObj) {
         <div class="ms-player-info">
           <div class="ms-player-num">${esc(jersey)}</div>
           <div class="ms-player-details">
-            <div class="ms-player-name">${esc(pname)}</div>
+            <div class="ms-player-name">${esc(dispName)}</div>
             <div class="ms-player-pos">${esc(posCode(pos) || pos)}</div>
           </div>
         </div>
@@ -10099,23 +10322,9 @@ function renderMatchSquad(side, sideData, teamObj) {
     }
   }
 
-  // Staff
+  // Staff (removed from app display)
   if (staffEl) {
-    if (!staff.length) {
-      staffEl.innerHTML = '<div style="padding:8px 12px;color:var(--mt);font-size:11.5px;font-style:italic;">No management staff listed</div>';
-    } else {
-      staffEl.innerHTML = staff.map(st => `
-        <div class="ms-player-item" style="cursor:default;">
-          <div class="ms-player-info">
-            <div class="ms-player-num" style="background:#fff;">🧑‍💼</div>
-            <div class="ms-player-details">
-              <div class="ms-player-name">${esc(st.name)}</div>
-              <div class="ms-player-pos">${esc(st.role || 'Staff')}</div>
-            </div>
-          </div>
-        </div>
-      `).join('');
-    }
+    staffEl.innerHTML = '';
   }
 }
 
@@ -11005,7 +11214,7 @@ function renderAmlPitch() {
       const sideLabel = slotSideLabel(line.r, flat[i] ? flat[i].x : 50, line.lbl);
       const cls = `lu-item ${p ? 'filled' : 'empty-slot'} ${i === amlActive ? 'active-slot' : ''}`;
       const av = p ? playerLineupAv(p) : '<div class="lu-av">+</div>';
-      const name = p ? esc(p.name) : esc(label);
+      const name = p ? esc(getPlayerDisplayName(p) || p.name) : esc(label);
       const meta = p ? `${esc(posCode(p.position) || '—')} <span class="lu-slotside">· ${esc(sideLabel)}</span>` : `Tap to assign <span class="lu-slotside">· ${esc(sideLabel)}</span>`;
 
       const actions = p ? `
@@ -11106,7 +11315,7 @@ function renderAmlBench() {
       <div class="lu-item filled">
         ${playerLineupAv(p)}
         <div class="lu-info">
-          <div class="lu-name">${esc(p.name)}</div>
+          <div class="lu-name">${esc(getPlayerDisplayName(p) || p.name)}</div>
           <div class="lu-meta">${esc(posCode(p.position) || 'Bench')}</div>
         </div>
         <div class="lu-slot-actions">
