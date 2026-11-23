@@ -13,9 +13,9 @@
 <meta property="og:type" content="website">
 <meta name="twitter:card" content="summary_large_image">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=34.0">
+<link rel="stylesheet" href="style.css?v=35.0">
 <link rel="stylesheet" href="cms-tokens.css">
-<link rel="stylesheet" href="cms-nav.css?v=34.0">
+<link rel="stylesheet" href="cms-nav.css?v=35.0">
 <script>
 (function(){
   try {
@@ -2703,7 +2703,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-check-compat.js"></script>
-<script src="cms-auth.js?v=33.0"></script>
+<script src="cms-auth.js?v=35.0"></script>
 <script>
   window.firebaseAiLogicLoadState='loading';
   window.firebaseAiLogicReady=new Promise((resolve,reject)=>{
@@ -2712,14 +2712,14 @@
     window.resolveFirebaseAiLogicModule=api=>{
       if(settled)return;settled=true;clearTimeout(timer);window.firebaseAiLogicLoadState='ready';resolve(api);
     };
-      windo w. re        re baseAiLog icModul e=error = >{
-       if(settled)retur n;settled=true;clearTimeout(tim e r);windo w.firebaseAiLogicLoadState='err o r';window.firebaseAiLo g icLoa d Error=error instanceof  E rror?error:new Error(String(error||'Fi rebase AI Logic failed to load.'));reject      dow    ireb    eAiLogicLoadError);
+    window.rejectFirebaseAiLogicModule=error=>{
+      if(settled)return;settled=true;clearTimeout(timer);window.firebaseAiLogicLoadState='error';window.firebaseAiLogicLoadError=error instanceof Error?error:new Error(String(error||'Firebase AI Logic failed to load.'));reject(window.firebaseAiLogicLoadError);
     };
   });
   window.firebaseAiLogicReady.catch(()=>{});
 </script>
-<script src="app.js?v=34.0"></script>
-<script src="cms-nav.js?v=34.0"></script>
+<script src="app.js?v=35.0"></script>
+<script src="cms-nav.js?v=35.0"></script>
 <script type="module">
   import('./firebase-ai-logic.js?v=6').catch(error=>{
     window.rejectFirebaseAiLogicModule?.(error instanceof Error ? error : new Error(String(error || 'Firebase AI Logic module import failed.')));

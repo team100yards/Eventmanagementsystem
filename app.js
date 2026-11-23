@@ -3450,9 +3450,10 @@ async function saveSquadPlayingList() {
 
   const formationKey = curTeam.squad?.formation || '4-4-2';
   const flat = flattenFormation(formationKey);
+  const sortedXi = (typeof sortPlayersByPitchPosition === 'function') ? sortPlayersByPitchPosition(teamSquadData.playingXi) : teamSquadData.playingXi;
 
   const slots = flat.map((s, i) => {
-    const p = teamSquadData.playingXi[i];
+    const p = sortedXi[i];
     return {
       role: s.role,
       label: s.label,
@@ -3817,6 +3818,34 @@ function classifyPos(position) {
 }
 function toFBPositionCode(position) { return posCode(position) || 'ST'; }
 
+function sortPlayersByPitchPosition(playerList) {
+  if (!Array.isArray(playerList) || !playerList.length) return [];
+  const list = [...playerList];
+
+  const posRank = {
+    'GK': 0, 'GKP': 0,
+    'LB': 10, 'LWB': 11,
+    'CB': 20, 'SW': 21, 'CD': 22, 'DEF': 25,
+    'RB': 30, 'RWB': 31,
+    'LM': 40,
+    'CDM': 50, 'DM': 51,
+    'CM': 60, 'MID': 65,
+    'CAM': 70, 'AM': 71,
+    'RM': 80,
+    'LW': 90,
+    'ST': 100, 'CF': 101, 'FWD': 105, 'FW': 106,
+    'RW': 110
+  };
+
+  return list.sort((a, b) => {
+    const codeA = toFBPositionCode(a.matchPosition || a.position);
+    const codeB = toFBPositionCode(b.matchPosition || b.position);
+    const rankA = posRank[codeA] ?? 999;
+    const rankB = posRank[codeB] ?? 999;
+    return rankA - rankB;
+  });
+}
+
 function mergeCustomFormations(targetTeam) {
   const team = targetTeam || curTeam;
   mergedCustomFormationKeys.forEach(k => { delete FORMATIONS[k]; });
@@ -3853,13 +3882,15 @@ function buildFormationSyncPayload(targetTeam) {
   let payload = {};
 
   if (sq && Array.isArray(sq.playingXi) && sq.playingXi.length) {
-    const starters = sq.playingXi.map(p => ({
+    const sortedXi = sortPlayersByPitchPosition(sq.playingXi);
+    const starters = sortedXi.map(p => ({
       id: p.id || ('xi_' + String(Math.random()).slice(2, 8)),
       name: p.name || '',
       number: p.jersey || p.playernum || '-',
       position: toFBPositionCode(p.matchPosition || p.position)
     }));
-    const subs = (sq.bench || sq.subs || []).map(p => ({
+    const sortedBench = sortPlayersByPitchPosition(sq.bench || sq.subs || []);
+    const subs = sortedBench.map(p => ({
       id: p.id || ('sub_' + String(Math.random()).slice(2, 8)),
       name: p.name || '',
       number: p.jersey || p.playernum || '-',
@@ -3897,7 +3928,8 @@ function buildFormationSyncPayload(targetTeam) {
       number: s.player.jersey || s.player.playernum || '-',
       position: toFBPositionCode(s.player.matchPosition || s.player.position)
     } : null);
-    const subs = (sq.subs || []).map(s => ({
+    const sortedSubs = sortPlayersByPitchPosition(sq.subs || []);
+    const subs = sortedSubs.map(s => ({
       id: s.id || ('sub_' + String(Math.random()).slice(2, 8)),
       name: s.name,
       number: s.jersey || s.playernum || '-',
@@ -3917,7 +3949,7 @@ function buildFormationSyncPayload(targetTeam) {
     };
   } else {
     const teamPlayers = allPlayersCache.filter(p => p.teamId === target.id);
-    const rosterList = teamPlayers.length ? teamPlayers : (target.players || []);
+    const rosterList = sortPlayersByPitchPosition(teamPlayers.length ? teamPlayers : (target.players || []));
     const rosterPlayers = rosterList.map(p => ({
       id: p.id || ('p_' + String(Math.random()).slice(2, 8)),
       name: p.name,

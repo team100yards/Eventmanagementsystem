@@ -233,25 +233,65 @@ const ZONE_SIZE = { GK: [22, 15], DEF: [30, 20], MID: [34, 22], FWD: [30, 22] };
 
 
 function assignToFormation(players, slots) {
-  const pool = [...players];
+  const starters = players.filter(p => p.type === "start");
+  const bench = players.filter(p => p.type !== "start");
+
+  const primaryPool = starters.length ? [...starters] : [...players];
+  const secondaryPool = starters.length ? [...bench] : [];
+
+  const findMatchIndex = (pool, slotCode) => {
+    if (!pool || !pool.length) return -1;
+    let idx = pool.findIndex((p) => p.canonical === slotCode);
+    if (idx !== -1) return idx;
+
+    if (slotCode === "CDM") idx = pool.findIndex((p) => p.canonical === "CM" || p.canonical === "CAM");
+    else if (slotCode === "CM") idx = pool.findIndex((p) => p.canonical === "CDM" || p.canonical === "CAM" || p.canonical === "RM" || p.canonical === "LM");
+    else if (slotCode === "CAM") idx = pool.findIndex((p) => p.canonical === "CM" || p.canonical === "CF");
+    else if (slotCode === "ST") idx = pool.findIndex((p) => p.canonical === "CF" || p.canonical === "LW" || p.canonical === "RW");
+    else if (slotCode === "CF") idx = pool.findIndex((p) => p.canonical === "ST");
+    else if (slotCode === "LB") idx = pool.findIndex((p) => p.canonical === "LWB");
+    else if (slotCode === "RB") idx = pool.findIndex((p) => p.canonical === "RWB");
+    else if (slotCode === "LWB") idx = pool.findIndex((p) => p.canonical === "LB" || p.canonical === "LM");
+    else if (slotCode === "RWB") idx = pool.findIndex((p) => p.canonical === "RB" || p.canonical === "RM");
+    else if (slotCode === "LW") idx = pool.findIndex((p) => p.canonical === "LM");
+    else if (slotCode === "RW") idx = pool.findIndex((p) => p.canonical === "RM");
+    else if (slotCode === "LM") idx = pool.findIndex((p) => p.canonical === "LW");
+    else if (slotCode === "RM") idx = pool.findIndex((p) => p.canonical === "RW");
+    if (idx !== -1) return idx;
+
+    const group = GROUP[slotCode] || "MID";
+    const side = SIDE[slotCode] || "C";
+    idx = pool.findIndex((p) => p.group === group && p.side === side);
+    if (idx !== -1) return idx;
+
+    idx = pool.findIndex((p) => p.group === group);
+    return idx;
+  };
+
   const filled = slots.map((slot) => {
-    let idx = pool.findIndex((p) => p.canonical === slot.code);
-    if (idx === -1) {
-      const group = GROUP[slot.code] || "MID";
-      const side = SIDE[slot.code] || "C";
-      idx = pool.findIndex((p) => p.group === group && p.side === side);
+    let idx = findMatchIndex(primaryPool, slot.code);
+    let fromPrimary = true;
+
+    if (idx === -1 && secondaryPool.length > 0) {
+      idx = findMatchIndex(secondaryPool, slot.code);
+      if (idx !== -1) fromPrimary = false;
     }
+
     if (idx === -1) {
-      const group = GROUP[slot.code] || "MID";
-      idx = pool.findIndex((p) => p.group === group);
+      if (primaryPool.length > 0) { fromPrimary = true; idx = 0; }
+      else if (secondaryPool.length > 0) { fromPrimary = false; idx = 0; }
     }
+
     if (idx === -1) return { slot, player: null };
-    const [player] = pool.splice(idx, 1);
+    const player = fromPrimary ? primaryPool.splice(idx, 1)[0] : secondaryPool.splice(idx, 1)[0];
     return { slot, player };
   });
+
+  const remainingSubs = [...primaryPool, ...secondaryPool];
   const order = { GK: 0, DEF: 1, MID: 2, FWD: 3 };
-  pool.sort((a, b) => (order[a.group] - order[b.group]) || a.name.localeCompare(b.name));
-  return { filled, subs: pool };
+  remainingSubs.sort((a, b) => (order[a.group] - order[b.group]) || (a.name || '').localeCompare(b.name || ''));
+
+  return { filled, subs: remainingSubs };
 }
 
 function FormationBuilder() {
@@ -595,12 +635,14 @@ function FormationBuilder() {
   const managementFilled = useMemo(() => management.filter((m) => m.name.trim()), [management]);
 
   const canonicalizePlayer = (p) => {
+    if (!p) return null;
     const canonical = canonicalize(p.position);
     return {
       id: p.id,
       number: (p.number != null && p.number !== "") ? String(p.number) : ((p.jersey != null && p.jersey !== "") ? String(p.jersey) : "-"),
       name: p.name,
       rawPosition: p.position,
+      type: p.type,
       canonical,
       group: GROUP[canonical] || "MID",
       side: SIDE[canonical] || "C",
@@ -616,23 +658,9 @@ function FormationBuilder() {
   const players = manualPlayersParsed;
   const slots = FORMATIONS[formationKey];
 
-  // Use the exact Match XI slot-by-slot placement whenever it's still valid (not hand-edited,
-  // and the selected formation matches what was saved in Match XI) — this is what removes the
-  // mismatch between Match XI and the Formation Builder. Otherwise fall back to auto-placement
-  // by position, e.g. when exploring a different formation than the one saved in Match XI.
-  const usingExactPlacement = !isDirty && !!exactStarters && formationKey === syncedFormationKey;
-
   const { filled, subs } = useMemo(() => {
-    if (usingExactPlacement) {
-      const filledExact = slots.map((slot, i) => ({
-        slot,
-        player: exactStarters[i] ? canonicalizePlayer(exactStarters[i]) : null,
-      }));
-      const subsExact = (exactSubs || []).map(canonicalizePlayer);
-      return { filled: filledExact, subs: subsExact };
-    }
     return assignToFormation(players, slots);
-  }, [usingExactPlacement, exactStarters, exactSubs, players, slots]);
+  }, [players, slots]);
 
   const handlePrint = () => window.print();
 
