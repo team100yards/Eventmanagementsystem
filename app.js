@@ -988,7 +988,7 @@ function openLiveMatchDeskDirect() {
 window.openLiveMatchDeskDirect = openLiveMatchDeskDirect;
 
 function openFormationBuilderDirect() {
-  window.open('formation-builder.html', '_blank');
+  window.open('formation-builder.html?v=42.0', '_blank');
 }
 window.openFormationBuilderDirect = openFormationBuilderDirect;
 
@@ -1317,7 +1317,7 @@ function showAdminTab(tab) {
     populateAdminFormationTeamSelect();
     const f = $('adm-formation-frame');
     if (f && (!f.src || f.src === 'about:blank' || !f.src.includes('formation-builder.html'))) {
-      f.src = 'formation-builder.html';
+      f.src = 'formation-builder.html?v=42.0';
     } else {
       setTimeout(() => sendAdmFormationSync(), 150);
     }
@@ -4381,7 +4381,7 @@ function openFormationBuilderFullscreen() {
   if (targetTeam) {
     buildFormationSyncPayload(targetTeam);
   }
-  window.open('formation-builder.html', '_blank');
+  window.open('formation-builder.html?v=42.0', '_blank');
 }
 window.openFormationBuilderFullscreen = openFormationBuilderFullscreen;
 
@@ -4444,6 +4444,7 @@ window.addEventListener('message', e => {
     const safeH = Math.min(Math.max(720, d.height + 10), 1350);
     if (teamFrame && e.source === teamFrame.contentWindow) teamFrame.style.height = safeH + 'px';
     if (pubFrame && e.source === pubFrame.contentWindow) pubFrame.style.height = safeH + 'px';
+    if (admFrame && e.source === admFrame.contentWindow) admFrame.style.height = safeH + 'px';
   }
   if (d.type === 'ff-chat-send') {
     const teamFrame = $('formation-builder-frame');

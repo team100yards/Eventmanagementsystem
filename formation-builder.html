@@ -309,6 +309,7 @@ function FormationBuilder() {
   const [pitchHeight, setPitchHeight] = useState(null);
   const [selectedBenchPlayer, setSelectedBenchPlayer] = useState(null);
   const [draggedBenchId, setDraggedBenchId] = useState(null);
+  const [isCoach, setIsCoach] = useState(true);
 
   const formatShortName = (raw) => {
     if (!raw) return "";
@@ -422,6 +423,7 @@ function FormationBuilder() {
       const data = e.data;
       if (!data || typeof data !== "object") return;
       if (data.type === "ff-sync") applySyncPayload(data);
+      if (typeof data.isCoach === "boolean") setIsCoach(data.isCoach);
     };
     window.addEventListener("message", handleMessage);
     // First load cached team formation from localStorage if available
@@ -686,7 +688,7 @@ function FormationBuilder() {
   };
 
   const saveVisualizerPositions = (newCustomPos, newBallPos, key) => {
-    if (!isCoach) return;
+    if (isCoach === false) return;
     try {
       if (window.parent && window.parent !== window) {
         window.parent.postMessage({
@@ -736,7 +738,7 @@ function FormationBuilder() {
     };
     const handleUp = () => {
       setDragKey(null);
-      if (isCoach) {
+      if (isCoach !== false) {
         saveVisualizerPositions(curCustom, curBall, formationKey);
       }
     };
