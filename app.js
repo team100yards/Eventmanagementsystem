@@ -87,7 +87,7 @@ let mevTeam = 'home', mevType = 'goal', matchReturnScreen = 's-admin';
 let homeTeamType = 'app', awayTeamType = 'app';
 let cmOpponentLogos = { home: null, away: null }, cmOpponentLogoBusy = { home: false, away: false }, cmOpponentRosterBusy = { home: false, away: false };
 let matchReportNotesSaveTimer = null, matchReportNotesSaveToken = 0, matchReportNotesWriteChain = Promise.resolve();
-let matchReportGenerationBusy = false;
+let matchReportGenerationBusy = false, matchStatsImageData = null;
 let matchNoteRecognition = null, matchNoteDictationActive = false, matchNoteDictationStamp = '';
 let matchVoiceExtractionChain = Promise.resolve(), matchVoiceDictationSessionId = '', matchVoicePhraseSequence = 0;
 let matchVoiceDictationRestartTimer = null, matchVoiceSessionHasTranscript = false, matchVoicePhraseKeys = new Set(), matchVoiceStopWaiters = [];
@@ -1415,7 +1415,6 @@ function renderAdmin() {
               <div class="team-list-logo">${logoHtml}</div>
               <div class="team-list-info">
                 <div class="team-list-name">${esc(t.name)}</div>
-                ${meta ? `<div class="team-list-meta">${meta}</div>` : ''}
               </div>
             </div>
             <div class="team-list-right" onclick="event.stopPropagation();">
@@ -1456,6 +1455,34 @@ function getPlayerPosCategory(pos) {
   return 'sub';
 }
 
+let activeAdminPlayerTeamId = null;
+
+function selectAdminPlayerTeam(teamId) {
+  activeAdminPlayerTeamId = teamId;
+  const filter = $('admin-player-filter-team');
+  if (filter) filter.value = teamId || '';
+  renderAdminPlayers();
+}
+window.selectAdminPlayerTeam = selectAdminPlayerTeam;
+
+function openEditPlayerFromAdmin(teamId, playerIdOrName) {
+  curTeam = teams.find(t => t.id === teamId);
+  if (!curTeam) return;
+  initTeamSquadData();
+  let listType = 'playingXi';
+  let idx = (teamSquadData.playingXi || []).findIndex(p => p && (p.id === playerIdOrName || p.name === playerIdOrName));
+  if (idx === -1) {
+    listType = 'bench';
+    idx = (teamSquadData.bench || []).findIndex(p => p && (p.id === playerIdOrName || p.name === playerIdOrName));
+  }
+  if (idx === -1) {
+    openAddSquadMemberModal('playingXi');
+    return;
+  }
+  openEditSquadMemberModal(listType, idx);
+}
+window.openEditPlayerFromAdmin = openEditPlayerFromAdmin;
+
 function renderAdminPlayers() {
   const el = $('admin-player-grid');
   if (!el) return;
@@ -1473,153 +1500,166 @@ function renderAdminPlayers() {
     if ([...filter.options].some(option => option.value === selected)) filter.value = selected;
   }
 
-  if (!allPlayersCache.length) {
-    el.innerHTML = '<div class="admin-player-empty">No registered players found in squads or player directory.</div>';
+  if (!teams.length && !allPlayersCache.length) {
+    el.innerHTML = '<div class="admin-player-empty">No teams or registered players found. Create a team first to add players.</div>';
     return;
   }
 
   const query = String($('admin-player-search')?.value || '').toLowerCase().trim();
-  const teamId = filter?.value || '';
+  const filterTeamId = filter?.value || '';
 
-  // Filter players by query and optional teamId
+  // Determine active selected team for the card selector
+  if (filterTeamId) {
+    activeAdminPlayerTeamId = filterTeamId;
+  } else if (!activeAdminPlayerTeamId && teams.length) {
+    activeAdminPlayerTeamId = teams[0].id;
+  } else if (activeAdminPlayerTeamId && !teams.some(t => t.id === activeAdminPlayerTeamId) && teams.length) {
+    activeAdminPlayerTeamId = teams[0].id;
+  }
+
+  // 1. Team Cards Row (Clicking a card switches the selected team)
+  let html = '<div class="admin-player-team-selector-cards">';
+  teams.forEach(t => {
+    const isSelected = (t.id === activeAdminPlayerTeamId);
+    const logoHtml = t.logo ? `<img src="${esc(t.logo)}" alt="" style="width:36px;height:36px;border-radius:50%;object-fit:cover;border:1.5px solid var(--bd);">` : `<span style="font-size:26px;">${t.emoji || '⚽'}</span>`;
+    const tCount = allPlayersCache.filter(p => p.teamId === t.id).length;
+    html += `
+      <div class="admin-player-team-card ${isSelected ? 'active' : ''}" onclick="selectAdminPlayerTeam('${t.id}')">
+        <div style="display:flex;align-items:center;gap:12px;min-width:0;">
+          <div style="flex-shrink:0;">${logoHtml}</div>
+          <div style="min-width:0;">
+            <div style="font-weight:700;font-size:14px;color:var(--tx);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(t.name)}</div>
+            <div style="font-size:12px;color:var(--mt);">${tCount} Players</div>
+          </div>
+        </div>
+        ${isSelected ? '<span style="color:#1a5c1a;font-size:18px;font-weight:800;">✓</span>' : ''}
+      </div>
+    `;
+  });
+  html += '</div>';
+
+  // 2. Selected Team & Players
+  const selectedTeam = teams.find(t => t.id === activeAdminPlayerTeamId) || teams[0];
+  if (!selectedTeam) {
+    el.innerHTML = html + '<div class="admin-player-empty">No team selected.</div>';
+    return;
+  }
+
+  // Filter players for this team matching search query
   const matchesQuery = p => {
     if (!query) return true;
-    const team = teams.find(item => item.id === p.teamId);
-    const text = [p.name, p.displayName, p.shortName, team?.name, p.teamName, p.position, p.jersey, p.playernum, p.role]
+    const text = [p.name, p.displayName, p.shortName, p.position, p.jersey, p.playernum, p.role]
       .map(value => String(value || '').toLowerCase()).join(' ');
     return text.includes(query);
   };
 
-  const visiblePlayers = allPlayersCache.filter(matchesQuery);
+  const teamPlayers = allPlayersCache.filter(p => p.teamId === selectedTeam.id && matchesQuery(p));
 
-  if (!visiblePlayers.length) {
-    el.innerHTML = '<div class="admin-player-empty">No players match your search or team filter.</div>';
+  // Team header bar with Open Team button and Add Player button
+  html += `
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px;">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <h3 style="margin:0;font-size:17px;font-weight:800;color:var(--tx);">${esc(selectedTeam.name)} — Squad Playing List</h3>
+        <span style="background:#1a5c1a;color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:6px;">${teamPlayers.length} Players</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <button type="button" class="obtn" style="font-size:12px;padding:6px 12px;" onclick="curTeam = teams.find(t => t.id === '${selectedTeam.id}'); initTeamSquadData(); openAddSquadMemberModal('playingXi');">＋ Add Player</button>
+        <button type="button" class="obtn" style="font-size:12px;padding:6px 14px;background:#1a5c1a;color:#fff;border-radius:6px;font-weight:700;" onclick="promptPw('${selectedTeam.id}')">Open Team Dashboard →</button>
+      </div>
+    </div>
+  `;
+
+  if (!teamPlayers.length) {
+    html += '<div class="admin-player-empty" style="background:var(--card,#fff);border:1px solid var(--bd);border-radius:12px;padding:30px;text-align:center;">No players registered in this team yet. Click "＋ Add Player" or "Open Team Dashboard" to upload a CSV squad list.</div>';
+    el.innerHTML = html;
     return;
   }
 
-  // Determine which teams to render
-  const targetTeams = (teamId ? teams.filter(t => t.id === teamId) : teams);
+  // Segregate players into 4 positions: GK, DEF, MID, FWD
+  const gkList = teamPlayers.filter(p => classifyPos(p.position) === 'GK');
+  const defList = teamPlayers.filter(p => classifyPos(p.position) === 'DEF');
+  const midList = teamPlayers.filter(p => classifyPos(p.position) === 'MID');
+  const fwdList = teamPlayers.filter(p => classifyPos(p.position) === 'FWD');
 
-  let html = '<div class="admin-player-teams-container">';
-
-  targetTeams.forEach(t => {
-    const tPlayers = visiblePlayers.filter(p => p.teamId === t.id);
-    if (!tPlayers.length && (query || teamId)) return; // skip empty teams during search
-
-    // Sort players by position rank, then jersey, then name
-    tPlayers.sort((a, b) => {
-      const rankA = getPlayerPosRank(a.position);
-      const rankB = getPlayerPosRank(b.position);
-      if (rankA !== rankB) return rankA - rankB;
+  // Sort each list by jersey number, then name
+  const sortGroup = list => {
+    list.sort((a, b) => {
       const jA = parseInt(a.jersey || a.playernum, 10);
       const jB = parseInt(b.jersey || b.playernum, 10);
       if (!isNaN(jA) && !isNaN(jB) && jA !== jB) return jA - jB;
       return String(a.name || '').localeCompare(String(b.name || ''));
     });
+  };
+  sortGroup(gkList);
+  sortGroup(defList);
+  sortGroup(midList);
+  sortGroup(fwdList);
 
-    const logoHtml = t.logo ? `<img src="${esc(t.logo)}" alt="">` : (t.emoji || '⚽');
-    const meta = [t.season, t.motto].filter(Boolean).map(esc).join(' · ');
-
-    html += `
-      <div class="admin-team-player-block">
-        <div class="admin-team-player-header" onclick="promptPw('${t.id}')">
-          <div class="admin-team-player-hleft">
-            <div class="admin-team-player-badge">${logoHtml}</div>
-            <div>
-              <div class="admin-team-player-title">${esc(t.name)}</div>
-              ${meta ? `<div class="admin-team-player-sub">${meta}</div>` : ''}
-            </div>
-          </div>
-          <div style="display:flex;align-items:center;gap:10px;">
-            <span class="admin-team-player-count">${tPlayers.length} Players</span>
-            <button type="button" class="obtn" style="font-size:11px;padding:4px 10px;background:#1a5c1a;color:#fff;border-radius:6px;" onclick="event.stopPropagation();promptPw('${t.id}')">Open Team →</button>
-          </div>
+  const renderTableSection = (title, icon, list) => {
+    if (!list.length) return '';
+    return `
+      <div class="admin-player-pos-section">
+        <div class="admin-player-pos-header">
+          <div class="admin-player-pos-title">${icon} ${title}</div>
+          <span class="admin-player-pos-count">${list.length} Player${list.length === 1 ? '' : 's'}</span>
         </div>
-        <div class="admin-team-player-list">
-          ${tPlayers.length ? tPlayers.map(p => {
-            const jersey = p.jersey || p.playernum || '—';
-            const pos = posCode(p.position) || p.position || '—';
-            const posCat = getPlayerPosCategory(pos);
-            const dispName = getPlayerDisplayName(p);
-            const hasDiffDisp = dispName && dispName.toLowerCase() !== String(p.name || '').toLowerCase();
-            const roleBadge = p.role ? `<span style="font-size:10px;padding:2px 6px;border-radius:4px;background:rgba(0,0,0,0.06);color:#475569;font-weight:600;">${esc(p.role)}</span>` : '';
-            return `
-              <div class="admin-team-player-row">
-                <div class="admin-team-player-left">
-                  <div class="admin-team-player-num">#${esc(jersey)}</div>
-                  <div class="admin-team-player-avatar">${p.photo ? `<img src="${esc(p.photo)}" alt="">` : '👤'}</div>
-                  <div style="min-width:0;">
-                    <div class="admin-team-player-name">
-                      ${esc(p.name || 'Unnamed player')}
-                      ${hasDiffDisp ? `<span class="admin-team-player-dispname">(${esc(dispName)})</span>` : ''}
-                    </div>
-                  </div>
-                </div>
-                <div class="admin-team-player-right">
-                  ${roleBadge}
-                  <span class="admin-pos-badge admin-pos-${posCat}">${esc(pos)}</span>
-                </div>
-              </div>
-            `;
-          }).join('') : '<div style="padding:14px 18px;color:var(--mt);font-size:12px;font-style:italic;">No players registered in this team yet.</div>'}
-        </div>
-      </div>
-    `;
-  });
-
-  // Handle unassigned players (no teamId or team not found)
-  const unassigned = visiblePlayers.filter(p => !p.teamId || !teams.some(t => t.id === p.teamId));
-  if (unassigned.length && !teamId) {
-    unassigned.sort((a, b) => {
-      const rankA = getPlayerPosRank(a.position);
-      const rankB = getPlayerPosRank(b.position);
-      if (rankA !== rankB) return rankA - rankB;
-      return String(a.name || '').localeCompare(String(b.name || ''));
-    });
-
-    html += `
-      <div class="admin-team-player-block">
-        <div class="admin-team-player-header">
-          <div class="admin-team-player-hleft">
-            <div class="admin-team-player-badge">👤</div>
-            <div>
-              <div class="admin-team-player-title">Unassigned Players</div>
-              <div class="admin-team-player-sub">Players not currently linked to any team squad</div>
-            </div>
-          </div>
-          <span class="admin-team-player-count">${unassigned.length} Players</span>
-        </div>
-        <div class="admin-team-player-list">
-          ${unassigned.map(p => {
-            const jersey = p.jersey || p.playernum || '—';
-            const pos = posCode(p.position) || p.position || '—';
-            const posCat = getPlayerPosCategory(pos);
-            const dispName = getPlayerDisplayName(p);
-            const hasDiffDisp = dispName && dispName.toLowerCase() !== String(p.name || '').toLowerCase();
-            return `
-              <div class="admin-team-player-row">
-                <div class="admin-team-player-left">
-                  <div class="admin-team-player-num">#${esc(jersey)}</div>
-                  <div class="admin-team-player-avatar">${p.photo ? `<img src="${esc(p.photo)}" alt="">` : '👤'}</div>
-                  <div style="min-width:0;">
-                    <div class="admin-team-player-name">
-                      ${esc(p.name || 'Unnamed player')}
-                      ${hasDiffDisp ? `<span class="admin-team-player-dispname">(${esc(dispName)})</span>` : ''}
-                    </div>
-                  </div>
-                </div>
-                <div class="admin-team-player-right">
-                  <span class="admin-pos-badge admin-pos-${posCat}">${esc(pos)}</span>
-                </div>
-              </div>
-            `;
-          }).join('')}
+        <div style="overflow-x:auto;">
+          <table class="admin-player-table">
+            <thead>
+              <tr>
+                <th style="width:50px;text-align:center;">#</th>
+                <th>Player Name</th>
+                <th>Display Name</th>
+                <th>Position</th>
+                <th>Role / Status</th>
+                <th style="text-align:right;width:90px;">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${list.map(p => {
+                const jersey = p.jersey || p.playernum || '—';
+                const pos = posCode(p.position) || p.position || '—';
+                const posCat = getPlayerPosCategory(pos);
+                const dispName = getPlayerDisplayName(p);
+                const statusBadge = p.role
+                  ? `<span style="font-size:11px;padding:2px 7px;border-radius:4px;background:rgba(0,0,0,0.06);color:#475569;font-weight:600;">${esc(p.role)}</span>`
+                  : `<span style="font-size:11px;padding:2px 7px;border-radius:4px;background:#eef5ee;color:#1a5c1a;font-weight:600;">Active</span>`;
+                return `
+                  <tr>
+                    <td style="text-align:center;font-weight:800;font-family:'Bebas Neue',sans-serif;font-size:18px;color:#1a5c1a;">#${esc(jersey)}</td>
+                    <td>
+                      <div style="display:flex;align-items:center;gap:10px;">
+                        <div style="width:32px;height:32px;border-radius:50%;overflow:hidden;background:#eef5ee;border:1.5px solid #1a5c1a;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;">
+                          ${p.photo ? `<img src="${esc(p.photo)}" alt="" style="width:100%;height:100%;object-fit:cover;">` : '👤'}
+                        </div>
+                        <strong style="font-size:13.5px;color:var(--tx);">${esc(p.name || 'Unnamed')}</strong>
+                      </div>
+                    </td>
+                    <td>
+                      ${dispName ? `<span class="admin-player-disp-pill">${esc(dispName)}</span>` : '<span style="color:var(--mt);font-style:italic;">—</span>'}
+                    </td>
+                    <td>
+                      <span class="admin-pos-badge admin-pos-${posCat}">${esc(pos)}</span>
+                    </td>
+                    <td>${statusBadge}</td>
+                    <td style="text-align:right;">
+                      <button type="button" class="obtn" style="font-size:11px;padding:3px 9px;" onclick="openEditPlayerFromAdmin('${selectedTeam.id}', '${p.id || p.name}')">✏️ Edit</button>
+                    </td>
+                  </tr>
+                `;
+              }).join('')}
+            </tbody>
+          </table>
         </div>
       </div>
     `;
-  }
+  };
 
-  html += '</div>';
+  html += renderTableSection('Goalkeepers', '🧤', gkList);
+  html += renderTableSection('Defenders', '🛡️', defList);
+  html += renderTableSection('Midfielders', '⚙️', midList);
+  html += renderTableSection('Strikers / Forwards', '⚡', fwdList);
+
   el.innerHTML = html;
 }
 
@@ -3163,6 +3203,8 @@ function handleSquadPhotoUpload(input) {
         teamSquadData[listType][index].photo = optimizedBase64;
       }
       renderSquadPlayingList();
+      renderAdminPlayers();
+      persistTeamSquadNow(true);
     };
     img.src = e.target.result;
   };
@@ -3189,6 +3231,7 @@ function openAddSquadMemberModal(targetType) {
   const photoPrev = $('pl-add-photo-preview');
   const photoClear = $('pl-add-photo-clear');
   const errEl = $('pl-add-err');
+  const saveBtn = $('pl-add-save-btn');
 
   if (errEl) { errEl.textContent = ''; errEl.style.display = 'none'; }
   if (nameInp) nameInp.value = '';
@@ -3197,6 +3240,7 @@ function openAddSquadMemberModal(targetType) {
   if (jerseyInp) jerseyInp.value = '';
   if (photoPrev) photoPrev.innerHTML = '👤';
   if (photoClear) photoClear.style.display = 'none';
+  if (saveBtn) saveBtn.textContent = 'ADD PLAYER';
 
   if (squadModalTargetType === 'bench') {
     if (titEl) titEl.textContent = 'ADD BENCH PLAYER';
@@ -3238,12 +3282,14 @@ function openEditSquadMemberModal(listType, index) {
   const photoPrev = $('pl-add-photo-preview');
   const photoClear = $('pl-add-photo-clear');
   const errEl = $('pl-add-err');
+  const saveBtn = $('pl-add-save-btn');
 
   if (errEl) { errEl.textContent = ''; errEl.style.display = 'none'; }
   if (nameInp) nameInp.value = item.name || '';
   if (dispInp) dispInp.value = item.displayName || item.shortName || '';
   if (roleInp) roleInp.value = item.position || item.role || '';
   if (jerseyInp) jerseyInp.value = item.jersey || '';
+  if (saveBtn) saveBtn.textContent = 'SAVE CHANGES';
 
   if (modalPhotoData) {
     if (photoPrev) photoPrev.innerHTML = `<img src="${esc(modalPhotoData)}" style="width:100%;height:100%;object-fit:cover;">`;
@@ -3303,7 +3349,99 @@ function clearModalPhoto() {
   if (clearBtn) clearBtn.style.display = 'none';
 }
 
-function confirmAddPlayerToSection() {
+async function persistTeamSquadNow(showToast = true) {
+  if (!curTeam || !curTeam.id) {
+    if (activeAdminPlayerTeamId) curTeam = teams.find(t => t.id === activeAdminPlayerTeamId);
+  }
+  if (!curTeam || !curTeam.id) return false;
+
+  const formationKey = curTeam.squad?.formation || '4-4-2';
+  const flat = flattenFormation(formationKey);
+  const sortedXi = (typeof sortPlayersByPitchPosition === 'function') ? sortPlayersByPitchPosition(teamSquadData.playingXi) : teamSquadData.playingXi;
+
+  const slots = flat.map((s, i) => {
+    const p = sortedXi[i];
+    return {
+      role: s.role,
+      label: s.label,
+      player: p ? {
+        id: p.id,
+        name: p.name,
+        displayName: p.displayName || p.shortName || '',
+        shortName: p.shortName || p.displayName || '',
+        position: p.position,
+        jersey: p.jersey || '',
+        photo: p.photo || null,
+        matchPosition: posCode(p.position)
+      } : null
+    };
+  });
+
+  const subs = (teamSquadData.bench || []).map(p => ({
+    id: p.id,
+    name: p.name,
+    displayName: p.displayName || p.shortName || '',
+    shortName: p.shortName || p.displayName || '',
+    position: p.position,
+    jersey: p.jersey || '',
+    photo: p.photo || null
+  }));
+
+  const staff = (teamSquadData.management || []).map(s => ({
+    id: s.id,
+    name: s.name,
+    role: s.role || 'Staff',
+    photo: s.photo || null
+  }));
+
+  const playingXi = (teamSquadData.playingXi || []).map(p => ({
+    id: p.id,
+    name: p.name,
+    displayName: p.displayName || p.shortName || '',
+    shortName: p.shortName || p.displayName || '',
+    position: p.position,
+    jersey: p.jersey || '',
+    photo: p.photo || null
+  }));
+
+  const squad = {
+    formation: formationKey,
+    name: curTeam.squad?.name || '',
+    playingXi,
+    bench: subs,
+    management: staff,
+    slots,
+    subs,
+    staff,
+    updatedAt: new Date().toISOString()
+  };
+
+  try {
+    await updateDoc(doc(db, 'teams', curTeam.id), { squad });
+    curTeam.squad = squad;
+    const teamInArr = teams.find(t => t.id === curTeam.id);
+    if (teamInArr) teamInArr.squad = squad;
+    if (typeof refreshPlayersCache === 'function') refreshPlayersCache();
+    if (showToast) {
+      const existingToast = $('squad-save-toast');
+      if (existingToast) existingToast.remove();
+      const toast = document.createElement('div');
+      toast.id = 'squad-save-toast';
+      toast.textContent = '✅ Saved';
+      toast.style.cssText = 'position:fixed;bottom:24px;right:24px;background:#1a5c1a;color:#fff;padding:8px 16px;border-radius:8px;font-size:13px;font-weight:700;z-index:99999;box-shadow:0 4px 14px rgba(0,0,0,0.25);transition:opacity 0.3s;';
+      document.body.appendChild(toast);
+      setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300); }, 2000);
+    }
+    return true;
+  } catch (err) {
+    console.error('Failed to auto-save squad to Firestore:', err);
+    alert('❌ Could not save player changes: ' + (err.message || err));
+    return false;
+  }
+}
+window.persistTeamSquadNow = persistTeamSquadNow;
+
+async function confirmAddPlayerToSection() {
   const name = String($('pl-add-name')?.value || '').trim();
   const rawDisp = String($('pl-add-display-name')?.value || '').trim();
   const displayName = rawDisp || getPlayerDisplayName({ name });
@@ -3314,6 +3452,13 @@ function confirmAddPlayerToSection() {
   if (!name) {
     if (errEl) { errEl.textContent = 'Please enter a name.'; errEl.style.display = 'block'; }
     return;
+  }
+
+  if (!curTeam && activeAdminPlayerTeamId) {
+    curTeam = teams.find(t => t.id === activeAdminPlayerTeamId);
+  }
+  if (curTeam && !teamSquadData.playingXi.length && !teamSquadData.bench.length) {
+    initTeamSquadData();
   }
 
   const pId = 'sq_' + Date.now() + Math.random().toString(36).substr(2, 4);
@@ -3349,9 +3494,11 @@ function confirmAddPlayerToSection() {
 
   closeM('m-pl-add-player');
   renderSquadPlayingList();
+  renderAdminPlayers();
+  await persistTeamSquadNow(true);
 }
 
-function moveSquadMember(fromType, toType, index) {
+async function moveSquadMember(fromType, toType, index) {
   if (!teamSquadData[fromType] || !teamSquadData[fromType][index]) return;
   const item = teamSquadData[fromType].splice(index, 1)[0];
 
@@ -3360,12 +3507,18 @@ function moveSquadMember(fromType, toType, index) {
 
   teamSquadData[targetType].push(item);
   renderSquadPlayingList();
+  renderAdminPlayers();
+  await persistTeamSquadNow(false);
 }
 
-function removeSquadMember(listType, index) {
+async function removeSquadMember(listType, index) {
   if (!teamSquadData[listType]) return;
+  const item = teamSquadData[listType][index];
+  if (!confirm(`Remove "${item?.name || 'player'}" from the squad?`)) return;
   teamSquadData[listType].splice(index, 1);
   renderSquadPlayingList();
+  renderAdminPlayers();
+  await persistTeamSquadNow(false);
 }
 
 function triggerSquadCSVUpload() {
@@ -3682,6 +3835,8 @@ async function saveSquadPlayingList() {
       player: p ? {
         id: p.id,
         name: p.name,
+        displayName: p.displayName || p.shortName || '',
+        shortName: p.shortName || p.displayName || '',
         position: p.position,
         jersey: p.jersey || '',
         photo: p.photo || null,
@@ -3693,6 +3848,8 @@ async function saveSquadPlayingList() {
   const subs = teamSquadData.bench.map(p => ({
     id: p.id,
     name: p.name,
+    displayName: p.displayName || p.shortName || '',
+    shortName: p.shortName || p.displayName || '',
     position: p.position,
     jersey: p.jersey || '',
     photo: p.photo || null
@@ -3708,9 +3865,17 @@ async function saveSquadPlayingList() {
   const squad = {
     formation: formationKey,
     name: curTeam.squad?.name || '',
-    playingXi: teamSquadData.playingXi,
-    bench: teamSquadData.bench,
-    management: teamSquadData.management,
+    playingXi: teamSquadData.playingXi.map(p => ({
+      id: p.id,
+      name: p.name,
+      displayName: p.displayName || p.shortName || '',
+      shortName: p.shortName || p.displayName || '',
+      position: p.position,
+      jersey: p.jersey || '',
+      photo: p.photo || null
+    })),
+    bench: subs,
+    management: staff,
     slots,
     subs,
     staff,
@@ -9144,6 +9309,7 @@ async function openMatchSheet(matchId, returnScreen) {
   if (!matchId) return;
   isStandaloneMatchMode = false;
   matchReturnScreen = returnScreen || (curTournament ? 's-tournament' : 's-admin');
+  clearMatchStatsImage();
   
   const found = matches.find(m => m.id === matchId);
   if (found) {
@@ -9751,7 +9917,7 @@ function buildMatchReportEventLog(match) {
   return events.length ? events.map(event => getMatchReportEventLine(event, match)).join('\n') : 'No match events were logged.';
 }
 
-function buildMatchReportPrompt(match, coachNotes) {
+function buildMatchReportPrompt(match, coachNotes, hasStatsImage = false) {
   const home = match.home || {};
   const away = match.away || {};
   const events = [...(match.events || [])].sort((a, b) => {
@@ -9777,13 +9943,68 @@ function buildMatchReportPrompt(match, coachNotes) {
   const eventText = events.length
     ? `${match.status === 'final' ? 'Full-time logged events:' : 'Logged events so far:'}\n${events.map(event => getMatchReportEventLine(event, match)).join('\n')}`
     : 'No match events have been logged.';
-  return `Write a concise, polished football match report using only the facts below. Do not invent shots, possession, tactics, injuries, assists, or player performances. Use a headline, score/status, short summary, key moments, and closing assessment. The app will attach the complete timestamped event log after your report, so summarize key events without repeating the entire log. For a live match, clearly say the score is current; for a final match, write in the past tense.\n\nResolve shirt numbers in coach notes (such as “No. 3”) using the jersey reference index and team context. If a number is ambiguous between teams, do not guess.\n\nMatch: ${home.name || 'Home'} vs ${away.name || 'Away'}\nDate/time: ${formatMatchDateDisplay(match)}\nCompetition: ${tournament?.name || 'Standalone match'}\nStatus: ${status}\nScore: ${home.name || 'Home'} ${homeScore} - ${awayScore} ${away.name || 'Away'}\n${matchMinute}\n\nLineups:\n${lineupText}\n\nJersey reference index:\n${jerseyReferenceIndex}\n\n${eventText}\n\nCoach notes:\n${String(coachNotes || '').trim() || 'None provided.'}`;
+  const statsImageInstruction = hasStatsImage
+    ? `\n\nATTACHED MATCH STATISTICS / SCOREBOARD IMAGE:\nAn image containing match statistics (such as a scoreboard, official statistics sheet, possession percentages, shots, shots on target, saves, fouls, corners, or visual charts) is attached to this request. Carefully examine the attached image for any statistics, team metrics, or visual data. Integrate these concrete figures (e.g., possession %, shot count, shots on target, saves, fouls, corners) into your report's summary, analysis, and key metrics sections wherever relevant.`
+    : '';
+  return `Write a concise, polished football match report using only the facts below${hasStatsImage ? ' and any visible statistics from the attached image' : ''}. Do not invent unverified facts, but DO extract and accurately report all concrete statistics present in the attached statistics image. Use a headline, score/status, short summary, key moments, match statistics analysis, and closing assessment. The app will attach the complete timestamped event log after your report, so summarize key events without repeating the entire log. For a live match, clearly say the score is current; for a final match, write in the past tense.\n\nResolve shirt numbers in coach notes (such as “No. 3”) using the jersey reference index and team context. If a number is ambiguous between teams, do not guess.\n\nMatch: ${home.name || 'Home'} vs ${away.name || 'Away'}\nDate/time: ${formatMatchDateDisplay(match)}\nCompetition: ${tournament?.name || 'Standalone match'}\nStatus: ${status}\nScore: ${home.name || 'Home'} ${homeScore} - ${awayScore} ${away.name || 'Away'}\n${matchMinute}\n\nLineups:\n${lineupText}\n\nJersey reference index:\n${jerseyReferenceIndex}\n\n${eventText}\n\nCoach notes:\n${String(coachNotes || '').trim() || 'None provided.'}${statsImageInstruction}`;
 }
 
 function scrollToMatchReport() {
   const report = $('ms-ai-report');
   if (report) report.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
+
+async function handleMatchStatsImagePicked(input) {
+  const file = input?.files?.[0];
+  if (!file) return;
+  const btn = $('ms-stats-img-btn');
+  const removeBtn = $('ms-stats-img-remove-btn');
+  const previewWrap = $('ms-stats-image-preview-wrap');
+  const previewImg = $('ms-stats-image-preview');
+  const fileNameEl = $('ms-stats-image-name');
+  const statusEl = $('ms-report-status');
+
+  if (btn) btn.disabled = true;
+  if (statusEl) statusEl.textContent = 'Processing and compressing stats image…';
+
+  try {
+    const compressed = await compressRosterPhotoForGemini(file);
+    matchStatsImageData = {
+      mimeType: compressed.mimeType || 'image/jpeg',
+      data: compressed.data,
+      name: file.name
+    };
+    if (previewImg) previewImg.src = `data:${matchStatsImageData.mimeType};base64,${matchStatsImageData.data}`;
+    if (fileNameEl) fileNameEl.textContent = file.name || 'stats-image.jpg';
+    if (previewWrap) previewWrap.style.display = 'flex';
+    if (removeBtn) removeBtn.style.display = 'inline-flex';
+    if (btn) btn.innerHTML = '<span>📷</span><span>Change Image</span>';
+    if (statusEl) statusEl.textContent = 'Stats image attached. Click "Generate Report" to include it.';
+  } catch (error) {
+    console.error('Failed to process stats image:', error);
+    alert(error.message || 'Could not process the selected image. Please try another image.');
+    clearMatchStatsImage();
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+function clearMatchStatsImage() {
+  matchStatsImageData = null;
+  const inp = $('ms-stats-image-inp');
+  if (inp) inp.value = '';
+  const previewWrap = $('ms-stats-image-preview-wrap');
+  if (previewWrap) previewWrap.style.display = 'none';
+  const previewImg = $('ms-stats-image-preview');
+  if (previewImg) previewImg.src = '';
+  const removeBtn = $('ms-stats-img-remove-btn');
+  if (removeBtn) removeBtn.style.display = 'none';
+  const btn = $('ms-stats-img-btn');
+  if (btn) btn.innerHTML = '<span>📷</span><span>Upload Stats Image</span>';
+}
+
+window.handleMatchStatsImagePicked = handleMatchStatsImagePicked;
+window.clearMatchStatsImage = clearMatchStatsImage;
 
 async function generateMatchReport() {
   if (!curMatch || matchReportGenerationBusy) return;
@@ -9808,10 +10029,20 @@ async function generateMatchReport() {
     const latestMatch = curMatch?.id === matchId ? curMatch : (matches.find(match => match.id === matchId) || curMatch);
     const matchSnapshot = { ...latestMatch, home: { ...(latestMatch.home || {}) }, away: { ...(latestMatch.away || {}) }, events: [...(latestMatch.events || [])] };
     const notes = String($('ms-report-notes')?.value || '');
-    const prompt = buildMatchReportPrompt(matchSnapshot, notes);
-    if (status) status.textContent = 'Generating report…';
-    const summary = await callGeminiGenerateContentStream([{ parts: [{ text: prompt }] }], {
-      maxOutputTokens: 1600
+    const hasStatsImage = !!(matchStatsImageData && matchStatsImageData.data);
+    const prompt = buildMatchReportPrompt(matchSnapshot, notes, hasStatsImage);
+    const parts = [{ text: prompt }];
+    if (hasStatsImage) {
+      parts.push({
+        inlineData: {
+          mimeType: matchStatsImageData.mimeType || 'image/jpeg',
+          data: matchStatsImageData.data
+        }
+      });
+    }
+    if (status) status.textContent = hasStatsImage ? 'Analyzing stats image and generating report…' : 'Generating report…';
+    const summary = await callGeminiGenerateContentStream([{ parts }], {
+      maxOutputTokens: 2000
     }, partialText => {
       if (curMatch?.id !== matchId) return;
       const outputWrap = $('ms-report-output-wrap');
