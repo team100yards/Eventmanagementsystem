@@ -144,7 +144,7 @@
           `;
         }
         return `
-          <a href="${t.url}" class="cms-nav-link ${isActive ? 'active' : ''}" title="${t.desc}">
+          <a href="${t.url}" class="cms-nav-link ${isActive ? 'active' : ''}" data-tool-id="${t.id}" onclick="return window.handleCMSNavToolClick ? window.handleCMSNavToolClick('${t.id}','${t.url}',event) : true;" title="${t.desc}">
             <span>${t.icon}</span>
             <span>${t.name}</span>
           </a>
@@ -813,6 +813,35 @@
       }
     }
   }, true);
+
+  window.handleCMSNavToolClick = function(toolId, url, event) {
+    const isIndex = window.location.pathname.endsWith('index.html') || window.location.pathname.endsWith('/') || !window.location.pathname.includes('.html');
+    if (isIndex && ['dashboard', 'tournaments', 'matches', 'teams', 'players', 'formation'].includes(toolId)) {
+      if (event) {
+        if (event.preventDefault) event.preventDefault();
+        if (event.stopPropagation) event.stopPropagation();
+      }
+      const tabName = toolId === 'dashboard' ? 'teams' : toolId;
+      if (typeof window.showAdminTab === 'function') {
+        window.showAdminTab(tabName);
+        try {
+          const newUrl = toolId === 'dashboard' ? 'index.html' : `index.html?tab=${toolId}`;
+          window.history.pushState(null, '', newUrl);
+        } catch (e) {}
+        document.querySelectorAll('.cms-nav-link').forEach(link => {
+          link.classList.remove('active');
+          if (link.getAttribute('data-tool-id') === toolId) link.classList.add('active');
+        });
+        const pill = document.querySelector('.cms-nav-active-tool-pill span:last-child');
+        if (pill) {
+          const toolObj = TOOLS.find(x => x.id === toolId);
+          if (toolObj) pill.textContent = toolObj.name;
+        }
+        return false;
+      }
+    }
+    return true;
+  };
 
   window.toggleNavDropdown = function(id, e) {
     if (e) {

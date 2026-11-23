@@ -992,6 +992,178 @@ async function resetAdminPassword() {
   }
 }
 
+function aggregateAllPlayers(rawFsPlayers = []) {
+  const map = new Map();
+
+  // 1. Documents from standalone 'players' collection
+  (rawFsPlayers || []).forEach(p => {
+    if (!p) return;
+    const pName = String(p.name || '').trim();
+    if (!pName) return;
+    const key = p.id || (p.teamId ? `${p.teamId}_${p.jersey || p.playernum || ''}_${pName}` : `p_${pName}`).toLowerCase();
+    map.set(key, {
+      id: p.id || key,
+      teamId: p.teamId || '',
+      teamName: p.teamName || '',
+      name: pName,
+      jersey: p.jersey || p.playernum || '',
+      playernum: p.jersey || p.playernum || '',
+      position: p.position || 'ST',
+      photo: p.photo || null,
+      dob: p.dob || null,
+      ...p
+    });
+  });
+
+  // 2. Extract squad players and direct team players from all teams
+  (teams || []).forEach(t => {
+    if (!t) return;
+    const teamId = t.id;
+    const teamName = t.name || '';
+
+    // Playing XI
+    if (t.squad && Array.isArray(t.squad.playingXi)) {
+      t.squad.playingXi.forEach(p => {
+        if (!p || !p.name) return;
+        const pName = String(p.name).trim();
+        const num = p.jersey || p.playernum || '';
+        const key = p.id || `${teamId}_${num}_${pName}`.toLowerCase();
+        if (!map.has(key)) {
+          map.set(key, {
+            id: p.id || key,
+            teamId: teamId,
+            teamName: teamName,
+            name: pName,
+            jersey: num,
+            playernum: num,
+            position: p.position || 'ST',
+            photo: p.photo || null,
+            dob: p.dob || null,
+            role: 'Starter'
+          });
+        }
+      });
+    }
+
+    // Bench / Substitutes
+    if (t.squad && Array.isArray(t.squad.bench)) {
+      t.squad.bench.forEach(p => {
+        if (!p || !p.name) return;
+        const pName = String(p.name).trim();
+        const num = p.jersey || p.playernum || '';
+        const key = p.id || `${teamId}_${num}_${pName}`.toLowerCase();
+        if (!map.has(key)) {
+          map.set(key, {
+            id: p.id || key,
+            teamId: teamId,
+            teamName: teamName,
+            name: pName,
+            jersey: num,
+            playernum: num,
+            position: p.position || 'SUB',
+            photo: p.photo || null,
+            dob: p.dob || null,
+            role: 'Substitute'
+          });
+        }
+      });
+    }
+
+    // Slots
+    if (t.squad && Array.isArray(t.squad.slots)) {
+      t.squad.slots.forEach(slot => {
+        const p = slot?.player;
+        if (!p || !p.name) return;
+        const pName = String(p.name).trim();
+        const num = p.jersey || p.playernum || '';
+        const key = p.id || `${teamId}_${num}_${pName}`.toLowerCase();
+        if (!map.has(key)) {
+          map.set(key, {
+            id: p.id || key,
+            teamId: teamId,
+            teamName: teamName,
+            name: pName,
+            jersey: num,
+            playernum: num,
+            position: p.position || slot.role || 'ST',
+            photo: p.photo || null,
+            dob: p.dob || null,
+            role: 'Starter'
+          });
+        }
+      });
+    }
+
+    // Subs
+    if (t.squad && Array.isArray(t.squad.subs)) {
+      t.squad.subs.forEach(p => {
+        if (!p || !p.name) return;
+        const pName = String(p.name).trim();
+        const num = p.jersey || p.playernum || '';
+        const key = p.id || `${teamId}_${num}_${pName}`.toLowerCase();
+        if (!map.has(key)) {
+          map.set(key, {
+            id: p.id || key,
+            teamId: teamId,
+            teamName: teamName,
+            name: pName,
+            jersey: num,
+            playernum: num,
+            position: p.position || 'SUB',
+            photo: p.photo || null,
+            dob: p.dob || null,
+            role: 'Substitute'
+          });
+        }
+      });
+    }
+
+    // Team direct players array
+    if (Array.isArray(t.players)) {
+      t.players.forEach(p => {
+        if (!p || !p.name) return;
+        const pName = String(p.name).trim();
+        const num = p.jersey || p.playernum || '';
+        const key = p.id || `${teamId}_${num}_${pName}`.toLowerCase();
+        if (!map.has(key)) {
+          map.set(key, {
+            id: p.id || key,
+            teamId: teamId,
+            teamName: teamName,
+            name: pName,
+            jersey: num,
+            playernum: num,
+            position: p.position || 'ST',
+            photo: p.photo || null,
+            dob: p.dob || null
+          });
+        }
+      });
+    }
+  });
+
+  return Array.from(map.values());
+}
+
+function refreshPlayersCache(fsPlayersDocs = null) {
+  if (fsPlayersDocs && Array.isArray(fsPlayersDocs)) {
+    window._rawFsPlayersList = fsPlayersDocs.map(d => ({
+      id: d.id,
+      ...(typeof d.data === 'function' ? d.data() : (d.data || d))
+    }));
+  }
+  allPlayersCache = aggregateAllPlayers(window._rawFsPlayersList || []);
+  teams.forEach(t => {
+    t.pc = allPlayersCache.filter(p => p.teamId === t.id).length;
+  });
+  const stP = $('st-p'); if (stP) stP.textContent = allPlayersCache.length;
+  const dashPlayerVis = $('dash-player-vis'); if (dashPlayerVis) dashPlayerVis.textContent = allPlayersCache.length;
+  renderBirthdayBanner(allPlayersCache);
+  renderAdmin();
+  renderAdminPlayers();
+}
+window.refreshPlayersCache = refreshPlayersCache;
+
 async function loadAdmin() {
   await loadAdminCreds();
   applyAdmName();
@@ -1046,15 +1218,25 @@ async function loadAdmin() {
     renderAdminTournaments();
     renderAdminMatches();
 
+    refreshPlayersCache();
     getDocs(collection(db, 'players')).then(allPlayersSnap => {
-      allPlayersCache = allPlayersSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-      teams.forEach(t => { t.pc = allPlayersCache.filter(p => p.teamId === t.id).length; });
-      renderBirthdayBanner(allPlayersCache);
-      renderAdmin();
-      renderAdminPlayers();
+      refreshPlayersCache(allPlayersSnap.docs);
     }).catch(e => {
       console.warn('Could not load player counts/birthdays:', e);
+      refreshPlayersCache([]);
     });
+
+    // Deep-link check for direct status and tab queries
+    try {
+      const initParams = new URLSearchParams(window.location.search);
+      const targetStatus = initParams.get('status');
+      const targetTab = initParams.get('tab');
+      if (targetStatus && (targetStatus === 'live' || targetStatus === 'scheduled')) {
+        navigateAdminDashboard(targetStatus);
+      } else if (targetTab && ['teams', 'players', 'tournaments', 'matches', 'formation'].includes(targetTab)) {
+        showAdminTab(targetTab);
+      }
+    } catch(urlErr) {}
   } catch (e) {
     console.error('loadAdmin error:', e);
     $('tgrid').innerHTML = `<div style="padding:20px;color:#e53935;background:rgba(229,57,53,.08);border:1px solid rgba(229,57,53,.3);border-radius:12px;">Failed to load teams: ${esc(e.message || e)}</div>`;
@@ -1083,20 +1265,18 @@ function showAdminTab(tab) {
   if (tab === 'matches') renderAdminMatches();
   if (tab === 'teams') renderAdmin();
   if (tab === 'formation') {
+    populateAdminFormationTeamSelect();
     const f = $('adm-formation-frame');
     if (f && (!f.src || f.src === 'about:blank' || !f.src.includes('formation-builder.html'))) {
       f.src = 'formation-builder.html';
+    } else {
+      setTimeout(() => sendAdmFormationSync(), 150);
     }
   }
 }
 
 function navigateAdminDashboard(destination) {
   if (destination === 'live' || destination === 'scheduled') {
-    const target = matches.filter(match => (match.status || 'scheduled') === destination);
-    if (target.length === 1) {
-      openMatchSheet(target[0].id);
-      return;
-    }
     const statusFilter = $('match-filter-status');
     const search = $('match-search');
     const tournamentFilter = $('match-filter-tourn');
@@ -1183,6 +1363,8 @@ function renderAdminPlayers() {
   if (!el) return;
   const count = $('dash-player-vis');
   if (count) count.textContent = allPlayersCache.length;
+  const stP = $('st-p');
+  if (stP) stP.textContent = allPlayersCache.length;
 
   const filter = $('admin-player-filter-team');
   if (filter) {
@@ -1194,7 +1376,7 @@ function renderAdminPlayers() {
   }
 
   if (!allPlayersCache.length) {
-    el.innerHTML = '<div class="admin-player-empty">No registered players found.</div>';
+    el.innerHTML = '<div class="admin-player-empty">No registered players found in squads or player directory.</div>';
     return;
   }
 
@@ -1203,7 +1385,7 @@ function renderAdminPlayers() {
   const visible = allPlayersCache.filter(player => {
     if (teamId && player.teamId !== teamId) return false;
     const team = teams.find(item => item.id === player.teamId);
-    const text = [player.name, team?.name, player.position, player.jersey, player.playernum]
+    const text = [player.name, team?.name, player.teamName, player.position, player.jersey, player.playernum, player.role]
       .map(value => String(value || '').toLowerCase()).join(' ');
     return !query || text.includes(query);
   }).sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
@@ -1215,14 +1397,17 @@ function renderAdminPlayers() {
 
   el.innerHTML = visible.map(player => {
     const team = teams.find(item => item.id === player.teamId);
+    const teamDisplayName = team?.name || player.teamName || 'Unassigned team';
     const jersey = player.jersey || player.playernum || '—';
+    const pos = posCode(player.position) || player.position || '—';
+    const roleBadge = player.role ? `<span style="display:inline-block;margin-left:6px;font-size:10px;padding:2px 6px;border-radius:4px;background:rgba(255,255,255,0.08);color:#94a3b8;font-weight:600;">${esc(player.role)}</span>` : '';
     return `<article class="admin-player-card">
       <div class="admin-player-avatar">${player.photo ? `<img src="${esc(player.photo)}" alt="">` : '👤'}</div>
       <div class="admin-player-copy">
-        <strong>${esc(player.name || 'Unnamed player')}</strong>
-        <span>${esc(team?.name || 'Unassigned team')}</span>
+        <strong>${esc(player.name || 'Unnamed player')}${roleBadge}</strong>
+        <span>${esc(teamDisplayName)}</span>
       </div>
-      <div class="admin-player-meta"><strong>#${esc(jersey)}</strong><span>${esc(posCode(player.position) || 'Position not set')}</span></div>
+      <div class="admin-player-meta"><strong>#${esc(jersey)}</strong><span>${esc(pos)}</span></div>
     </article>`;
   }).join('');
 }
@@ -3312,6 +3497,7 @@ async function saveSquadPlayingList() {
   try {
     await updateDoc(doc(db, 'teams', curTeam.id), { squad });
     curTeam.squad = squad;
+    if (typeof refreshPlayersCache === 'function') refreshPlayersCache();
     alert('✅ Squad & Playing List saved successfully!');
   } catch (e) {
     console.error('saveSquadPlayingList error:', e);
@@ -3326,6 +3512,7 @@ async function clearSquadPlayingList() {
     try {
       await updateDoc(doc(db, 'teams', curTeam.id), { squad: null });
       curTeam.squad = null;
+      if (typeof refreshPlayersCache === 'function') refreshPlayersCache();
     } catch (e) {
       console.warn('Clear squad error:', e);
     }
@@ -3630,42 +3817,169 @@ function classifyPos(position) {
 }
 function toFBPositionCode(position) { return posCode(position) || 'ST'; }
 
-function mergeCustomFormations() {
+function mergeCustomFormations(targetTeam) {
+  const team = targetTeam || curTeam;
   mergedCustomFormationKeys.forEach(k => { delete FORMATIONS[k]; });
   mergedCustomFormationKeys = [];
-  (curTeam && curTeam.customFormations || []).forEach(f => {
+  (team && team.customFormations || []).forEach(f => {
     if (f && f.key && f.def) { FORMATIONS[f.key] = f.def; mergedCustomFormationKeys.push(f.key); }
   });
 }
 
-function buildFormationSyncPayload() {
-  mergeCustomFormations();
-  const vState = curTeam && curTeam.visualizerState;
-  const sq = curTeam && curTeam.squad;
-  let payload = {};
-  if (sq && (sq.slots && sq.slots.some(s => s && s.player) || sq.subs && sq.subs.length)) {
-    const management = (sq.staff || []).map(s => ({ id: s.id, name: s.name, role: s.role || 'Other' }));
-    const when = sq.updatedAt ? new Date(sq.updatedAt).toLocaleDateString() : '';
-    const source = `Synced from Playing List${sq.name ? ' — ' + sq.name : ''}${when ? ' (saved ' + when + ')' : ''}`;
-    const starters = (sq.slots || []).map(s => s && s.player ? { id: s.player.id, name: s.player.name, number: s.player.jersey || '-', position: toFBPositionCode(s.player.matchPosition || s.player.position) } : null);
-    const subs = (sq.subs || []).map(s => ({ id: s.id, name: s.name, number: s.jersey || '-', position: toFBPositionCode(s.position) }));
-    const formationKey = (vState && vState.formationKey) || sq.formation;
-    const formationDef = FORMATIONS[formationKey] || null;
-    payload = { formation: formationKey, formationDef, starters, subs, management, source };
-  } else {
-    const rosterPlayers = (players || []).map(p => ({ id: p.id, name: p.name, number: p.jersey || '-', position: toFBPositionCode(p.position) }));
-    const management = (curTeam && curTeam.staff || []).map(s => ({ id: s.id, name: s.name, role: s.role || 'Other' }));
-    const formationKey = (vState && vState.formationKey) || '4-4-2';
-    const formationDef = FORMATIONS[formationKey] || null;
-    payload = { formation: formationKey, formationDef, players: rosterPlayers, management, source: 'No saved Playing List yet — loaded full player database instead' };
+function populateAdminFormationTeamSelect() {
+  const sel = $('adm-formation-team-select');
+  if (!sel) return;
+  const curVal = sel.value;
+  sel.innerHTML = '<option value="">Select a team…</option>' + teams.map(t =>
+    `<option value="${esc(t.id)}">${esc(t.name || 'Unnamed Team')}</option>`
+  ).join('');
+
+  if (curVal && teams.some(t => t.id === curVal)) {
+    sel.value = curVal;
+  } else if (curTeam && teams.some(t => t.id === curTeam.id)) {
+    sel.value = curTeam.id;
+  } else if (teams.length > 0) {
+    sel.value = teams[0].id;
   }
+}
+window.populateAdminFormationTeamSelect = populateAdminFormationTeamSelect;
+
+function buildFormationSyncPayload(targetTeam) {
+  const target = targetTeam || curTeam || (teams && teams.length ? teams[0] : null);
+  if (!target) return {};
+  mergeCustomFormations(target);
+  const vState = target.visualizerState;
+  const sq = target.squad;
+  let payload = {};
+
+  if (sq && Array.isArray(sq.playingXi) && sq.playingXi.length) {
+    const starters = sq.playingXi.map(p => ({
+      id: p.id || ('xi_' + String(Math.random()).slice(2, 8)),
+      name: p.name || '',
+      number: p.jersey || p.playernum || '-',
+      position: toFBPositionCode(p.matchPosition || p.position)
+    }));
+    const subs = (sq.bench || sq.subs || []).map(p => ({
+      id: p.id || ('sub_' + String(Math.random()).slice(2, 8)),
+      name: p.name || '',
+      number: p.jersey || p.playernum || '-',
+      position: toFBPositionCode(p.position)
+    }));
+    const management = (sq.management || sq.staff || target.staff || []).map(s => ({
+      id: s.id || ('mg_' + String(Math.random()).slice(2, 8)),
+      name: s.name || '',
+      role: s.role || 'Staff'
+    }));
+    const formationKey = (vState && vState.formationKey) || sq.formation || '4-3-3';
+    const formationDef = FORMATIONS[formationKey] || null;
+    const source = `Team: ${target.name || 'Unnamed'}${sq.name ? ' (' + sq.name + ')' : ''}`;
+    payload = {
+      formation: formationKey,
+      formationDef,
+      starters,
+      subs,
+      management,
+      source,
+      teamId: target.id,
+      teamName: target.name
+    };
+  } else if (sq && ((sq.slots && sq.slots.some(s => s && s.player)) || (sq.subs && sq.subs.length))) {
+    const management = (sq.staff || target.staff || []).map(s => ({
+      id: s.id || ('mg_' + String(Math.random()).slice(2, 8)),
+      name: s.name || '',
+      role: s.role || 'Staff'
+    }));
+    const when = sq.updatedAt ? new Date(sq.updatedAt).toLocaleDateString() : '';
+    const source = `Team: ${target.name || 'Unnamed'}${sq.name ? ' (' + sq.name + ')' : ''}${when ? ' (saved ' + when + ')' : ''}`;
+    const starters = (sq.slots || []).map(s => s && s.player ? {
+      id: s.player.id || ('st_' + String(Math.random()).slice(2, 8)),
+      name: s.player.name,
+      number: s.player.jersey || s.player.playernum || '-',
+      position: toFBPositionCode(s.player.matchPosition || s.player.position)
+    } : null);
+    const subs = (sq.subs || []).map(s => ({
+      id: s.id || ('sub_' + String(Math.random()).slice(2, 8)),
+      name: s.name,
+      number: s.jersey || s.playernum || '-',
+      position: toFBPositionCode(s.position)
+    }));
+    const formationKey = (vState && vState.formationKey) || sq.formation || '4-4-2';
+    const formationDef = FORMATIONS[formationKey] || null;
+    payload = {
+      formation: formationKey,
+      formationDef,
+      starters,
+      subs,
+      management,
+      source,
+      teamId: target.id,
+      teamName: target.name
+    };
+  } else {
+    const teamPlayers = allPlayersCache.filter(p => p.teamId === target.id);
+    const rosterList = teamPlayers.length ? teamPlayers : (target.players || []);
+    const rosterPlayers = rosterList.map(p => ({
+      id: p.id || ('p_' + String(Math.random()).slice(2, 8)),
+      name: p.name,
+      number: p.jersey || p.playernum || '-',
+      position: toFBPositionCode(p.position)
+    }));
+    const management = (target.staff || []).map(s => ({
+      id: s.id || ('mg_' + String(Math.random()).slice(2, 8)),
+      name: s.name,
+      role: s.role || 'Staff'
+    }));
+    const formationKey = (vState && vState.formationKey) || '4-3-3';
+    const formationDef = FORMATIONS[formationKey] || null;
+    payload = {
+      formation: formationKey,
+      formationDef,
+      players: rosterPlayers,
+      management,
+      source: `Team: ${target.name || 'Unnamed'} (${rosterPlayers.length} players loaded)`,
+      teamId: target.id,
+      teamName: target.name
+    };
+  }
+
   if (vState) {
     if (vState.customPos) payload.customPos = vState.customPos;
     if (vState.ballPos) payload.ballPos = vState.ballPos;
     if (vState.formationKey) payload.visualizerFormation = vState.formationKey;
   }
+
+  try {
+    localStorage.setItem('ems_active_formation_payload', JSON.stringify(payload));
+    if (teams && teams.length) {
+      localStorage.setItem('ems_teams_list', JSON.stringify(teams.map(t => ({ id: t.id, name: t.name }))));
+    }
+  } catch(e) {}
+
   return payload;
 }
+
+function sendAdmFormationSync(teamId) {
+  const frame = $('adm-formation-frame');
+  const targetId = teamId || $('adm-formation-team-select')?.value;
+  const targetTeam = (targetId ? teams.find(t => t.id === targetId) : null) || curTeam || (teams && teams.length ? teams[0] : null);
+  if (!targetTeam) return;
+
+  const payload = Object.assign({ type: 'ff-sync' }, buildFormationSyncPayload(targetTeam));
+  if (frame && frame.contentWindow) {
+    frame.contentWindow.postMessage(payload, '*');
+  }
+}
+window.sendAdmFormationSync = sendAdmFormationSync;
+
+function openFormationBuilderFullscreen() {
+  const selId = $('adm-formation-team-select')?.value;
+  const targetTeam = (selId ? teams.find(t => t.id === selId) : null) || curTeam || (teams && teams.length ? teams[0] : null);
+  if (targetTeam) {
+    buildFormationSyncPayload(targetTeam);
+  }
+  window.open('formation-builder.html', '_blank');
+}
+window.openFormationBuilderFullscreen = openFormationBuilderFullscreen;
 
 function sendFormationSync() {
   const frame = $('formation-builder-frame');
@@ -3703,8 +4017,22 @@ window.addEventListener('message', e => {
   if (d.type === 'ff-ready' || d.type === 'ff-request-sync') {
     const teamFrame = $('formation-builder-frame');
     const pubFrame = $('pv-formation-frame');
+    const admFrame = $('adm-formation-frame');
     if (teamFrame && e.source === teamFrame.contentWindow) sendFormationSync();
     if (pubFrame && e.source === pubFrame.contentWindow) sendPubFormationSync();
+    if (admFrame && e.source === admFrame.contentWindow) sendAdmFormationSync();
+    if (e.source && (e.source !== window)) {
+      const selId = $('adm-formation-team-select')?.value;
+      const targetTeam = (selId ? teams.find(t => t.id === selId) : null) || curTeam || (teams && teams.length ? teams[0] : null);
+      if (targetTeam) {
+        e.source.postMessage(Object.assign({ type: 'ff-sync' }, buildFormationSyncPayload(targetTeam)), '*');
+      }
+    }
+  }
+  if (d.type === 'ff-select-team' && d.teamId) {
+    const sel = $('adm-formation-team-select');
+    if (sel) sel.value = d.teamId;
+    sendAdmFormationSync(d.teamId);
   }
   if (d.type === 'ff-height' && d.height) {
     const teamFrame = $('formation-builder-frame');
@@ -3736,24 +4064,28 @@ window.addEventListener('message', e => {
       changeFormation(d.formationKey);
     }
   }
-  if (d.type === 'ff-visualizer-save' && curTeam) {
-    const vState = {
-      customPos: d.customPos || {},
-      ballPos: d.ballPos || { x: 50, y: 50 },
-      formationKey: d.formationKey || curTeam.squad?.formation || '4-4-2',
-      updatedAt: new Date().toISOString()
-    };
-    curTeam.visualizerState = vState;
-    clearTimeout(_visSaveTimer);
-    _visSaveTimer = setTimeout(async () => {
-      try {
-        await updateDoc(doc(db, 'teams', curTeam.id), {
-          visualizerState: vState
-        });
-      } catch (err) {
-        console.warn('Error persisting visualizer state:', err);
-      }
-    }, 150);
+  if (d.type === 'ff-visualizer-save') {
+    const selId = $('adm-formation-team-select')?.value;
+    const targetTeam = (selId ? teams.find(t => t.id === selId) : null) || curTeam;
+    if (targetTeam && targetTeam.id) {
+      const vState = {
+        customPos: d.customPos || {},
+        ballPos: d.ballPos || { x: 50, y: 50 },
+        formationKey: d.formationKey || targetTeam.squad?.formation || '4-4-2',
+        updatedAt: new Date().toISOString()
+      };
+      targetTeam.visualizerState = vState;
+      clearTimeout(_visSaveTimer);
+      _visSaveTimer = setTimeout(async () => {
+        try {
+          await updateDoc(doc(db, 'teams', targetTeam.id), {
+            visualizerState: vState
+          });
+        } catch (err) {
+          console.warn('Error persisting visualizer state:', err);
+        }
+      }, 150);
+    }
   }
 });
 

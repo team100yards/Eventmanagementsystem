@@ -13,9 +13,9 @@
 <meta property="og:type" content="website">
 <meta name="twitter:card" content="summary_large_image">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=33.0">
+<link rel="stylesheet" href="style.css?v=34.0">
 <link rel="stylesheet" href="cms-tokens.css">
-<link rel="stylesheet" href="cms-nav.css?v=33.0">
+<link rel="stylesheet" href="cms-nav.css?v=34.0">
 <script>
 (function(){
   try {
@@ -521,13 +521,26 @@
                   positions, tactics &amp; custom formations</p>
               </div>
               <div style="display:flex;gap:8px;">
-                <button type="button" class="tbtn" onclick="window.open('formation-builder.html','_blank')"
+                <button type="button" class="tbtn" onclick="openFormationBuilderFullscreen()"
                   style="font-weight:700;display:inline-flex;align-items:center;gap:6px;">
                   <span>↗</span>
                   <span>Open Fullscreen Studio</span>
                 </button>
               </div>
             </div>
+
+            <div class="db-bar" style="margin-bottom:14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+              <label style="font-weight:700;color:var(--txt);font-size:13px;display:flex;align-items:center;gap:8px;">
+                <span>🏟️ Select Team:</span>
+                <select id="adm-formation-team-select" class="db-filter" onchange="sendAdmFormationSync(this.value)" style="min-width:220px;">
+                  <option value="">Select a team…</option>
+                </select>
+              </label>
+              <button type="button" class="tbtn" onclick="sendAdmFormationSync()" style="padding:6px 14px;font-size:12.5px;">
+                🔄 Sync Team Lineup
+              </button>
+            </div>
+
             <div style="border-radius:14px;overflow:hidden;border:1.5px solid var(--bd);background:#0a1e0a;">
               <iframe id="adm-formation-frame" src="formation-builder.html" title="Formation Visualizer Studio"
                 allow="fullscreen" allowfullscreen
@@ -2705,8 +2718,8 @@
   });
   window.firebaseAiLogicReady.catch(()=>{});
 </script>
-<script src="app.js?v=33.0"></script>
-<script src="cms-nav.js?v=33.0"></script>
+<script src="app.js?v=34.0"></script>
+<script src="cms-nav.js?v=34.0"></script>
 <script type="module">
   import('./firebase-ai-logic.js?v=6').catch(error=>{
     window.rejectFirebaseAiLogicModule?.(error instanceof Error ? error : new Error(String(error || 'Firebase AI Logic module import failed.')));
