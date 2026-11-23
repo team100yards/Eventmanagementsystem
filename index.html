@@ -15,9 +15,9 @@
   <meta name="twitter:card" content="summary_large_image">
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600;700;800&display=swap"
     rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=36.0">
+  <link rel="stylesheet" href="style.css?v=37.0">
   <link rel="stylesheet" href="cms-tokens.css">
-  <link rel="stylesheet" href="cms-nav.css?v=36.0">
+  <link rel="stylesheet" href="cms-nav.css?v=37.0">
   <script>
     (function () {
       try {
@@ -1091,26 +1091,9 @@
           </div>
         </div>
 
-        <!-- CENTER: MATCH EVENT LOG & MATCH REPORT -->
+        <!-- CENTER: MATCH REPORT & MATCH EVENT LOG -->
         <div class="ms-col ms-report-column">
-          <!-- TIMELINE & EVENT LOG SECTION -->
-          <div style="background:var(--card);border:1.5px solid var(--bd);border-radius:18px;padding:16px;display:flex;flex-direction:column;gap:12px;">
-            <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;border-bottom:1.5px solid var(--bd);padding-bottom:10px;">
-              <div>
-                <div style="font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:1px;color:var(--tx);display:flex;align-items:center;gap:6px;">
-                  <span>⏱️</span><span>MATCH TIMELINE &amp; EVENT LOG</span>
-                </div>
-                <div style="font-size:11.5px;color:var(--mt);">Manually recorded goals, cards, assists &amp; subs · Edit or remove anytime</div>
-              </div>
-              <div style="display:flex;gap:8px;align-items:center;">
-                <button type="button" class="obtn" onclick="openAddEventModal()" style="font-weight:700;display:inline-flex;align-items:center;gap:6px;padding:5px 12px;font-size:12px;">
-                  <span>➕</span><span>Log Event</span>
-                </button>
-              </div>
-            </div>
-            <div id="ms-timeline-feed" class="timeline-feed" style="max-height:320px;overflow-y:auto;"></div>
-          </div>
-
+          <!-- MATCH REPORT & NOTES (ABOVE EVENT LOG) -->
           <section class="ms-report-card" id="ms-ai-report">
             <div class="ms-report-head">
               <div>
@@ -1177,6 +1160,24 @@
               <article id="ms-report-output" class="ms-report-output"></article>
             </div>
           </section>
+
+          <!-- TIMELINE & EVENT LOG SECTION (BELOW MATCH REPORT & NOTES) -->
+          <div style="background:var(--card);border:1.5px solid var(--bd);border-radius:18px;padding:16px;display:flex;flex-direction:column;gap:12px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;border-bottom:1.5px solid var(--bd);padding-bottom:10px;">
+              <div>
+                <div style="font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:1px;color:var(--tx);display:flex;align-items:center;gap:6px;">
+                  <span>⏱️</span><span>MATCH TIMELINE &amp; EVENT LOG</span>
+                </div>
+                <div style="font-size:11.5px;color:var(--mt);">Manually recorded goals, cards, assists &amp; subs · Edit or remove anytime</div>
+              </div>
+              <div style="display:flex;gap:8px;align-items:center;">
+                <button type="button" class="obtn" onclick="openAddEventModal()" style="font-weight:700;display:inline-flex;align-items:center;gap:6px;padding:5px 12px;font-size:12px;">
+                  <span>➕</span><span>Log Event</span>
+                </button>
+              </div>
+            </div>
+            <div id="ms-timeline-feed" class="timeline-feed" style="max-height:340px;overflow-y:auto;"></div>
+          </div>
         </div>
 
         <!-- AWAY SQUAD -->
@@ -2750,7 +2751,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-check-compat.js"></script>
-  <script src="cms-auth.js?v=36.0"></script>
+  <script src="cms-auth.js?v=37.0"></script>
   <script>
     window.firebaseAiLogicLoadState = 'loading';
     window.firebaseAiLogicReady = new Promise((resolve, reject) => {
@@ -2765,8 +2766,8 @@
     });
     window.firebaseAiLogicReady.catch(() => { });
   </script>
-  <script src="app.js?v=36.0"></script>
-  <script src="cms-nav.js?v=36.0"></script>
+  <script src="app.js?v=37.0"></script>
+  <script src="cms-nav.js?v=37.0"></script>
   <script type="module">
     import('./firebase-ai-logic.js?v=6').catch(error => {
       window.rejectFirebaseAiLogicModule?.(error instanceof Error ? error : new Error(String(error || 'Firebase AI Logic module import failed.')));
