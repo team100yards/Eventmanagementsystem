@@ -8763,3 +8763,17 @@ textarea {
   color: #475569;
   border: 1px solid #e2e8f0;
 }
+
+#ms-dictate-btn[aria-pressed="true"],
+.ms-record-button[aria-pressed="true"] {
+  background: #dc2626 !important;
+  color: #fff !important;
+  border-color: #b91c1c !important;
+  animation: pulse-recording 1.2s infinite ease-in-out;
+}
+
+@keyframes pulse-recording {
+  0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.7); }
+  70% { transform: scale(1.04); box-shadow: 0 0 0 6px rgba(220, 38, 38, 0); }
+  100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(220, 38, 38, 0); }
+}

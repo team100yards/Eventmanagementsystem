@@ -15,9 +15,9 @@
   <meta name="twitter:card" content="summary_large_image">
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600;700;800&display=swap"
     rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=39.0">
+  <link rel="stylesheet" href="style.css?v=40.0">
   <link rel="stylesheet" href="cms-tokens.css">
-  <link rel="stylesheet" href="cms-nav.css?v=39.0">
+  <link rel="stylesheet" href="cms-nav.css?v=40.0">
   <script>
     (function () {
       try {
@@ -1115,11 +1115,13 @@
                   </span>
                   <span style="font-size:10.5px;color:var(--mt);">Auto-stamps match minute</span>
                 </div>
-                <form onsubmit="event.preventDefault();addTimestampedMatchNote();" style="display:flex;gap:8px;">
-                  <input type="text" id="ms-quick-note-input" placeholder="Type quick note (e.g. Near miss by #10, corner conceded)…" style="flex:1;min-width:0;height:36px;padding:0 12px;border:1px solid var(--bd);border-radius:8px;font-size:13px;background:var(--card,#fff);color:var(--tx);">
-                  <button type="submit" class="mok" style="height:36px;padding:0 14px;font-size:12px;font-weight:700;white-space:nowrap;display:inline-flex;align-items:center;gap:4px;">
-                    <span>⏱️</span><span>Add Note</span>
+                <form onsubmit="event.preventDefault();addTimestampedMatchNote();" style="display:flex;align-items:center;gap:6px;">
+                  <input type="text" id="ms-quick-note-input" placeholder="Type quick note (e.g. Near miss by #10, corner conceded)…" style="flex:1;min-width:0;height:38px;padding:0 12px;border:1px solid var(--bd);border-radius:8px;font-size:13px;background:var(--card,#fff);color:var(--tx);">
+                  <button type="submit" class="mok" title="Add Note (Enter)" aria-label="Add Note" style="height:38px;min-width:44px;padding:0 10px;font-size:16px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;border-radius:8px;flex-shrink:0;">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none;"><polyline points="9 10 4 15 9 20"></polyline><path d="M20 4v7a4 4 0 0 1-4 4H4"></path></svg>
                   </button>
+                  <button type="button" class="obtn ms-record-button" id="ms-dictate-btn" title="Record Voice Note"
+                    aria-label="Record" aria-pressed="false" onclick="toggleMatchNoteDictation()" style="height:38px;width:38px;padding:0;font-size:17px;display:inline-flex;align-items:center;justify-content:center;border-radius:8px;flex-shrink:0;">🎙️</button>
                 </form>
               </div>
 
@@ -1135,8 +1137,6 @@
                 <label for="ms-report-notes">Match notes (full commentary)</label>
                 <div style="display:flex;align-items:center;gap:6px;margin-left:auto;">
                   <button type="button" class="obtn" style="font-size:11px;padding:2px 8px;" onclick="insertMatchTimestampInNotes()">⏱️ Insert Timestamp</button>
-                  <button type="button" class="obtn ms-record-button" id="ms-dictate-btn" title="Record"
-                    aria-label="Record" aria-pressed="false" onclick="toggleMatchNoteDictation()">🎙️</button>
                 </div>
               </div>
               <textarea id="ms-report-notes" rows="4" placeholder="Type notes or tap the microphone to record."
@@ -2605,7 +2605,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-check-compat.js"></script>
-  <script src="cms-auth.js?v=39.0"></script>
+  <script src="cms-auth.js?v=40.0"></script>
   <script>
     window.firebaseAiLogicLoadState = 'loading';
     window.firebaseAiLogicReady = new Promise((resolve, reject) => {
@@ -2620,8 +2620,8 @@
     });
     window.firebaseAiLogicReady.catch(() => { });
   </script>
-  <script src="app.js?v=39.0"></script>
-  <script src="cms-nav.js?v=39.0"></script>
+  <script src="app.js?v=40.0"></script>
+  <script src="cms-nav.js?v=40.0"></script>
   <script type="module">
     import('./firebase-ai-logic.js?v=6').catch(error => {
       window.rejectFirebaseAiLogicModule?.(error instanceof Error ? error : new Error(String(error || 'Firebase AI Logic module import failed.')));
