@@ -10492,15 +10492,23 @@ function renderMatchSquad(side, sideData, teamObj) {
     if (subsIn > 0) badgePills += `<span class="ms-badge-pill" title="Subbed In">🟢 IN</span>`;
     if (subsOut > 0) badgePills += `<span class="ms-badge-pill" title="Subbed Out">🔴 OUT</span>`;
 
-    const actButtons = isFinal ? '' : `
-      <div class="ms-act-btn-row" onclick="event.stopPropagation();">
-        <button type="button" class="ms-act-btn" title="Goal" onclick="openAddEventModal('${side}','goal','${pid || ''}','${esc(pname).replace(/'/g, "\\'")}')">⚽</button>
-        <button type="button" class="ms-act-btn" title="Assist" onclick="openAddEventModal('${side}','assist','${pid || ''}','${esc(pname).replace(/'/g, "\\'")}')">👟</button>
-        <button type="button" class="ms-act-btn" title="Yellow Card" onclick="openAddEventModal('${side}','yellow','${pid || ''}','${esc(pname).replace(/'/g, "\\'")}')">🟨</button>
-        <button type="button" class="ms-act-btn" title="Red Card" onclick="openAddEventModal('${side}','red','${pid || ''}','${esc(pname).replace(/'/g, "\\'")}')">🟥</button>
-        <button type="button" class="ms-act-btn" title="Sub" onclick="openAddEventModal('${side}','sub','${pid || ''}','${esc(pname).replace(/'/g, "\\'")}')">🔄</button>
-      </div>
-    `;
+    let actButtons = '';
+    if (!isFinal) {
+      if (isStarter) {
+        actButtons = `
+          <div class="ms-act-btn-row" onclick="event.stopPropagation();">
+            <button type="button" class="obtn" style="font-size:11px;font-weight:700;padding:4px 10px;background:#1a5c1a;color:#fff;border-radius:6px;white-space:nowrap;" title="Log match event for ${esc(dispName)}" onclick="openAddEventModal('${side}','goal','${pid || ''}','${esc(pname).replace(/'/g, "\\'")}')">⚡ Log</button>
+          </div>
+        `;
+      } else {
+        actButtons = `
+          <div class="ms-act-btn-row" onclick="event.stopPropagation();">
+            <button type="button" class="obtn" style="font-size:11px;font-weight:700;padding:4px 9px;background:#15803d;color:#fff;border-radius:6px;white-space:nowrap;" title="Sub ${esc(pname)} into match" onclick="openAddEventModal('${side}','sub','${pid || ''}','${esc(pname).replace(/'/g, "\\'")}')">🔄 Sub</button>
+            <button type="button" class="obtn" style="font-size:11px;font-weight:700;padding:4px 8px;border-radius:6px;white-space:nowrap;" title="Log event for ${esc(pname)}" onclick="openAddEventModal('${side}','yellow','${pid || ''}','${esc(pname).replace(/'/g, "\\'")}')">⚡ Log</button>
+          </div>
+        `;
+      }
+    }
 
     return `
       <div class="ms-player-item" style="cursor:default;">
@@ -10595,8 +10603,11 @@ function renderMatchTimeline() {
       titleText = `🟥 <strong>RED CARD:</strong> ${esc(ev.playerName)} (${esc(teamName)})`;
     } else if (ev.type === 'sub') {
       icon = '🔄';
+      const subIn = findMatchPlayer(ev.playerId) || { name: ev.playerName };
       const subOff = findMatchPlayer(ev.relatedPlayerId);
-      titleText = `🔄 <strong>SUBSTITUTION (${esc(teamName)}):</strong><br><span style="color:#1a5c1a;">🟢 In: ${esc(ev.playerName)}</span>${subOff ? `<br><span style="color:var(--red);">🔴 Out: ${esc(subOff.name)}</span>` : ''}`;
+      const inNum = (subIn.jersey != null && subIn.jersey !== '') ? `#${subIn.jersey} ` : (subIn.number != null && subIn.number !== '' ? `#${subIn.number} ` : '');
+      const outNum = (subOff && subOff.jersey != null && subOff.jersey !== '') ? `#${subOff.jersey} ` : (subOff && subOff.number != null && subOff.number !== '' ? `#${subOff.number} ` : '');
+      titleText = `🔄 <strong>SUBSTITUTION (${esc(teamName)}):</strong><br><span style="color:#1a5c1a;font-weight:700;">🟢 In: ${esc(inNum)}${esc(subIn.name || ev.playerName)}</span>${subOff ? `<br><span style="color:var(--red);font-weight:700;">🔴 Out: ${esc(outNum)}${esc(subOff.name)}</span>` : ''}`;
     }
 
     const noteText = ev.note ? `<div class="timeline-sub-text"><em>Note: ${esc(ev.note)}</em></div>` : '';
@@ -11000,9 +11011,9 @@ function handleEventTypeChange(type) {
   } else if (type === 'sub') {
     if (icoEl) icoEl.textContent = '🔄';
     if (titleEl) titleEl.textContent = 'LOG SUBSTITUTION';
-    if (playerLbl) playerLbl.textContent = 'Player Subbed ON (Entering) *';
+    if (playerLbl) playerLbl.textContent = '🟢 Player Subbed ON (Entering Pitch) *';
     if (relWrap) relWrap.style.display = 'block';
-    if (relLbl) relLbl.textContent = 'Player Subbed OFF (Exiting) (Optional)';
+    if (relLbl) relLbl.textContent = '🔴 Player Subbed OFF (Exiting Pitch) *';
   }
 }
 
@@ -11021,45 +11032,73 @@ function setEventTeam(team) {
   const pSel = $('mev-player-select');
   const relSel = $('mev-related-select');
 
+  const formatPlayerOption = (p, defaultRole, defaultNum) => {
+    const id = p.playerId || p.id || p.name;
+    const num = (p.jersey != null && p.jersey !== '') ? p.jersey : (p.number != null && p.number !== '' ? p.number : defaultNum);
+    const numPrefix = num ? `#${num} ` : '';
+    const fullName = p.name || 'Player';
+    const dispName = getPlayerDisplayName(p);
+    const nameStr = (dispName && dispName !== fullName) ? `${fullName} (${dispName})` : fullName;
+    const pos = posCode(p.position) || p.position || defaultRole;
+    return `<option value="${id}">${numPrefix}${esc(nameStr)} — ${esc(pos)}</option>`;
+  };
+
   if (pSel) {
     let opts = '<option value="">-- Select Player --</option>';
-    if (starters.length) {
-      opts += `<optgroup label="Starting XI">`;
-      starters.forEach(p => {
-        const id = p.playerId || p.id || p.name;
-        opts += `<option value="${id}">${esc(p.name)} (${esc(p.position || 'Starter')})</option>`;
-      });
-      opts += `</optgroup>`;
-    }
-    if (subs.length) {
-      opts += `<optgroup label="Game Changers / Bench">`;
-      subs.forEach(p => {
-        const id = p.playerId || p.id || p.name;
-        opts += `<option value="${id}">${esc(p.name)} (${esc(p.position || 'Sub')})</option>`;
-      });
-      opts += `</optgroup>`;
+    if (mevType === 'sub') {
+      // In substitutions, the entering player comes from the bench
+      if (subs.length) {
+        opts += `<optgroup label="Game Changers / Bench (Subbed IN)">`;
+        subs.forEach((p, idx) => { opts += formatPlayerOption(p, 'Sub', starters.length + idx + 1); });
+        opts += `</optgroup>`;
+      }
+      if (starters.length) {
+        opts += `<optgroup label="Starting XI">`;
+        starters.forEach((p, idx) => { opts += formatPlayerOption(p, 'Starter', idx + 1); });
+        opts += `</optgroup>`;
+      }
+    } else {
+      if (starters.length) {
+        opts += `<optgroup label="Starting XI">`;
+        starters.forEach((p, idx) => { opts += formatPlayerOption(p, 'Starter', idx + 1); });
+        opts += `</optgroup>`;
+      }
+      if (subs.length) {
+        opts += `<optgroup label="Game Changers / Bench">`;
+        subs.forEach((p, idx) => { opts += formatPlayerOption(p, 'Sub', starters.length + idx + 1); });
+        opts += `</optgroup>`;
+      }
     }
     opts += `<option value="__custom__">➕ Type Custom / Outside Opponent Player Name…</option>`;
     pSel.innerHTML = opts;
   }
 
   if (relSel) {
-    let opts = '<option value="">-- None / Unassisted --</option>';
-    if (starters.length) {
-      opts += `<optgroup label="Starting XI">`;
-      starters.forEach(p => {
-        const id = p.playerId || p.id || p.name;
-        opts += `<option value="${id}">${esc(p.name)} (${esc(p.position || 'Starter')})</option>`;
-      });
-      opts += `</optgroup>`;
-    }
-    if (subs.length) {
-      opts += `<optgroup label="Game Changers / Bench">`;
-      subs.forEach(p => {
-        const id = p.playerId || p.id || p.name;
-        opts += `<option value="${id}">${esc(p.name)} (${esc(p.position || 'Sub')})</option>`;
-      });
-      opts += `</optgroup>`;
+    const emptyLabel = (mevType === 'sub') ? '-- Select Player Subbed OFF --' : '-- None / Unassisted --';
+    let opts = `<option value="">${emptyLabel}</option>`;
+    if (mevType === 'sub') {
+      // In substitutions, the exiting player is from Starting XI
+      if (starters.length) {
+        opts += `<optgroup label="Starting XI (Subbed OUT)">`;
+        starters.forEach((p, idx) => { opts += formatPlayerOption(p, 'Starter', idx + 1); });
+        opts += `</optgroup>`;
+      }
+      if (subs.length) {
+        opts += `<optgroup label="Game Changers / Bench">`;
+        subs.forEach((p, idx) => { opts += formatPlayerOption(p, 'Sub', starters.length + idx + 1); });
+        opts += `</optgroup>`;
+      }
+    } else {
+      if (starters.length) {
+        opts += `<optgroup label="Starting XI">`;
+        starters.forEach((p, idx) => { opts += formatPlayerOption(p, 'Starter', idx + 1); });
+        opts += `</optgroup>`;
+      }
+      if (subs.length) {
+        opts += `<optgroup label="Game Changers / Bench">`;
+        subs.forEach((p, idx) => { opts += formatPlayerOption(p, 'Sub', starters.length + idx + 1); });
+        opts += `</optgroup>`;
+      }
     }
     relSel.innerHTML = opts;
   }
@@ -12142,9 +12181,12 @@ function renderLiveTimeline() {
     } else if (ev.type === 'sub') {
       cardCls = 'sub';
       icon = '🔄';
+      const subIn = findMatchPlayer(ev.playerId) || { name: ev.playerName };
       const subOff = findMatchPlayer(ev.relatedPlayerId);
+      const inNum = (subIn.jersey != null && subIn.jersey !== '') ? `#${subIn.jersey} ` : (subIn.number != null && subIn.number !== '' ? `#${subIn.number} ` : '');
+      const outNum = (subOff && subOff.jersey != null && subOff.jersey !== '') ? `#${subOff.jersey} ` : (subOff && subOff.number != null && subOff.number !== '' ? `#${subOff.number} ` : '');
       titleText = `SUBSTITUTION (${esc(teamName)})`;
-      subText = `🟢 In: ${esc(ev.playerName)}${subOff ? ' · 🔴 Out: ' + esc(subOff.name) : ''}`;
+      subText = `🟢 In: ${esc(inNum)}${esc(subIn.name || ev.playerName)}${subOff ? ' · 🔴 Out: ' + esc(outNum) + esc(subOff.name) : ''}`;
     }
 
     if (ev.note) {
