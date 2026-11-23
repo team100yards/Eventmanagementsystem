@@ -5625,19 +5625,42 @@ textarea {
   margin-top: 2px;
 }
 
+.timeline-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.timeline-edit-btn,
 .timeline-del-btn {
-  background: none;
-  border: none;
-  color: var(--red);
+  background: var(--card2, #f3f4f6);
+  border: 1px solid var(--bd, #e5e7eb);
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 700;
   cursor: pointer;
-  font-size: 14px;
-  opacity: .6;
-  transition: opacity .15s;
-  padding: 4px;
+  padding: 5px 9px;
+  transition: all .15s;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--tx);
+}
+
+.timeline-edit-btn:hover {
+  background: #eef5ee;
+  border-color: #1a5c1a;
+  color: #1a5c1a;
+}
+
+.timeline-del-btn {
+  color: var(--red, #dc2626);
 }
 
 .timeline-del-btn:hover {
-  opacity: 1;
+  background: #fee2e2;
+  border-color: #ef4444;
 }
 
 /* MATCH CREATOR STEPPER */

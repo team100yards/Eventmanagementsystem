@@ -2,41 +2,43 @@
 <html lang="en">
 
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0">
-<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<meta http-equiv="Pragma" content="no-cache">
-<meta http-equiv="Expires" content="0">
-<title>Event Management System · BY 100 YARDS</title>
-<meta property="og:title" content="Event Management System · BY 100 YARDS">
-<meta property="og:description" content="Follow live football scores, lineups, pitch formations, and tournament fixtures in real-time.">
-<meta property="og:type" content="website">
-<meta name="twitter:card" content="summary_large_image">
-<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=35.0">
-<link rel="stylesheet" href="cms-tokens.css">
-<link rel="stylesheet" href="cms-nav.css?v=35.0">
-<script>
-(function(){
-  try {
-    var p = new URLSearchParams(window.location.search);
-    if (p.get('teamPortal') || p.get('tp')) {
-      window.__initScreen = 's-team-pw';
-    } else if (p.get('team')) {
-      window.__initScreen = (p.get('type') === 'staff') ? 's-public-staff' : 's-public';
-    } else {
-      var isAuth = (sessionStorage.getItem('fhq_session_active') === '1' || localStorage.getItem('fhq_session_active') === '1' || !!localStorage.getItem('cms_auth_cached_user'));
-      if (isAuth && p.get('match')) {
-        window.__initScreen = 's-match-sheet';
-      } else {
-        window.__initScreen = (isAuth && !p.get('view') && !p.get('match') && !p.get('live') && !p.get('createMatch')) ? 's-admin' : 's-login';
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <title>Event Management System · BY 100 YARDS</title>
+  <meta property="og:title" content="Event Management System · BY 100 YARDS">
+  <meta property="og:description"
+    content="Follow live football scores, lineups, pitch formations, and tournament fixtures in real-time.">
+  <meta property="og:type" content="website">
+  <meta name="twitter:card" content="summary_large_image">
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600;700;800&display=swap"
+    rel="stylesheet">
+  <link rel="stylesheet" href="style.css?v=36.0">
+  <link rel="stylesheet" href="cms-tokens.css">
+  <link rel="stylesheet" href="cms-nav.css?v=36.0">
+  <script>
+    (function () {
+      try {
+        var p = new URLSearchParams(window.location.search);
+        if (p.get('teamPortal') || p.get('tp')) {
+          window.__initScreen = 's-team-pw';
+        } else if (p.get('team')) {
+          window.__initScreen = (p.get('type') === 'staff') ? 's-public-staff' : 's-public';
+        } else {
+          var isAuth = (sessionStorage.getItem('fhq_session_active') === '1' || localStorage.getItem('fhq_session_active') === '1' || !!localStorage.getItem('cms_auth_cached_user'));
+          if (isAuth && p.get('match')) {
+            window.__initScreen = 's-match-sheet';
+          } else {
+            window.__initScreen = (isAuth && !p.get('view') && !p.get('match') && !p.get('live') && !p.get('createMatch')) ? 's-admin' : 's-login';
+          }
+        }
+      } catch (e) {
+        window.__initScreen = 's-login';
       }
-    }
-  } catch(e){
-    window.__initScreen = 's-login';
-  }
-})();
-</script>
+    })();
+  </script>
 </head>
 
 <body>
@@ -216,7 +218,7 @@
 
   <!-- ══ ADMIN DASHBOARD ══ -->
   <div id="s-admin" class="screen">
-    <script>if(window.__initScreen === 's-admin') document.getElementById('s-admin').classList.add('active');</script>
+    <script>if (window.__initScreen === 's-admin') document.getElementById('s-admin').classList.add('active');</script>
     <!-- Material-style CMS Topbar -->
     <div class="topbar">
       <div class="tb-logo" onclick="showAdminTab('teams')" title="Event Management System" style="cursor:pointer;">
@@ -532,11 +534,13 @@
             <div class="db-bar" style="margin-bottom:14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
               <label style="font-weight:700;color:var(--txt);font-size:13px;display:flex;align-items:center;gap:8px;">
                 <span>🏟️ Select Team:</span>
-                <select id="adm-formation-team-select" class="db-filter" onchange="sendAdmFormationSync(this.value)" style="min-width:220px;">
+                <select id="adm-formation-team-select" class="db-filter" onchange="sendAdmFormationSync(this.value)"
+                  style="min-width:220px;">
                   <option value="">Select a team…</option>
                 </select>
               </label>
-              <button type="button" class="tbtn" onclick="sendAdmFormationSync()" style="padding:6px 14px;font-size:12.5px;">
+              <button type="button" class="tbtn" onclick="sendAdmFormationSync()"
+                style="padding:6px 14px;font-size:12.5px;">
                 🔄 Sync Team Lineup
               </button>
             </div>
@@ -1087,18 +1091,53 @@
           </div>
         </div>
 
-        <!-- CENTER: MATCH REPORT -->
+        <!-- CENTER: MATCH EVENT LOG & MATCH REPORT -->
         <div class="ms-col ms-report-column">
+          <!-- TIMELINE & EVENT LOG SECTION -->
+          <div style="background:var(--card);border:1.5px solid var(--bd);border-radius:18px;padding:16px;display:flex;flex-direction:column;gap:12px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;border-bottom:1.5px solid var(--bd);padding-bottom:10px;">
+              <div>
+                <div style="font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:1px;color:var(--tx);display:flex;align-items:center;gap:6px;">
+                  <span>⏱️</span><span>MATCH TIMELINE &amp; EVENT LOG</span>
+                </div>
+                <div style="font-size:11.5px;color:var(--mt);">Manually recorded goals, cards, assists &amp; subs · Edit or remove anytime</div>
+              </div>
+              <div style="display:flex;gap:8px;align-items:center;">
+                <button type="button" class="obtn" onclick="openAddEventModal()" style="font-weight:700;display:inline-flex;align-items:center;gap:6px;padding:5px 12px;font-size:12px;">
+                  <span>➕</span><span>Log Event</span>
+                </button>
+              </div>
+            </div>
+            <div id="ms-timeline-feed" class="timeline-feed" style="max-height:320px;overflow-y:auto;"></div>
+          </div>
+
           <section class="ms-report-card" id="ms-ai-report">
             <div class="ms-report-head">
               <div>
-                <h2>Match Report</h2>
+                <h2>Match Report &amp; Notes</h2>
               </div>
               <div class="ms-report-head-actions">
                 <button type="button" class="obtn" onclick="openMatchMobileSyncModal()">📱 Phone / QR</button>
               </div>
             </div>
             <div class="ms-report-notes-wrap">
+              <!-- QUICK TIMESTAMPED NOTE INPUT (EXACT SAME AS IPHONE CONNECT) -->
+              <div style="margin-bottom:12px;background:var(--card2,#f3f4f6);border:1px solid var(--bd,#e5e7eb);border-radius:12px;padding:10px 12px;">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+                  <span style="font-size:11px;font-weight:800;letter-spacing:0.5px;color:var(--tx);display:flex;align-items:center;gap:6px;">
+                    <span>📱 PITCHSIDE QUICK NOTE</span>
+                    <span class="ms-live-clock-badge" id="ms-quick-note-clock" style="font-size:10px;padding:2px 7px;border-radius:6px;background:#1a5c1a;color:#fff;font-weight:800;">00:00 (1st half)</span>
+                  </span>
+                  <span style="font-size:10.5px;color:var(--mt);">Auto-stamps match minute</span>
+                </div>
+                <form onsubmit="event.preventDefault();addTimestampedMatchNote();" style="display:flex;gap:8px;">
+                  <input type="text" id="ms-quick-note-input" placeholder="Type quick note (e.g. Near miss by #10, corner conceded)…" style="flex:1;min-width:0;height:36px;padding:0 12px;border:1px solid var(--bd);border-radius:8px;font-size:13px;background:var(--card,#fff);color:var(--tx);">
+                  <button type="submit" class="mok" style="height:36px;padding:0 14px;font-size:12px;font-weight:700;white-space:nowrap;display:inline-flex;align-items:center;gap:4px;">
+                    <span>⏱️</span><span>Add Note</span>
+                  </button>
+                </form>
+              </div>
+
               <div class="ms-voice-context-row">
                 <label for="ms-voice-team-context">Team you are recording</label>
                 <select id="ms-voice-team-context" onchange="matchVoiceTeamContext=this.value">
@@ -1108,9 +1147,12 @@
                 </select>
               </div>
               <div class="ms-report-notes-label-row">
-                <label for="ms-report-notes">Match notes</label>
-                <button type="button" class="obtn ms-record-button" id="ms-dictate-btn" title="Record"
-                  aria-label="Record" aria-pressed="false" onclick="toggleMatchNoteDictation()">🎙️</button>
+                <label for="ms-report-notes">Match notes (full commentary)</label>
+                <div style="display:flex;align-items:center;gap:6px;margin-left:auto;">
+                  <button type="button" class="obtn" style="font-size:11px;padding:2px 8px;" onclick="insertMatchTimestampInNotes()">⏱️ Insert Timestamp</button>
+                  <button type="button" class="obtn ms-record-button" id="ms-dictate-btn" title="Record"
+                    aria-label="Record" aria-pressed="false" onclick="toggleMatchNoteDictation()">🎙️</button>
+                </div>
               </div>
               <textarea id="ms-report-notes" rows="4" placeholder="Type notes or tap the microphone to record."
                 oninput="queueMatchReportNotesSave()"></textarea>
@@ -2409,8 +2451,13 @@
       </div>
 
       <p id="mev-err" class="merr"></p>
-      <div class="macts"><button class="mc" onclick="closeM('m-match-event')">Cancel</button><button class="mok"
-          onclick="saveMatchEvent()">LOG EVENT</button></div>
+      <div class="macts" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+        <button type="button" class="obtn" id="mev-modal-del-btn" style="display:none;color:var(--red);border-color:rgba(220,38,38,0.4);" onclick="deleteEditingEventFromModal()">🗑️ Delete Event</button>
+        <div style="display:flex;gap:8px;margin-left:auto;">
+          <button type="button" class="mc" onclick="closeM('m-match-event')">Cancel</button>
+          <button type="button" class="mok" id="mev-save-btn" onclick="saveMatchEvent()">LOG EVENT</button>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -2699,31 +2746,31 @@
     </div>
   </div>
 
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-check-compat.js"></script>
-<script src="cms-auth.js?v=35.0"></script>
-<script>
-  window.firebaseAiLogicLoadState='loading';
-  window.firebaseAiLogicReady=new Promise((resolve,reject)=>{
-    let settled=false;
-    const timer=setTimeout(()=>window.rejectFirebaseAiLogicModule(new Error('Firebase AI Logic did not finish loading. Reload the hosted app and try again.')),30000);
-    window.resolveFirebaseAiLogicModule=api=>{
-      if(settled)return;settled=true;clearTimeout(timer);window.firebaseAiLogicLoadState='ready';resolve(api);
-    };
-    window.rejectFirebaseAiLogicModule=error=>{
-      if(settled)return;settled=true;clearTimeout(timer);window.firebaseAiLogicLoadState='error';window.firebaseAiLogicLoadError=error instanceof Error?error:new Error(String(error||'Firebase AI Logic failed to load.'));reject(window.firebaseAiLogicLoadError);
-    };
-  });
-  window.firebaseAiLogicReady.catch(()=>{});
-</script>
-<script src="app.js?v=35.0"></script>
-<script src="cms-nav.js?v=35.0"></script>
-<script type="module">
-  import('./firebase-ai-logic.js?v=6').catch(error=>{
-    window.rejectFirebaseAiLogicModule?.(error instanceof Error ? error : new Error(String(error || 'Firebase AI Logic module import failed.')));
-  });
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-check-compat.js"></script>
+  <script src="cms-auth.js?v=36.0"></script>
+  <script>
+    window.firebaseAiLogicLoadState = 'loading';
+    window.firebaseAiLogicReady = new Promise((resolve, reject) => {
+      let settled = false;
+      const timer = setTimeout(() => window.rejectFirebaseAiLogicModule(new Error('Firebase AI Logic did not finish loading. Reload the hosted app and try again.')), 30000);
+      window.resolveFirebaseAiLogicModule = api => {
+        if (settled) return; settled = true; clearTimeout(timer); window.firebaseAiLogicLoadState = 'ready'; resolve(api);
+      };
+      window.rejectFirebaseAiLogicModule = error => {
+        if (settled) return; settled = true; clearTimeout(timer); window.firebaseAiLogicLoadState = 'error'; window.firebaseAiLogicLoadError = error instanceof Error ? error : new Error(String(error || 'Firebase AI Logic failed to load.')); reject(window.firebaseAiLogicLoadError);
+      };
+    });
+    window.firebaseAiLogicReady.catch(() => { });
+  </script>
+  <script src="app.js?v=36.0"></script>
+  <script src="cms-nav.js?v=36.0"></script>
+  <script type="module">
+    import('./firebase-ai-logic.js?v=6').catch(error => {
+      window.rejectFirebaseAiLogicModule?.(error instanceof Error ? error : new Error(String(error || 'Firebase AI Logic module import failed.')));
+    });
   </script>
 
   <!-- ══ PLAYING LIST UPLOAD MODAL ══ -->

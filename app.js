@@ -8739,6 +8739,9 @@ function updateMatchSheetClockOnly() {
   const periodEl = $('ms-timer-period');
   if (periodEl) periodEl.textContent = periodStr;
 
+  const qClock = $('ms-quick-note-clock');
+  if (qClock) qClock.textContent = `${clockStr} (${periodStr})`;
+
   const pillEl = $('ms-timer-pill');
   if (pillEl) {
     pillEl.className = 'sb-timer-pill ' + (isLive ? (isPaused ? 'paused' : (isRunning ? 'live' : '')) : (isFinal ? 'final' : ''));
@@ -9170,6 +9173,44 @@ async function saveMatchReportNotesNow() {
   await persistMatchReportNotes(matchId, notes, token);
 }
 
+function addTimestampedMatchNote() {
+  if (!curMatch) return;
+  const input = $('ms-quick-note-input');
+  const text = String(input?.value || '').trim();
+  if (!text) return;
+
+  const stamp = getMatchMinuteStamp();
+  const noteLine = `[${stamp}] ${text}`;
+  const notesEl = $('ms-report-notes');
+  if (notesEl) {
+    const existing = String(notesEl.value || '').trim();
+    notesEl.value = existing ? `${existing}\n${noteLine}` : noteLine;
+    notesEl.scrollTop = notesEl.scrollHeight;
+    curMatch.matchReportNotes = notesEl.value;
+    queueMatchReportNotesSave();
+  }
+  if (input) input.value = '';
+  const status = $('ms-report-notes-status');
+  if (status) status.textContent = `Saved note at ${stamp}.`;
+}
+
+function insertMatchTimestampInNotes() {
+  if (!curMatch) return;
+  const stamp = getMatchMinuteStamp();
+  const notesEl = $('ms-report-notes');
+  if (!notesEl) return;
+  const start = notesEl.selectionStart || notesEl.value.length;
+  const end = notesEl.selectionEnd || notesEl.value.length;
+  const text = notesEl.value;
+  const prefix = (start > 0 && text[start - 1] !== '\n') ? '\n' : '';
+  const inserted = `${prefix}[${stamp}] `;
+  notesEl.value = text.slice(0, start) + inserted + text.slice(end);
+  notesEl.selectionStart = notesEl.selectionEnd = start + inserted.length;
+  notesEl.focus();
+  curMatch.matchReportNotes = notesEl.value;
+  queueMatchReportNotesSave();
+}
+
 function generateMatchMobileSessionToken() {
   if (!window.crypto?.getRandomValues) throw new Error('Phone links are not available in this browser.');
   return Array.from(window.crypto.getRandomValues(new Uint8Array(32)), byte => byte.toString(16).padStart(2, '0')).join('');
@@ -9217,16 +9258,12 @@ function queueMatchMobileEntryProcessing(sessionId, entrySnapshot) {
       queueMatchReportNotesSave();
       await saveMatchReportNotesNow();
     }
-    const context = ['home', 'away'].includes(entry.teamContext) ? entry.teamContext : 'auto';
-    const sequence = ++matchMobileEntrySequence;
-    const matchSnapshot = { ...curMatch, home: { ...(curMatch.home || {}) }, away: { ...(curMatch.away || {}) }, events: [...(curMatch.events || [])] };
-    queueMatchVoiceEventExtraction(matchId, minuteStamp, transcript, `phone_${sessionId}`, sequence, matchSnapshot, context);
-    await matchVoiceExtractionChain.catch(() => { });
+    // Goals, cards, assists & substitutions are strictly recorded manually from the lineup playlist
     const entryRef = doc(db, 'match_mobile_sessions', sessionId).collection('entries').doc(entrySnapshot.id);
     await updateDoc(entryRef, { hostProcessedAt: Date.now() });
     updateMatchMobileIncomingPreview(noteLine);
     const status = $('ms-phone-sync-status');
-    if (status) status.textContent = 'Phone connected · notes are syncing into the match report and event log.';
+    if (status) status.textContent = 'Phone connected · notes synced into match report.';
   }).catch(error => {
     console.error('Could not sync phone match note:', error);
     const status = $('ms-phone-sync-status');
@@ -9755,40 +9792,8 @@ function updateMatchVoiceStatus(matchId, message) {
 }
 
 async function extractMatchEventsFromVoice(matchId, minuteStamp, transcript, sessionId, sequence, initialMatch, teamContext = 'auto') {
-  if (!shouldExtractMatchEventFromCommentary(transcript)) {
-    updateMatchVoiceStatus(matchId, `Note saved · ${minuteStamp}`);
-    return;
-  }
-  updateMatchVoiceStatus(matchId, 'Checking for events…');
-  try {
-    const current = curMatch?.id === matchId ? curMatch : (matches.find(match => match.id === matchId) || initialMatch);
-    const matchSnapshot = { ...current, home: { ...(current.home || {}) }, away: { ...(current.away || {}) }, events: [...(current.events || [])] };
-    const prompt = buildMatchVoiceEventPrompt(matchSnapshot, minuteStamp, transcript, teamContext);
-    const responseText = await callGeminiGenerateContent([{ parts: [{ text: prompt }] }], {
-      maxOutputTokens: 2048,
-      responseMimeType: 'application/json',
-      responseSchema: getVoiceEventExtractionSchema()
-    });
-    const jsonText = responseText.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/, '').trim();
-    const parsed = JSON.parse(jsonText);
-    const extracted = buildResolvedVoiceEvents(matchSnapshot, parsed?.events, minuteStamp, sessionId, sequence, transcript, teamContext);
-    if (!extracted.events.length) {
-      updateMatchVoiceStatus(matchId, extracted.skippedCount
-        ? 'Could not match that event to a team or player.'
-        : `Note saved · ${minuteStamp}`);
-      return;
-    }
-    const saved = await persistMatchVoiceEvents(matchId, extracted.events);
-    if (saved.added.length) {
-      const descriptions = saved.added.map(event => `${event.type} · ${event.playerName} · ${event.team === 'home' ? (matchSnapshot.home?.name || 'Home') : (matchSnapshot.away?.name || 'Away')}${event.minute ? ` · ${event.minute}'` : ''}`).join('; ');
-      updateMatchVoiceStatus(matchId, `Logged: ${descriptions}`);
-    } else {
-      updateMatchVoiceStatus(matchId, 'Already logged.');
-    }
-  } catch (error) {
-    console.error('Voice match-event extraction failed:', error);
-    updateMatchVoiceStatus(matchId, `Event check failed: ${error.message || error}`);
-  }
+  // Goals, cards, assists & substitutions are strictly recorded manually from the lineup playlist, not from voice or notes
+  updateMatchVoiceStatus(matchId, `Note saved · ${minuteStamp}`);
 }
 
 function queueMatchVoiceEventExtraction(matchId, minuteStamp, transcript, sessionId, sequence, matchSnapshot, teamContext) {
@@ -9966,16 +9971,16 @@ function renderMatchSquad(side, sideData, teamObj) {
 
     const actButtons = isFinal ? '' : `
       <div class="ms-act-btn-row" onclick="event.stopPropagation();">
-        <button class="ms-act-btn" title="Goal" onclick="openAddEventModal('${side}','goal','${pid || ''}','${esc(pname).replace(/'/g, "\\'")}')">⚽</button>
-        <button class="ms-act-btn" title="Assist" onclick="openAddEventModal('${side}','assist','${pid || ''}','${esc(pname).replace(/'/g, "\\'")}')">👟</button>
-        <button class="ms-act-btn" title="Yellow Card" onclick="openAddEventModal('${side}','yellow','${pid || ''}','${esc(pname).replace(/'/g, "\\'")}')">🟨</button>
-        <button class="ms-act-btn" title="Red Card" onclick="openAddEventModal('${side}','red','${pid || ''}','${esc(pname).replace(/'/g, "\\'")}')">🟥</button>
-        <button class="ms-act-btn" title="Sub" onclick="openAddEventModal('${side}','sub','${pid || ''}','${esc(pname).replace(/'/g, "\\'")}')">🔄</button>
+        <button type="button" class="ms-act-btn" title="Goal" onclick="openAddEventModal('${side}','goal','${pid || ''}','${esc(pname).replace(/'/g, "\\'")}')">⚽</button>
+        <button type="button" class="ms-act-btn" title="Assist" onclick="openAddEventModal('${side}','assist','${pid || ''}','${esc(pname).replace(/'/g, "\\'")}')">👟</button>
+        <button type="button" class="ms-act-btn" title="Yellow Card" onclick="openAddEventModal('${side}','yellow','${pid || ''}','${esc(pname).replace(/'/g, "\\'")}')">🟨</button>
+        <button type="button" class="ms-act-btn" title="Red Card" onclick="openAddEventModal('${side}','red','${pid || ''}','${esc(pname).replace(/'/g, "\\'")}')">🟥</button>
+        <button type="button" class="ms-act-btn" title="Sub" onclick="openAddEventModal('${side}','sub','${pid || ''}','${esc(pname).replace(/'/g, "\\'")}')">🔄</button>
       </div>
     `;
 
     return `
-      <div class="ms-player-item" onclick="openAddEventModal('${side}','goal','${pid || ''}','${esc(pname).replace(/'/g, "\\'")}')">
+      <div class="ms-player-item" style="cursor:default;">
         <div class="ms-player-info">
           <div class="ms-player-num">${esc(jersey)}</div>
           <div class="ms-player-details">
@@ -10095,7 +10100,10 @@ function renderMatchTimeline() {
           <div class="timeline-main-text">${titleText}</div>
           ${noteText}
         </div>
-        <button class="timeline-del-btn" title="Delete event" onclick="deleteMatchEvent('${ev.id}')">🗑️</button>
+        <div class="timeline-actions">
+          <button type="button" class="timeline-edit-btn" title="Edit / Correct event" onclick="openEditEventModal('${ev.id}')">✏️ Edit</button>
+          <button type="button" class="timeline-del-btn" title="Delete event" onclick="deleteMatchEvent('${ev.id}')">🗑️</button>
+        </div>
       </div>
     `;
   }).join('');
@@ -10275,23 +10283,37 @@ async function saveMatchClockAdjust() {
 // ⚡ QUICK EVENT LOGGER
 // ══════════════════════════════════════════════════════════════
 
+let editingEventId = null;
+
 function openAddEventModal(presetTeam, presetType, presetPlayerId, presetPlayerName) {
-  if (!curMatch) return;
+  const match = curMatch || curLiveMatch;
+  if (!match) return;
+  editingEventId = null;
   mevTeam = presetTeam || 'home';
   mevType = presetType || 'goal';
+
+  const titleEl = $('mev-title');
+  const descEl = $('mev-desc');
+  const saveBtn = $('mev-save-btn');
+  const delBtn = $('mev-modal-del-btn');
+
+  if (titleEl) titleEl.textContent = 'LOG MATCH EVENT';
+  if (descEl) descEl.textContent = 'Add a goal, assist, card, or substitution to this match.';
+  if (saveBtn) saveBtn.textContent = 'LOG EVENT';
+  if (delBtn) delBtn.style.display = 'none';
 
   const typeSel = $('mev-type'); if (typeSel) typeSel.value = mevType;
 
   // Auto-prefill minute with live match minute if available
-  const sec = getMatchElapsedSeconds(curMatch);
+  const sec = getMatchElapsedSeconds(match);
   const curMin = sec > 0 ? Math.max(1, Math.floor(sec / 60) + (sec % 60 > 0 ? 1 : 0)) : '';
   const minInp = $('mev-minute'); if (minInp) minInp.value = curMin;
 
   const noteInp = $('mev-note'); if (noteInp) noteInp.value = '';
   const errEl = $('mev-err'); if (errEl) { errEl.textContent = ''; errEl.style.display = 'none'; }
 
-  const homeLbl = $('mev-lbl-home'); if (homeLbl) homeLbl.textContent = curMatch.home?.name || 'Home';
-  const awayLbl = $('mev-lbl-away'); if (awayLbl) awayLbl.textContent = curMatch.away?.name || 'Away';
+  const homeLbl = $('mev-lbl-home'); if (homeLbl) homeLbl.textContent = match.home?.name || 'Home';
+  const awayLbl = $('mev-lbl-away'); if (awayLbl) awayLbl.textContent = match.away?.name || 'Away';
 
   setEventTeam(mevTeam);
   handleEventTypeChange(mevType);
@@ -10308,6 +10330,66 @@ function openAddEventModal(presetTeam, presetType, presetPlayerId, presetPlayerN
   handleEventPlayerSelect(pSel?.value || '');
 
   openM('m-match-event');
+}
+
+function openEditEventModal(eventId) {
+  const match = curMatch || curLiveMatch;
+  if (!match) return;
+  const ev = (match.events || []).find(e => e.id === eventId);
+  if (!ev) {
+    alert('Event not found or was removed.');
+    return;
+  }
+  editingEventId = eventId;
+  mevTeam = ev.team || 'home';
+  mevType = ev.type || 'goal';
+
+  const titleEl = $('mev-title');
+  const descEl = $('mev-desc');
+  const saveBtn = $('mev-save-btn');
+  const delBtn = $('mev-modal-del-btn');
+
+  if (titleEl) titleEl.textContent = 'EDIT MATCH EVENT';
+  if (descEl) descEl.textContent = 'Correct the event type, player, minute, or team. The score and player stats will update automatically.';
+  if (saveBtn) saveBtn.textContent = 'SAVE CORRECTION';
+  if (delBtn) delBtn.style.display = 'inline-flex';
+
+  const typeSel = $('mev-type'); if (typeSel) typeSel.value = mevType;
+  const minInp = $('mev-minute'); if (minInp) minInp.value = ev.minute != null ? ev.minute : '';
+  const noteInp = $('mev-note'); if (noteInp) noteInp.value = ev.note || '';
+  const errEl = $('mev-err'); if (errEl) { errEl.textContent = ''; errEl.style.display = 'none'; }
+
+  const homeLbl = $('mev-lbl-home'); if (homeLbl) homeLbl.textContent = match.home?.name || 'Home';
+  const awayLbl = $('mev-lbl-away'); if (awayLbl) awayLbl.textContent = match.away?.name || 'Away';
+
+  setEventTeam(mevTeam);
+  handleEventTypeChange(mevType);
+
+  const pSel = $('mev-player-select');
+  if (pSel) {
+    if (ev.playerId && Array.from(pSel.options).some(o => o.value === ev.playerId)) {
+      pSel.value = ev.playerId;
+    } else if (ev.playerName) {
+      pSel.value = '__custom__';
+      const customInp = $('mev-player-custom');
+      if (customInp) customInp.value = ev.playerName;
+    }
+    handleEventPlayerSelect(pSel.value);
+  }
+
+  const relSel = $('mev-related-select');
+  if (relSel && ev.relatedPlayerId) {
+    relSel.value = ev.relatedPlayerId;
+  }
+
+  openM('m-match-event');
+}
+
+async function deleteEditingEventFromModal() {
+  if (!editingEventId) return;
+  const idToDelete = editingEventId;
+  closeM('m-match-event');
+  await deleteMatchEvent(idToDelete);
 }
 
 function handleEventTypeChange(type) {
@@ -10420,7 +10502,8 @@ function handleEventPlayerSelect(val) {
 }
 
 async function saveMatchEvent() {
-  if (!curMatch) return;
+  const match = curMatch || curLiveMatch;
+  if (!match) return;
   const pSel = $('mev-player-select');
   const relSel = $('mev-related-select');
   const minInp = $('mev-minute');
@@ -10452,49 +10535,80 @@ async function saveMatchEvent() {
   const relatedPlayerId = relSel?.value || null;
   const note = String(noteInp?.value || '').trim();
 
-  const newEvent = {
-    id: 'ev_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
-    minute: minute,
-    type: mevType,
-    team: mevTeam,
-    playerId: playerId,
-    playerName: playerName,
-    relatedPlayerId: relatedPlayerId || null,
-    note: note || null
-  };
-
-  const updatedEvents = [...(curMatch.events || []), newEvent];
+  let updatedEvents;
+  if (editingEventId) {
+    updatedEvents = (match.events || []).map(ev => {
+      if (ev.id !== editingEventId) return ev;
+      return {
+        ...ev,
+        minute: minute,
+        type: mevType,
+        team: mevTeam,
+        playerId: playerId,
+        playerName: playerName,
+        relatedPlayerId: relatedPlayerId || null,
+        note: note || null,
+        updatedAt: new Date().toISOString()
+      };
+    });
+  } else {
+    const newEvent = {
+      id: 'ev_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
+      minute: minute,
+      type: mevType,
+      team: mevTeam,
+      playerId: playerId,
+      playerName: playerName,
+      relatedPlayerId: relatedPlayerId || null,
+      note: note || null,
+      createdAt: new Date().toISOString()
+    };
+    updatedEvents = [...(match.events || []), newEvent];
+  }
 
   const derivedScore = getMatchScoreFromEvents(updatedEvents);
   const homeScore = derivedScore.home;
   const awayScore = derivedScore.away;
 
-  const isTransitionToLive = (curMatch.status === 'scheduled');
+  const isTransitionToLive = (match.status === 'scheduled');
   const updates = {
     events: updatedEvents,
     'home.score': homeScore,
     'away.score': awayScore,
-    status: isTransitionToLive ? 'live' : curMatch.status,
+    status: isTransitionToLive ? 'live' : match.status,
     updatedAt: new Date().toISOString()
   };
 
-  if (isTransitionToLive && (!curMatch.matchClock || curMatch.matchClock.status !== 'running')) {
+  if (isTransitionToLive && (!match.matchClock || match.matchClock.status !== 'running')) {
     updates.matchClock = {
       status: 'running',
       startedAt: Date.now(),
-      elapsedSeconds: curMatch.matchClock?.elapsedSeconds || 0,
-      period: curMatch.matchClock?.period || '1H'
+      elapsedSeconds: match.matchClock?.elapsedSeconds || 0,
+      period: match.matchClock?.period || '1H'
     };
   }
 
   try {
-    await updateDoc(doc(db, 'matches', curMatch.id), updates);
-    curMatch.events = updatedEvents;
-    curMatch.home.score = homeScore;
-    curMatch.away.score = awayScore;
-    if (isTransitionToLive) curMatch.status = 'live';
-    if (updates.matchClock) curMatch.matchClock = updates.matchClock;
+    await updateDoc(doc(db, 'matches', match.id), updates);
+    match.events = updatedEvents;
+    if (match.home) match.home.score = homeScore;
+    if (match.away) match.away.score = awayScore;
+    if (isTransitionToLive) match.status = 'live';
+    if (updates.matchClock) match.matchClock = updates.matchClock;
 
+    if (curMatch && curMatch.id === match.id) {
+      curMatch.events = updatedEvents;
+      if (curMatch.home) curMatch.home.score = homeScore;
+      if (curMatch.away) curMatch.away.score = awayScore;
+    }
+    if (curLiveMatch && curLiveMatch.id === match.id) {
+      curLiveMatch.events = updatedEvents;
+      if (curLiveMatch.home) curLiveMatch.home.score = homeScore;
+      if (curLiveMatch.away) curLiveMatch.away.score = awayScore;
+      renderLiveTimeline();
+    }
+
+    editingEventId = null;
     closeM('m-match-event');
     renderMatchSheet();
     renderAdminMatches();
@@ -10504,10 +10618,17 @@ async function saveMatchEvent() {
 }
 
 async function deleteMatchEvent(eventId) {
-  if (!curMatch) return;
-  if (!confirm('Delete this event?')) return;
+  const match = curMatch || curLiveMatch;
+  if (!match) return;
 
-  const updatedEvents = (curMatch.events || []).filter(e => e.id !== eventId);
+  const targetEvent = (match.events || []).find(e => e.id === eventId);
+  const typeLabel = targetEvent ? targetEvent.type.toUpperCase().replace('_', ' ') : 'event';
+  const playerLabel = targetEvent?.playerName ? ` for ${targetEvent.playerName}` : '';
+  const minLabel = targetEvent?.minute != null ? ` (${targetEvent.minute}')` : '';
+
+  if (!confirm(`Delete ${typeLabel}${playerLabel}${minLabel}?\n\nThe match score and player statistics will be recalculated automatically.`)) return;
+
+  const updatedEvents = (match.events || []).filter(e => e.id !== eventId);
   const derivedScore = getMatchScoreFromEvents(updatedEvents);
   const homeScore = derivedScore.home;
   const awayScore = derivedScore.away;
@@ -10520,10 +10641,23 @@ async function deleteMatchEvent(eventId) {
   };
 
   try {
-    await updateDoc(doc(db, 'matches', curMatch.id), updates);
-    curMatch.events = updatedEvents;
-    curMatch.home.score = homeScore;
-    curMatch.away.score = awayScore;
+    await updateDoc(doc(db, 'matches', match.id), updates);
+    match.events = updatedEvents;
+    if (match.home) match.home.score = homeScore;
+    if (match.away) match.away.score = awayScore;
+
+    if (curMatch && curMatch.id === match.id) {
+      curMatch.events = updatedEvents;
+      if (curMatch.home) curMatch.home.score = homeScore;
+      if (curMatch.away) curMatch.away.score = awayScore;
+    }
+    if (curLiveMatch && curLiveMatch.id === match.id) {
+      curLiveMatch.events = updatedEvents;
+      if (curLiveMatch.home) curLiveMatch.home.score = homeScore;
+      if (curLiveMatch.away) curLiveMatch.away.score = awayScore;
+      renderLiveTimeline();
+    }
+
     renderMatchSheet();
     renderAdminMatches();
   } catch (e) {
@@ -11446,6 +11580,13 @@ function renderLiveTimeline() {
       subText = (subText ? subText + ' · ' : '') + esc(ev.note);
     }
 
+    const adminActions = (sessionStorage.getItem('fhq_session_active') === '1' || !!curUser) ? `
+      <div style="margin-left:auto;display:flex;gap:6px;align-items:center;flex-shrink:0;">
+        <button type="button" class="obtn" style="padding:4px 9px;font-size:11px;font-weight:700;" title="Edit / Correct event" onclick="openEditEventModal('${ev.id}')">✏️ Edit</button>
+        <button type="button" class="obtn" style="padding:4px 9px;font-size:11px;font-weight:700;color:var(--red);border-color:rgba(220,38,38,0.4);" title="Delete event" onclick="deleteMatchEvent('${ev.id}')">🗑️</button>
+      </div>
+    ` : '';
+
     return `
       <div class="as-event-card ${cardCls}">
         <div class="as-event-min">${esc(minText)}</div>
@@ -11454,6 +11595,7 @@ function renderLiveTimeline() {
           <div class="as-event-title">${titleText}</div>
           ${subText ? `<div class="as-event-meta">${subText}</div>` : ''}
         </div>
+        ${adminActions}
       </div>
     `;
   }).join('');
