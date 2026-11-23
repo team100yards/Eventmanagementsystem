@@ -15,9 +15,9 @@
   <meta name="twitter:card" content="summary_large_image">
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600;700;800&display=swap"
     rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=37.0">
+  <link rel="stylesheet" href="style.css?v=38.0">
   <link rel="stylesheet" href="cms-tokens.css">
-  <link rel="stylesheet" href="cms-nav.css?v=37.0">
+  <link rel="stylesheet" href="cms-nav.css?v=38.0">
   <script>
     (function () {
       try {
@@ -1024,8 +1024,14 @@
             <button class="sb-btn live-btn" id="ms-btn-live" onclick="setMatchStatus('live')">▶️ Start Match</button>
             <button class="sb-btn clock-btn" id="ms-btn-clock-toggle" style="display:none;"
               onclick="toggleMatchClockPause()">⏸️ Pause Clock</button>
+            <button class="sb-btn clock-btn ht-btn" id="ms-btn-halftime" style="display:none;"
+              onclick="setMatchHalfTime()">⏸️ Half Time Stop</button>
+            <button class="sb-btn live-btn" id="ms-btn-second-half" style="display:none;"
+              onclick="startMatchSecondHalf()">▶️ Start 2nd Half</button>
             <button class="sb-btn final-btn" id="ms-btn-final" style="display:none;" onclick="setMatchStatus('final')">✅
               Mark Final</button>
+            <button class="sb-btn" id="ms-btn-reopen" style="display:none;" onclick="setMatchStatus('live')">🔄
+              Reopen Match</button>
           </div>
           <div id="ms-date-tag">📅 MATCH DATE</div>
         </div>
@@ -2751,7 +2757,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-check-compat.js"></script>
-  <script src="cms-auth.js?v=37.0"></script>
+  <script src="cms-auth.js?v=38.0"></script>
   <script>
     window.firebaseAiLogicLoadState = 'loading';
     window.firebaseAiLogicReady = new Promise((resolve, reject) => {
@@ -2766,8 +2772,8 @@
     });
     window.firebaseAiLogicReady.catch(() => { });
   </script>
-  <script src="app.js?v=37.0"></script>
-  <script src="cms-nav.js?v=37.0"></script>
+  <script src="app.js?v=38.0"></script>
+  <script src="cms-nav.js?v=38.0"></script>
   <script type="module">
     import('./firebase-ai-logic.js?v=6').catch(error => {
       window.rejectFirebaseAiLogicModule?.(error instanceof Error ? error : new Error(String(error || 'Firebase AI Logic module import failed.')));

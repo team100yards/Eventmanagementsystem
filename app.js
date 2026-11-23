@@ -8674,13 +8674,13 @@ function formatMatchPeriodLabel(m) {
   if (st === 'scheduled') return 'SCHEDULED';
   if (st === 'final') return 'FULL TIME';
   const p = m.matchClock?.period || '1H';
+  if (p === 'HT') return 'HALF TIME';
+  if (p === 'FT') return 'FULL TIME';
   const isPaused = m.matchClock?.status === 'paused';
   if (isPaused) return `PAUSED (${p})`;
   if (p === '1H') return '1ST HALF';
   if (p === '2H') return '2ND HALF';
-  if (p === 'HT') return 'HALF TIME';
   if (p === 'ET') return 'EXTRA TIME';
-  if (p === 'FT') return 'FULL TIME';
   return p;
 }
 
@@ -8731,6 +8731,7 @@ function updateMatchSheetClockOnly() {
   const isRunning = m.matchClock?.status === 'running';
   const isLive = st === 'live';
   const isFinal = st === 'final';
+  const period = m.matchClock?.period || '1H';
 
   // 1. Digital Timer Pill (The ONLY clock on the match sheet)
   const clockEl = $('ms-timer-clock');
@@ -8744,7 +8745,15 @@ function updateMatchSheetClockOnly() {
 
   const pillEl = $('ms-timer-pill');
   if (pillEl) {
-    pillEl.className = 'sb-timer-pill ' + (isLive ? (isPaused ? 'paused' : (isRunning ? 'live' : '')) : (isFinal ? 'final' : ''));
+    let pillClass = 'sb-timer-pill';
+    if (period === 'HT') {
+      pillClass += ' halftime';
+    } else if (isLive) {
+      pillClass += isPaused ? ' paused' : (isRunning ? ' live' : '');
+    } else if (isFinal) {
+      pillClass += ' final';
+    }
+    pillEl.className = pillClass;
   }
 
   // 2. Score sub-label (STATIC text "MATCH SCORE" to avoid 2 clocks)
@@ -8756,6 +8765,8 @@ function updateMatchSheetClockOnly() {
   // 3. Action Buttons & Controls
   const btnLive = $('ms-btn-live');
   const actionClockToggle = $('ms-btn-clock-toggle');
+  const btnHalfTime = $('ms-btn-halftime');
+  const btnSecondHalf = $('ms-btn-second-half');
   const btnFinal = $('ms-btn-final');
   const btnReopen = $('ms-btn-reopen');
 
@@ -8765,19 +8776,91 @@ function updateMatchSheetClockOnly() {
   if (btnLive) {
     btnLive.style.display = isNotStarted ? 'flex' : 'none';
   }
-  if (actionClockToggle) {
-    actionClockToggle.style.display = (!isNotStarted && !isFinal) ? 'flex' : 'none';
-    if (isPaused) {
-      actionClockToggle.textContent = '▶️ Resume Clock';
-    } else {
-      actionClockToggle.textContent = '⏸️ Pause Clock';
+
+  if (isNotStarted) {
+    if (actionClockToggle) actionClockToggle.style.display = 'none';
+    if (btnHalfTime) btnHalfTime.style.display = 'none';
+    if (btnSecondHalf) btnSecondHalf.style.display = 'none';
+    if (btnFinal) btnFinal.style.display = 'none';
+    if (btnReopen) btnReopen.style.display = 'none';
+    return;
+  }
+
+  if (isFinal) {
+    if (actionClockToggle) actionClockToggle.style.display = 'none';
+    if (btnHalfTime) {
+      btnHalfTime.style.display = 'none';
+      btnHalfTime.classList.remove('ht-alert-pulse');
     }
+    if (btnSecondHalf) btnSecondHalf.style.display = 'none';
+    if (btnFinal) {
+      btnFinal.style.display = 'none';
+      btnFinal.classList.remove('final-alert-pulse');
+    }
+    if (btnReopen) btnReopen.style.display = 'flex';
+    return;
   }
-  if (btnFinal) {
-    btnFinal.style.display = (!isNotStarted && !isFinal) ? 'flex' : 'none';
-  }
-  if (btnReopen) {
-    btnReopen.style.display = isFinal ? 'flex' : 'none';
+
+  // Active / in-progress match (live or paused)
+  if (btnReopen) btnReopen.style.display = 'none';
+
+  if (period === 'HT') {
+    // HALF TIME: clock frozen at HT. Show Start 2nd Half button
+    if (actionClockToggle) actionClockToggle.style.display = 'none';
+    if (btnHalfTime) {
+      btnHalfTime.style.display = 'none';
+      btnHalfTime.classList.remove('ht-alert-pulse');
+    }
+    if (btnSecondHalf) btnSecondHalf.style.display = 'flex';
+    if (btnFinal) {
+      btnFinal.style.display = 'flex';
+      btnFinal.classList.remove('final-alert-pulse');
+      btnFinal.textContent = '✅ Mark Final';
+    }
+  } else if (period === '1H') {
+    // FIRST HALF: Pause/Resume clock available.
+    // When clock reaches 45:00+ (sec >= 2700), Half Time Stop button appears and pulses!
+    if (btnSecondHalf) btnSecondHalf.style.display = 'none';
+    if (actionClockToggle) {
+      actionClockToggle.style.display = 'flex';
+      actionClockToggle.textContent = isPaused ? '▶️ Resume Clock' : '⏸️ Pause Clock';
+    }
+    if (btnHalfTime) {
+      if (sec >= 2700) {
+        btnHalfTime.style.display = 'flex';
+        btnHalfTime.classList.add('ht-alert-pulse');
+        btnHalfTime.textContent = "⏸️ HALF TIME STOP (45'+)";
+      } else {
+        btnHalfTime.style.display = 'none';
+        btnHalfTime.classList.remove('ht-alert-pulse');
+      }
+    }
+    if (btnFinal) {
+      btnFinal.style.display = 'flex';
+      btnFinal.classList.remove('final-alert-pulse');
+      btnFinal.textContent = '✅ Mark Final';
+    }
+  } else {
+    // SECOND HALF (2H) or EXTRA TIME (ET)
+    if (btnHalfTime) {
+      btnHalfTime.style.display = 'none';
+      btnHalfTime.classList.remove('ht-alert-pulse');
+    }
+    if (btnSecondHalf) btnSecondHalf.style.display = 'none';
+    if (actionClockToggle) {
+      actionClockToggle.style.display = 'flex';
+      actionClockToggle.textContent = isPaused ? '▶️ Resume Clock' : '⏸️ Pause Clock';
+    }
+    if (btnFinal) {
+      btnFinal.style.display = 'flex';
+      if (sec >= 5400) {
+        btnFinal.classList.add('final-alert-pulse');
+        btnFinal.textContent = "✅ MARK FINAL (90'+)";
+      } else {
+        btnFinal.classList.remove('final-alert-pulse');
+        btnFinal.textContent = '✅ Mark Final';
+      }
+    }
   }
 }
 
@@ -10185,11 +10268,15 @@ async function toggleMatchClockPause() {
       };
     } else {
       // Currently paused or stopped -> resume it
+      const prevPeriod = curMatch.matchClock?.period || '1H';
+      const isHT = prevPeriod === 'HT';
+      const period = isHT ? '2H' : prevPeriod;
+      const prevElapsed = isHT ? Math.max(2700, curMatch.matchClock?.elapsedSeconds || 2700) : (curMatch.matchClock?.elapsedSeconds || 0);
       clockUpdates = {
         status: 'running',
         startedAt: Date.now(),
-        elapsedSeconds: curMatch.matchClock?.elapsedSeconds || 0,
-        period: curMatch.matchClock?.period || '1H'
+        elapsedSeconds: prevElapsed,
+        period: period
       };
     }
     const updates = {
@@ -10207,6 +10294,64 @@ async function toggleMatchClockPause() {
     alert('❌ Could not update match clock: ' + (e.message || e));
   }
 }
+
+async function setMatchHalfTime() {
+  if (!curMatch) return;
+  try {
+    const curSec = getMatchElapsedSeconds(curMatch);
+    // At halftime, elapsed time should be frozen at current elapsed seconds, at least 2700s (45:00)
+    const htSec = Math.max(2700, Math.floor(curSec));
+    const clockUpdates = {
+      status: 'paused',
+      startedAt: null,
+      elapsedSeconds: htSec,
+      period: 'HT'
+    };
+    const updates = {
+      matchClock: clockUpdates,
+      status: 'live',
+      updatedAt: new Date().toISOString()
+    };
+    await updateDoc(doc(db, 'matches', curMatch.id), updates);
+    curMatch.status = 'live';
+    curMatch.matchClock = clockUpdates;
+    renderMatchSheet();
+    renderAdminMatches();
+    if (curTournament) renderTournamentDashboard();
+  } catch (e) {
+    alert('❌ Could not set half time: ' + (e.message || e));
+  }
+}
+
+async function startMatchSecondHalf() {
+  if (!curMatch) return;
+  try {
+    // 2nd half begins at 45:00 (2700s) or current HT elapsed time
+    const startSec = Math.max(2700, curMatch.matchClock?.elapsedSeconds || 2700);
+    const clockUpdates = {
+      status: 'running',
+      startedAt: Date.now(),
+      elapsedSeconds: startSec,
+      period: '2H'
+    };
+    const updates = {
+      matchClock: clockUpdates,
+      status: 'live',
+      updatedAt: new Date().toISOString()
+    };
+    await updateDoc(doc(db, 'matches', curMatch.id), updates);
+    curMatch.status = 'live';
+    curMatch.matchClock = clockUpdates;
+    renderMatchSheet();
+    renderAdminMatches();
+    if (curTournament) renderTournamentDashboard();
+  } catch (e) {
+    alert('❌ Could not start 2nd half: ' + (e.message || e));
+  }
+}
+
+window.setMatchHalfTime = setMatchHalfTime;
+window.startMatchSecondHalf = startMatchSecondHalf;
 
 function openAdjustMatchClockModal() {
   if (!curMatch) return;
