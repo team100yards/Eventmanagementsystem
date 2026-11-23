@@ -6301,18 +6301,23 @@ function openEditTeam(id) {
 async function saveEditTeam() {
   const name = $('et-name').value.trim(), pass = $('et-pass').value.trim(), err = $('et-err');
   if (!name) { err.textContent = 'Team name is required.'; err.style.display = 'block'; return; }
-  if (!pass || pass.length < 4) { err.textContent = 'Password must be at least 4 characters.'; err.style.display = 'block'; return; }
+  const updates = {
+    name,
+    season: $('et-season').value.trim(),
+    motto: $('et-motto').value.trim(),
+    emoji: $('et-emoji').value
+  };
+  if (pass) {
+    if (pass.length < 4) { err.textContent = 'Password must be at least 4 characters if changed.'; err.style.display = 'block'; return; }
+    updates.password = pass;
+  }
   const btn = $('et-save-btn'); btn.textContent = 'SAVING…'; btn.disabled = true;
   try {
-    await updateDoc(doc(db, 'teams', editTeamId), {
-      name,
-      season: $('et-season').value.trim(),
-      motto: $('et-motto').value.trim(),
-      emoji: $('et-emoji').value,
-      password: pass
-    });
+    await updateDoc(doc(db, 'teams', editTeamId), updates);
+    const inArr = teams.find(t => t.id === editTeamId);
+    if (inArr) Object.assign(inArr, updates);
     closeM('m-edit-team');
-    await loadAdmin();
+    renderAdmin();
   } catch (e) {
     err.textContent = '❌ ' + (e.message || 'Failed. Try again.'); err.style.display = 'block';
   } finally { btn.textContent = 'SAVE'; btn.disabled = false; }
