@@ -1094,7 +1094,7 @@ function navigateAdminDashboard(destination) {
   if (destination === 'live' || destination === 'scheduled') {
     const target = matches.filter(match => (match.status || 'scheduled') === destination);
     if (target.length === 1) {
-      window.open(`?match=${encodeURIComponent(target[0].id)}`, '_blank');
+      openMatchSheet(target[0].id);
       return;
     }
     const statusFilter = $('match-filter-status');
@@ -1372,9 +1372,9 @@ function renderAdminMatches() {
     }
 
     return `
-      <div class="match-card" onclick="window.open('?match=${m.id}', '_blank')" title="Click to open match in a new window">
+      <div class="match-card" onclick="openMatchSheet('${m.id}')" title="Click to view & manage match sheet">
         <div class="match-card-meta">
-          <div class="match-card-tourn">${esc(tournName)} <span style="opacity:.6;font-size:11px;">↗</span></div>
+          <div class="match-card-tourn">${esc(tournName)}</div>
           <div class="match-card-date">📅 ${esc(dateStr)}</div>
           <div>${statusBadgeHtml}</div>
         </div>
@@ -1397,6 +1397,7 @@ function renderAdminMatches() {
         </div>
 
         <div class="match-card-acts">
+          <button type="button" class="match-share-btn" title="Open in new window / tab" onclick="event.stopPropagation();window.open('?match=${m.id}','_blank')">↗ New Tab</button>
           <button type="button" class="match-share-btn" title="Share Live Match on Facebook / Fans" onclick="event.stopPropagation();openShareMatchModal('${m.id}')">🔗 Share</button>
           <button type="button" class="match-del-btn" title="Delete match (Requires PIN)" onclick="event.stopPropagation();adminRequestPin('delmatch','${m.id}')">🗑️</button>
         </div>
@@ -7178,9 +7179,9 @@ function renderTournamentDashboard() {
         }
 
         return `
-          <div class="match-card" onclick="window.open('?match=${m.id}', '_blank')" title="Click to open match in a new window">
+          <div class="match-card" onclick="openMatchSheet('${m.id}','s-tournament')" title="Click to view & manage match sheet">
             <div class="match-card-meta">
-              <div class="match-card-tourn">🏆 ${esc(t.name)} <span style="opacity:.6;font-size:11px;">↗</span></div>
+              <div class="match-card-tourn">🏆 ${esc(t.name)}</div>
               <div class="match-card-date">📅 ${esc(dateStr)}</div>
               <div>${statusBadgeHtml}</div>
             </div>
@@ -7203,6 +7204,7 @@ function renderTournamentDashboard() {
             </div>
 
             <div class="match-card-acts">
+              <button type="button" class="match-share-btn" title="Open in new window / tab" onclick="event.stopPropagation();window.open('?match=${m.id}','_blank')">↗ New Tab</button>
               <button type="button" class="match-share-btn" title="Share Live Match on Facebook / Fans" onclick="event.stopPropagation();openShareMatchModal('${m.id}')">🔗 Share</button>
               <button type="button" class="match-del-btn" title="Delete match (Requires PIN)" onclick="event.stopPropagation();adminRequestPin('delmatch','${m.id}')">🗑️</button>
             </div>
@@ -8467,9 +8469,14 @@ function openCurrentMatchInNewWindow() {
 }
 
 async function openMatchSheet(matchId, returnScreen) {
+  if (!matchId) return;
   isStandaloneMatchMode = false;
   matchReturnScreen = returnScreen || (curTournament ? 's-tournament' : 's-admin');
-  curMatch = matches.find(m => m.id === matchId) || curMatch;
+  
+  const found = matches.find(m => m.id === matchId);
+  if (found) {
+    curMatch = found;
+  }
 
   ss('s-match-sheet');
   const backBtn = $('ms-back-btn');
@@ -8483,9 +8490,27 @@ async function openMatchSheet(matchId, returnScreen) {
   if (logoutBtn) logoutBtn.style.display = 'inline-flex';
 
   startGlobalMatchClockTicker();
-  if (curMatch && curMatch.id === matchId) renderMatchSheet();
+
+  if (curMatch && curMatch.id === matchId) {
+    renderMatchSheet();
+  } else {
+    try {
+      const snap = await getDoc(doc(db, 'matches', matchId));
+      const exists = (typeof snap.exists === 'function') ? snap.exists() : snap.exists;
+      if (exists) {
+        const data = (typeof snap.data === 'function') ? snap.data() : (snap.data || {});
+        curMatch = { id: snap.id, ...data };
+        setMatchesArray([curMatch, ...matches]);
+        renderMatchSheet();
+      }
+    } catch (fetchErr) {
+      console.warn('Could not fetch match:', fetchErr);
+    }
+  }
+
   subscribeMatch(matchId);
 }
+window.openMatchSheet = openMatchSheet;
 
 function subscribeMatch(matchId) {
   if (matchUnsub) { matchUnsub(); matchUnsub = null; }
@@ -11406,7 +11431,9 @@ if (up.get('createMatch') || up.get('newMatch')) {
 } else if (up.get('live') || up.get('score') || up.get('liveMatch')) {
   initLiveMatchView(up.get('live') || up.get('score') || up.get('liveMatch'));
 } else if (up.get('match')) {
-  if (sessionStorage.getItem('fhq_session_active') === '1') {
+  const isAuth = (sessionStorage.getItem('fhq_session_active') === '1' || localStorage.getItem('fhq_session_active') === '1' || !!localStorage.getItem('cms_auth_cached_user'));
+  if (isAuth) {
+    sessionStorage.setItem('fhq_session_active', '1');
     initMatchView(up.get('match'));
   } else {
     initLiveMatchView(up.get('match'));

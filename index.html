@@ -13,9 +13,9 @@
 <meta property="og:type" content="website">
 <meta name="twitter:card" content="summary_large_image">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=32.0">
+<link rel="stylesheet" href="style.css?v=33.0">
 <link rel="stylesheet" href="cms-tokens.css">
-<link rel="stylesheet" href="cms-nav.css?v=32.0">
+<link rel="stylesheet" href="cms-nav.css?v=33.0">
 <script>
 (function(){
   try {
@@ -26,7 +26,11 @@
       window.__initScreen = (p.get('type') === 'staff') ? 's-public-staff' : 's-public';
     } else {
       var isAuth = (sessionStorage.getItem('fhq_session_active') === '1' || localStorage.getItem('fhq_session_active') === '1' || !!localStorage.getItem('cms_auth_cached_user'));
-      window.__initScreen = (isAuth && !p.get('view') && !p.get('match') && !p.get('live') && !p.get('createMatch')) ? 's-admin' : 's-login';
+      if (isAuth && p.get('match')) {
+        window.__initScreen = 's-match-sheet';
+      } else {
+        window.__initScreen = (isAuth && !p.get('view') && !p.get('match') && !p.get('live') && !p.get('createMatch')) ? 's-admin' : 's-login';
+      }
     }
   } catch(e){
     window.__initScreen = 's-login';
@@ -2686,7 +2690,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-check-compat.js"></script>
-<script src="cms-auth.js?v=32.0"></script>
+<script src="cms-auth.js?v=33.0"></script>
 <script>
   window.firebaseAiLogicLoadState='loading';
   window.firebaseAiLogicReady=new Promise((resolve,reject)=>{
@@ -2701,8 +2705,8 @@
   });
   window.firebaseAiLogicReady.catch(()=>{});
 </script>
-<script src="app.js?v=32.0"></script>
-<script src="cms-nav.js?v=32.0"></script>
+<script src="app.js?v=33.0"></script>
+<script src="cms-nav.js?v=33.0"></script>
 <script type="module">
   import('./firebase-ai-logic.js?v=6').catch(error=>{
     window.rejectFirebaseAiLogicModule?.(error instanceof Error ? error : new Error(String(error || 'Firebase AI Logic module import failed.')));
