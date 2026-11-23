@@ -1564,18 +1564,6 @@ function renderAdminPlayers() {
   sortGroup(midList);
   sortGroup(fwdList);
 
-  // Team logo header banner (with just logo and name, no extra clutter)
-  const teamLogoHtml = selectedTeam.logo
-    ? `<img src="${esc(selectedTeam.logo)}" alt="" style="width:36px;height:36px;border-radius:50%;object-fit:cover;border:1.5px solid var(--bd);">`
-    : `<span style="font-size:26px;">${selectedTeam.emoji || '⚽'}</span>`;
-
-  html += `
-    <div style="display:flex;align-items:center;gap:12px;margin:10px 0 14px;">
-      <div style="flex-shrink:0;">${teamLogoHtml}</div>
-      <div style="font-size:18px;font-weight:800;color:var(--tx);">${esc(selectedTeam.name)}</div>
-    </div>
-  `;
-
   const renderRows = list => list.map(p => {
     const jersey = p.jersey || p.playernum || '—';
     const pos = posCode(p.position) || p.position || '—';
@@ -1584,13 +1572,8 @@ function renderAdminPlayers() {
     return `
       <tr>
         <td style="text-align:center;font-weight:800;font-family:'Bebas Neue',sans-serif;font-size:18px;color:#1a5c1a;">#${esc(jersey)}</td>
-        <td>
-          <div style="display:flex;align-items:center;gap:10px;">
-            <div style="width:30px;height:30px;border-radius:50%;overflow:hidden;background:#eef5ee;border:1.5px solid #1a5c1a;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;">
-              ${p.photo ? `<img src="${esc(p.photo)}" alt="" style="width:100%;height:100%;object-fit:cover;">` : '👤'}
-            </div>
-            <strong style="font-size:13.5px;color:var(--tx);">${esc(p.name || 'Unnamed')}</strong>
-          </div>
+        <td style="font-weight:600;font-size:13.5px;color:var(--tx);">
+          ${esc(p.name || 'Unnamed')}
         </td>
         <td>
           ${dispName ? `<span class="admin-player-disp-pill">${esc(dispName)}</span>` : '<span style="color:var(--mt);font-style:italic;">—</span>'}
@@ -1603,7 +1586,7 @@ function renderAdminPlayers() {
   }).join('');
 
   html += `
-    <div style="background:var(--card,#fff);border:1px solid var(--bd);border-radius:12px;overflow:hidden;margin-bottom:24px;">
+    <div style="background:var(--card,#fff);border:1px solid var(--bd);border-radius:12px;overflow:hidden;margin-top:12px;margin-bottom:24px;">
       <table class="admin-player-table" style="margin:0;">
         <thead>
           <tr>
@@ -1615,19 +1598,19 @@ function renderAdminPlayers() {
         </thead>
         <tbody>
           ${gkList.length ? `
-            <tr style="background:rgba(0,0,0,0.025);"><td colspan="4" style="padding:7px 14px;font-size:11px;font-weight:800;letter-spacing:0.8px;text-transform:uppercase;color:var(--mt);">🧤 Goalkeepers (${gkList.length})</td></tr>
+            <tr style="background:rgba(0,0,0,0.02);"><td colspan="4" style="padding:8px 14px;font-size:11px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:var(--mt);border-bottom:1px solid var(--bd);">Goalkeepers · ${gkList.length}</td></tr>
             ${renderRows(gkList)}
           ` : ''}
           ${defList.length ? `
-            <tr style="background:rgba(0,0,0,0.025);"><td colspan="4" style="padding:7px 14px;font-size:11px;font-weight:800;letter-spacing:0.8px;text-transform:uppercase;color:var(--mt);">🛡️ Defenders (${defList.length})</td></tr>
+            <tr style="background:rgba(0,0,0,0.02);"><td colspan="4" style="padding:8px 14px;font-size:11px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:var(--mt);border-bottom:1px solid var(--bd);">Defenders · ${defList.length}</td></tr>
             ${renderRows(defList)}
           ` : ''}
           ${midList.length ? `
-            <tr style="background:rgba(0,0,0,0.025);"><td colspan="4" style="padding:7px 14px;font-size:11px;font-weight:800;letter-spacing:0.8px;text-transform:uppercase;color:var(--mt);">⚙️ Midfielders (${midList.length})</td></tr>
+            <tr style="background:rgba(0,0,0,0.02);"><td colspan="4" style="padding:8px 14px;font-size:11px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:var(--mt);border-bottom:1px solid var(--bd);">Midfielders · ${midList.length}</td></tr>
             ${renderRows(midList)}
           ` : ''}
           ${fwdList.length ? `
-            <tr style="background:rgba(0,0,0,0.025);"><td colspan="4" style="padding:7px 14px;font-size:11px;font-weight:800;letter-spacing:0.8px;text-transform:uppercase;color:var(--mt);">⚡ Strikers / Forwards (${fwdList.length})</td></tr>
+            <tr style="background:rgba(0,0,0,0.02);"><td colspan="4" style="padding:8px 14px;font-size:11px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:var(--mt);border-bottom:1px solid var(--bd);">Forwards · ${fwdList.length}</td></tr>
             ${renderRows(fwdList)}
           ` : ''}
         </tbody>
@@ -9928,9 +9911,67 @@ function buildMatchReportPrompt(match, coachNotes, hasStatsImage = false) {
     ? `${match.status === 'final' ? 'Full-time logged events:' : 'Logged events so far:'}\n${events.map(event => getMatchReportEventLine(event, match)).join('\n')}`
     : 'No match events have been logged.';
   const statsImageInstruction = hasStatsImage
-    ? `\n\nATTACHED MATCH STATISTICS / SCOREBOARD IMAGE:\nAn image containing match statistics (such as a scoreboard, official statistics sheet, possession percentages, shots, shots on target, saves, fouls, corners, or visual charts) is attached to this request. Carefully examine the attached image for any statistics, team metrics, or visual data. Integrate these concrete figures (e.g., possession %, shot count, shots on target, saves, fouls, corners) into your report's summary, analysis, and key metrics sections wherever relevant.`
+    ? `\n\nATTACHED MATCH STATISTICS / SCOREBOARD IMAGE:\nAn image containing match statistics (possession %, shots, shots on target, saves, fouls, corners, passing accuracy, or visual charts) is attached. Carefully examine and extract every single visible number, percentage, and metric from the attached image. Synthesize these concrete statistics into the statistical and tactical analysis sections of your report.`
     : '';
-  return `Write a concise, polished football match report using only the facts below${hasStatsImage ? ' and any visible statistics from the attached image' : ''}. Do not invent unverified facts, but DO extract and accurately report all concrete statistics present in the attached statistics image. Use a headline, score/status, short summary, key moments, match statistics analysis, and closing assessment. The app will attach the complete timestamped event log after your report, so summarize key events without repeating the entire log. For a live match, clearly say the score is current; for a final match, write in the past tense.\n\nResolve shirt numbers in coach notes (such as “No. 3”) using the jersey reference index and team context. If a number is ambiguous between teams, do not guess.\n\nMatch: ${home.name || 'Home'} vs ${away.name || 'Away'}\nDate/time: ${formatMatchDateDisplay(match)}\nCompetition: ${tournament?.name || 'Standalone match'}\nStatus: ${status}\nScore: ${home.name || 'Home'} ${homeScore} - ${awayScore} ${away.name || 'Away'}\n${matchMinute}\n\nLineups:\n${lineupText}\n\nJersey reference index:\n${jerseyReferenceIndex}\n\n${eventText}\n\nCoach notes:\n${String(coachNotes || '').trim() || 'None provided.'}${statsImageInstruction}`;
+  return `You are an elite, senior football journalist and tactical analyst for a premier sports publication (such as The Athletic or BBC Sport).
+
+Write an EXHAUSTIVE, DEEP, PUBLICATION-READY MATCH REPORT based strictly on the factual match data below${hasStatsImage ? ' and all extracted metrics from the attached statistics image' : ''}.
+
+DO NOT write a brief summary. Write a full-length, thorough, multi-section journalistic match report with deep tactical insights, chronological drama, player spotlights, and statistical breakdowns. For a live match, clearly state the current score and clock; for a completed match, write in past tense.
+
+Format your report in clean Markdown using the following comprehensive structure:
+
+# [Compelling, Publication-Quality Match Headline Capturing the Score & Core Drama]
+**Competition:** ${tournament?.name || 'Standalone Match'} · **Status:** ${status} (${home.name || 'Home'} ${homeScore} - ${awayScore} ${away.name || 'Away'}) · **Date:** ${formatMatchDateDisplay(match)}
+
+## Executive Match Overview
+Write a detailed 2-3 paragraph scene-setter establishing the stakes of the match, the final scoreline, the overarching tempo, the managerial battle, and the defining narrative of the contest.
+
+## Tactical Setups & Formations
+Detail the starting shapes and strategic approaches for both sides:
+- **${home.name || 'Home'}:** Formation ${homeLineup.formation || 'Standard'}. Analyze their shape, pressing structure, and build-up tendencies.
+- **${away.name || 'Away'}:** Formation ${awayLineup.formation || 'Standard'}. Analyze their defensive block, transition speed, and wing dynamics.
+
+## First Half Narrative & Key Moments
+Provide an immersive, chronological story of the opening 45 minutes. Detail every goal, crucial card, near-miss, and turning point with exact minute stamps and involved players. Explain how the opening goal was created and the immediate tactical reaction.
+
+## Second Half & Tactical Adjustments
+Detail the resumption of play after half-time, tactical tweaks made by both managers, changes in momentum, and the decisive moments that settled the result down the final stretch into stoppage time.
+
+## Critical Turning Points & Disciplinary Record
+Analyze key moments that swung the contest: penalties, yellow/red cards, critical defensive stops, or game-changing decisions. Break down the disciplinary record of the match.
+
+## Impact of Substitutions
+Evaluate the substitutions made by both managers: who came on, for whom, at what minute, and how their presence altered the tempo, shape, or scoreline.
+
+## Standout Performers & Player of the Match
+Highlight the best players on the pitch: name a Player of the Match, decisive goalscorers or creators, midfield engines, and standout defenders, referencing specific plays.
+
+## Tactical Summary & Statistical Synthesis
+${hasStatsImage ? 'Extract and present ALL visible metrics from the attached image (possession, total shots, shots on target, fouls, corners, saves). ' : ''}Synthesize the numbers into a definitive verdict on why the match ended ${homeScore} - ${awayScore}.
+
+## Manager & Coach Field Notes
+Incorporate field observations and coaching notes: "${String(coachNotes || '').trim() || 'No specific coach notes recorded.'}". Relate these observations directly to what unfolded on the pitch.
+
+---
+MATCH FACTS & DATA:
+Match: ${home.name || 'Home'} vs ${away.name || 'Away'}
+Date: ${formatMatchDateDisplay(match)}
+Competition: ${tournament?.name || 'Standalone Match'}
+Score: ${home.name || 'Home'} ${homeScore} - ${awayScore} ${away.name || 'Away'}
+${matchMinute}
+
+Lineups:
+${lineupText}
+
+Jersey Reference Directory:
+${jerseyReferenceIndex}
+
+Official Timeline of Events:
+${eventText}
+
+Coach / Scout Field Notes:
+${String(coachNotes || '').trim() || 'None provided.'}${statsImageInstruction}`;
 }
 
 function scrollToMatchReport() {
@@ -10026,7 +10067,7 @@ async function generateMatchReport() {
     }
     if (status) status.textContent = hasStatsImage ? 'Analyzing stats image and generating report…' : 'Generating report…';
     const summary = await callGeminiGenerateContentStream([{ parts }], {
-      maxOutputTokens: 2000
+      maxOutputTokens: 5000
     }, partialText => {
       if (curMatch?.id !== matchId) return;
       const outputWrap = $('ms-report-output-wrap');
