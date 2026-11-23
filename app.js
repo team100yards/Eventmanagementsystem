@@ -9477,7 +9477,8 @@ function renderMatchScoreboardEvents() {
   ['home', 'away'].forEach(side => {
     const feed = $(`ms-${side}-events`);
     if (!feed) return;
-    const sideEvents = events.filter(event => event.team === side);
+    // Show only goals and cards in top scoreboard hero; assists and substitutions (changes) are excluded
+    const sideEvents = events.filter(event => event.team === side && (event.type === 'goal' || event.type === 'own_goal' || event.type === 'yellow' || event.type === 'red'));
     if (!sideEvents.length) {
       feed.innerHTML = '<span class="sb-event-empty">No events yet</span>';
       return;
@@ -9485,16 +9486,17 @@ function renderMatchScoreboardEvents() {
     feed.innerHTML = sideEvents.map(event => {
       const minute = event.minute != null ? `${event.minute}'` : '—';
       const player = event.playerName || 'Player not named';
-      let icon = '⚽', label = `Goal · ${player}`;
+      const pObj = findMatchPlayer(event.playerId) || { name: player };
+      const pNum = (pObj.jersey != null && pObj.jersey !== '') ? `#${pObj.jersey} ` : (pObj.number != null && pObj.number !== '' ? `#${pObj.number} ` : '');
+      let icon = '⚽', label = `Goal · ${pNum}${player}`;
       if (event.type === 'own_goal') {
         const beneficiary = side === 'home' ? (curMatch.away?.name || 'Away') : (curMatch.home?.name || 'Home');
-        icon = '🔁'; label = `Own goal · ${player} · goal for ${beneficiary}`;
-      } else if (event.type === 'yellow') { icon = '🟨'; label = `Yellow card · ${player}`; }
-      else if (event.type === 'red') { icon = '🟥'; label = `Red card · ${player}`; }
-      else if (event.type === 'sub') {
-        const off = findMatchPlayer(event.relatedPlayerId);
-        icon = '🔄'; label = `Sub · ${player} on${off ? ` for ${off.name}` : ''}`;
-      } else if (event.type === 'assist') { icon = '👟'; label = `Assist · ${player}`; }
+        icon = '🔁'; label = `Own goal · ${pNum}${player} · goal for ${beneficiary}`;
+      } else if (event.type === 'yellow') {
+        icon = '🟨'; label = `Yellow card · ${pNum}${player}`;
+      } else if (event.type === 'red') {
+        icon = '🟥'; label = `Red card · ${pNum}${player}`;
+      }
       return `<div class="sb-event-item" title="${esc(label)}"><span class="sb-event-ico">${icon}</span><span class="sb-event-min">${esc(minute)}</span><span>${esc(label)}</span></div>`;
     }).join('');
   });
