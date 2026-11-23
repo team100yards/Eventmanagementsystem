@@ -4507,12 +4507,89 @@ textarea {
 }
 
 .scoreboard-main {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(160px, 1fr) auto minmax(160px, 1fr);
   align-items: center;
-  justify-content: space-between;
   gap: 20px;
   position: relative;
   z-index: 2;
+  width: 100%;
+}
+
+.sb-events-col {
+  min-width: 0;
+  display: flex;
+}
+
+.sb-events-col.home {
+  justify-content: flex-end;
+}
+
+.sb-events-col.away {
+  justify-content: flex-start;
+}
+
+.sb-events-col.home .sb-team-events {
+  align-items: flex-end;
+}
+
+.sb-events-col.away .sb-team-events {
+  align-items: flex-start;
+}
+
+.sb-center-matchup {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 22px;
+  flex-shrink: 0;
+}
+
+.sb-team-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  width: 140px;
+  flex-shrink: 0;
+}
+
+.sb-team-block .sb-badge {
+  width: 68px;
+  height: 68px;
+  border-radius: 50%;
+  background: #fff;
+  border: 3px solid rgba(255, 255, 255, .7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 30px;
+  overflow: hidden;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, .25);
+  margin-bottom: 8px;
+  transition: transform .15s;
+}
+
+.sb-team-block .sb-badge img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.sb-team-block .sb-team-name {
+  font-family: 'Bebas Neue', 'DM Sans', sans-serif;
+  font-size: 24px;
+  letter-spacing: 1.5px;
+  line-height: 1.15;
+  color: #fff;
+  text-align: center;
+  max-width: 140px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  word-break: break-word;
 }
 
 .sb-team {
@@ -5439,9 +5516,45 @@ textarea {
 
   .scoreboard-main {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
-    gap: 6px;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
     align-items: start;
+  }
+
+  .sb-center-matchup {
+    grid-column: 1 / -1;
+    order: 1;
+    gap: 10px;
+    width: 100%;
+    justify-content: space-around;
+  }
+
+  .sb-team-block {
+    width: 100px;
+  }
+
+  .sb-team-block .sb-badge {
+    width: 48px;
+    height: 48px;
+    font-size: 22px;
+    margin-bottom: 5px;
+  }
+
+  .sb-team-block .sb-team-name {
+    font-size: 16px;
+    max-width: 100px;
+  }
+
+  .sb-events-col.home {
+    grid-column: 1;
+    order: 2;
+    justify-content: flex-start;
+  }
+
+  .sb-events-col.away {
+    grid-column: 2;
+    order: 3;
+    justify-content: flex-start;
   }
 
   .sb-team {
@@ -5461,15 +5574,15 @@ textarea {
   }
 
   .sb-score-box {
-    font-size: 36px;
-    min-width: 76px;
-    padding: 5px 8px;
+    font-size: 38px;
+    min-width: 80px;
+    padding: 5px 12px;
     letter-spacing: 2px;
   }
 
   .sb-timer-pill {
     gap: 5px;
-    padding: 4px 7px;
+    padding: 4px 8px;
   }
 
   .sb-timer-clock {
@@ -5483,7 +5596,8 @@ textarea {
 
   .sb-team-events {
     max-height: 132px;
-    margin-top: 7px;
+    margin-top: 4px;
+    width: 100%;
   }
 
   .sb-event-item {

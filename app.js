@@ -1539,19 +1539,6 @@ function renderAdminPlayers() {
 
   const teamPlayers = allPlayersCache.filter(p => p.teamId === selectedTeam.id && matchesQuery(p));
 
-  // Team header bar with Open Team button
-  html += `
-    <div style="display:flex;align-items:center;justify-content:space-between;margin:6px 0 14px;flex-wrap:wrap;gap:10px;">
-      <div style="display:flex;align-items:center;gap:10px;">
-        <h3 style="margin:0;font-size:17px;font-weight:800;color:var(--tx);">${esc(selectedTeam.name)} — Squad Playing List</h3>
-        <span style="background:#1a5c1a;color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:6px;">${teamPlayers.length} Players</span>
-      </div>
-      <div>
-        <button type="button" class="obtn" style="font-size:12px;padding:6px 14px;background:#1a5c1a;color:#fff;border-radius:6px;font-weight:700;" onclick="promptPw('${selectedTeam.id}')">Open Team Dashboard →</button>
-      </div>
-    </div>
-  `;
-
   if (!teamPlayers.length) {
     html += '<div class="admin-player-empty" style="background:var(--card,#fff);border:1px solid var(--bd);border-radius:12px;padding:30px;text-align:center;">No players registered in this team yet. Open the Team Dashboard to upload or add players.</div>';
     el.innerHTML = html;
@@ -1577,61 +1564,76 @@ function renderAdminPlayers() {
   sortGroup(midList);
   sortGroup(fwdList);
 
-  const renderTableSection = (title, icon, list) => {
-    if (!list.length) return '';
-    return `
-      <div class="admin-player-pos-section">
-        <div class="admin-player-pos-header">
-          <div class="admin-player-pos-title">${icon} ${title}</div>
-          <span class="admin-player-pos-count">${list.length} Player${list.length === 1 ? '' : 's'}</span>
-        </div>
-        <div style="overflow-x:auto;">
-          <table class="admin-player-table">
-            <thead>
-              <tr>
-                <th style="width:60px;text-align:center;">#</th>
-                <th>PLAYER NAME</th>
-                <th>DISPLAY NAME</th>
-                <th style="text-align:center;width:110px;">POSITION</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${list.map(p => {
-                const jersey = p.jersey || p.playernum || '—';
-                const pos = posCode(p.position) || p.position || '—';
-                const posCat = getPlayerPosCategory(pos);
-                const dispName = getPlayerDisplayName(p);
-                return `
-                  <tr>
-                    <td style="text-align:center;font-weight:800;font-family:'Bebas Neue',sans-serif;font-size:18px;color:#1a5c1a;">#${esc(jersey)}</td>
-                    <td>
-                      <div style="display:flex;align-items:center;gap:10px;">
-                        <div style="width:32px;height:32px;border-radius:50%;overflow:hidden;background:#eef5ee;border:1.5px solid #1a5c1a;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;">
-                          ${p.photo ? `<img src="${esc(p.photo)}" alt="" style="width:100%;height:100%;object-fit:cover;">` : '👤'}
-                        </div>
-                        <strong style="font-size:13.5px;color:var(--tx);">${esc(p.name || 'Unnamed')}</strong>
-                      </div>
-                    </td>
-                    <td>
-                      ${dispName ? `<span class="admin-player-disp-pill">${esc(dispName)}</span>` : '<span style="color:var(--mt);font-style:italic;">—</span>'}
-                    </td>
-                    <td style="text-align:center;">
-                      <span class="admin-pos-badge admin-pos-${posCat}">${esc(pos)}</span>
-                    </td>
-                  </tr>
-                `;
-              }).join('')}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    `;
-  };
+  // Team logo header banner (with just logo and name, no extra clutter)
+  const teamLogoHtml = selectedTeam.logo
+    ? `<img src="${esc(selectedTeam.logo)}" alt="" style="width:36px;height:36px;border-radius:50%;object-fit:cover;border:1.5px solid var(--bd);">`
+    : `<span style="font-size:26px;">${selectedTeam.emoji || '⚽'}</span>`;
 
-  html += renderTableSection('Goalkeepers', '🧤', gkList);
-  html += renderTableSection('Defenders', '🛡️', defList);
-  html += renderTableSection('Midfielders', '⚙️', midList);
-  html += renderTableSection('Strikers / Forwards', '⚡', fwdList);
+  html += `
+    <div style="display:flex;align-items:center;gap:12px;margin:10px 0 14px;">
+      <div style="flex-shrink:0;">${teamLogoHtml}</div>
+      <div style="font-size:18px;font-weight:800;color:var(--tx);">${esc(selectedTeam.name)}</div>
+    </div>
+  `;
+
+  const renderRows = list => list.map(p => {
+    const jersey = p.jersey || p.playernum || '—';
+    const pos = posCode(p.position) || p.position || '—';
+    const posCat = getPlayerPosCategory(pos);
+    const dispName = getPlayerDisplayName(p);
+    return `
+      <tr>
+        <td style="text-align:center;font-weight:800;font-family:'Bebas Neue',sans-serif;font-size:18px;color:#1a5c1a;">#${esc(jersey)}</td>
+        <td>
+          <div style="display:flex;align-items:center;gap:10px;">
+            <div style="width:30px;height:30px;border-radius:50%;overflow:hidden;background:#eef5ee;border:1.5px solid #1a5c1a;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;">
+              ${p.photo ? `<img src="${esc(p.photo)}" alt="" style="width:100%;height:100%;object-fit:cover;">` : '👤'}
+            </div>
+            <strong style="font-size:13.5px;color:var(--tx);">${esc(p.name || 'Unnamed')}</strong>
+          </div>
+        </td>
+        <td>
+          ${dispName ? `<span class="admin-player-disp-pill">${esc(dispName)}</span>` : '<span style="color:var(--mt);font-style:italic;">—</span>'}
+        </td>
+        <td style="text-align:center;">
+          <span class="admin-pos-badge admin-pos-${posCat}">${esc(pos)}</span>
+        </td>
+      </tr>
+    `;
+  }).join('');
+
+  html += `
+    <div style="background:var(--card,#fff);border:1px solid var(--bd);border-radius:12px;overflow:hidden;margin-bottom:24px;">
+      <table class="admin-player-table" style="margin:0;">
+        <thead>
+          <tr>
+            <th style="width:60px;text-align:center;">#</th>
+            <th>PLAYER NAME</th>
+            <th>DISPLAY NAME</th>
+            <th style="text-align:center;width:110px;">POSITION</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${gkList.length ? `
+            <tr style="background:rgba(0,0,0,0.025);"><td colspan="4" style="padding:7px 14px;font-size:11px;font-weight:800;letter-spacing:0.8px;text-transform:uppercase;color:var(--mt);">🧤 Goalkeepers (${gkList.length})</td></tr>
+            ${renderRows(gkList)}
+          ` : ''}
+          ${defList.length ? `
+            <tr style="background:rgba(0,0,0,0.025);"><td colspan="4" style="padding:7px 14px;font-size:11px;font-weight:800;letter-spacing:0.8px;text-transform:uppercase;color:var(--mt);">🛡️ Defenders (${defList.length})</td></tr>
+            ${renderRows(defList)}
+          ` : ''}
+          ${midList.length ? `
+            <tr style="background:rgba(0,0,0,0.025);"><td colspan="4" style="padding:7px 14px;font-size:11px;font-weight:800;letter-spacing:0.8px;text-transform:uppercase;color:var(--mt);">⚙️ Midfielders (${midList.length})</td></tr>
+            ${renderRows(midList)}
+          ` : ''}
+          ${fwdList.length ? `
+            <tr style="background:rgba(0,0,0,0.025);"><td colspan="4" style="padding:7px 14px;font-size:11px;font-weight:800;letter-spacing:0.8px;text-transform:uppercase;color:var(--mt);">⚡ Strikers / Forwards (${fwdList.length})</td></tr>
+            ${renderRows(fwdList)}
+          ` : ''}
+        </tbody>
+      </table>
+    </div>
+  `;
 
   el.innerHTML = html;
 }
@@ -9129,13 +9131,7 @@ function updateMatchSheetClockOnly() {
     pillEl.className = pillClass;
   }
 
-  // 2. Score sub-label (STATIC text "MATCH SCORE" to avoid 2 clocks)
-  const subPill = $('ms-clock-pill');
-  if (subPill) {
-    subPill.textContent = 'MATCH SCORE';
-  }
-
-  // 3. Action Buttons & Controls
+  // 2. Action Buttons & Controls
   const btnLive = $('ms-btn-live');
   const actionClockToggle = $('ms-btn-clock-toggle');
   const btnHalfTime = $('ms-btn-halftime');

@@ -15,9 +15,9 @@
   <meta name="twitter:card" content="summary_large_image">
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600;700;800&display=swap"
     rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=44.0">
+  <link rel="stylesheet" href="style.css?v=45.0">
   <link rel="stylesheet" href="cms-tokens.css">
-  <link rel="stylesheet" href="cms-nav.css?v=44.0">
+  <link rel="stylesheet" href="cms-nav.css?v=45.0">
   <script>
     (function () {
       try {
@@ -1037,35 +1037,39 @@
           <div id="ms-date-tag">📅 MATCH DATE</div>
         </div>
         <div class="scoreboard-main">
-          <!-- HOME TEAM -->
-          <div class="sb-team home">
-            <div class="sb-team-copy">
+          <!-- HOME EVENTS (Left Wing) -->
+          <div class="sb-events-col home">
+            <div class="sb-team-events" id="ms-home-events" aria-label="Home team events"></div>
+          </div>
+
+          <!-- CENTER MATCHUP: HOME LOGO & NAME <--> SCORE & CLOCK <--> AWAY LOGO & NAME -->
+          <div class="sb-center-matchup">
+            <!-- HOME TEAM IDENTITY (Logo locked to left of score, name under logo in 2 lines) -->
+            <div class="sb-team-block home">
+              <div class="sb-badge" id="ms-home-badge">⚽</div>
               <div class="sb-team-name" id="ms-home-name">HOME TEAM</div>
-              <div class="sb-team-events" id="ms-home-events" aria-label="Home team events"></div>
             </div>
-            <div class="sb-badge" id="ms-home-badge">⚽</div>
-          </div>
 
-          <!-- SCORE BOX -->
-          <div class="sb-score-wrap">
-            <div class="sb-timer-pill" id="ms-timer-pill">
-              <span class="sb-timer-dot" id="ms-timer-dot"></span>
-              <span class="sb-timer-period" id="ms-timer-period">1ST HALF</span>
-              <span class="sb-timer-clock" id="ms-timer-clock">00:00</span>
+            <!-- SCORE BOX & CLOCK (Clock placed UNDER score line, match score label removed) -->
+            <div class="sb-score-wrap">
+              <div class="sb-score-box" id="ms-score-display">0 - 0</div>
+              <div class="sb-timer-pill" id="ms-timer-pill">
+                <span class="sb-timer-dot" id="ms-timer-dot"></span>
+                <span class="sb-timer-period" id="ms-timer-period">1ST HALF</span>
+                <span class="sb-timer-clock" id="ms-timer-clock">00:00</span>
+              </div>
             </div>
-            <div class="sb-score-box" id="ms-score-display">0 - 0</div>
-            <div id="ms-clock-pill"
-              style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:rgba(255,255,255,.75);font-weight:700;">
-              MATCH SCORE</div>
-          </div>
 
-          <!-- AWAY TEAM -->
-          <div class="sb-team away">
-            <div class="sb-badge" id="ms-away-badge">⚽</div>
-            <div class="sb-team-copy">
+            <!-- AWAY TEAM IDENTITY (Logo locked to right of score, name under logo in 2 lines) -->
+            <div class="sb-team-block away">
+              <div class="sb-badge" id="ms-away-badge">⚽</div>
               <div class="sb-team-name" id="ms-away-name">AWAY TEAM</div>
-              <div class="sb-team-events" id="ms-away-events" aria-label="Away team events"></div>
             </div>
+          </div>
+
+          <!-- AWAY EVENTS (Right Wing) -->
+          <div class="sb-events-col away">
+            <div class="sb-team-events" id="ms-away-events" aria-label="Away team events"></div>
           </div>
         </div>
       </div>
@@ -2648,8 +2652,8 @@
     });
     window.firebaseAiLogicReady.catch(() => { });
   </script>
-  <script src="app.js?v=44.0"></script>
-  <script src="cms-nav.js?v=44.0"></script>
+  <script src="app.js?v=45.0"></script>
+  <script src="cms-nav.js?v=45.0"></script>
   <script type="module">
     import('./firebase-ai-logic.js?v=6').catch(error => {
       window.rejectFirebaseAiLogicModule?.(error instanceof Error ? error : new Error(String(error || 'Firebase AI Logic module import failed.')));
