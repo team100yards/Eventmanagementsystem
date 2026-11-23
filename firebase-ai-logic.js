@@ -12,10 +12,18 @@ const FIREBASE_CONFIG = {
 };
 const RECAPTCHA_ENTERPRISE_SITE_KEY = '6LcPjRYuAAAAAFkXkckUF7ftLo6uojngdCm0OtY7';
 const CANDIDATE_MODELS = [
+  'gemini-2.5-flash',
   'gemini-3.8-flash',
-  'gemini-3.5-flash-lite'
+  'gemini-2.5-flash-lite',
+  'gemini-3.6-flash',
+  'gemini-2.5-pro'
 ];
 let activeModelName = CANDIDATE_MODELS[0];
+
+function isDemandOrTransientError(err){
+  const msg = String(err?.message || err || '');
+  return /high demand|temporar|spikes in demand|overloaded|500|503|429|fetch-error|fetch error|network|aborted/i.test(msg);
+}
 
 function convertSchemaTypes(schema){
   if(Array.isArray(schema)) return schema.map(convertSchemaTypes);
@@ -84,17 +92,27 @@ const firebaseAiLogicInitialization = (async()=>{
     let lastError = null;
 
     for(const modelName of modelsToTry){
-      try{
-        const model = createModel(modelName, generationConfig);
-        const result = await model.generateContent(normalizedContents);
-        const text = String(result?.response?.text?.() || '').trim();
-        if(!text) throw new Error('Gemini returned an empty response.');
-        activeModelName = modelName;
-        return text;
-      }catch(err){
-        lastError = err;
-        console.warn(`[Firebase AI] Model ${modelName} failed, trying next candidate:`, err?.message || err);
+      for(let attempt = 0; attempt < 2; attempt++){
+        try{
+          const model = createModel(modelName, generationConfig);
+          const result = await model.generateContent(normalizedContents);
+          const text = String(result?.response?.text?.() || '').trim();
+          if(!text) throw new Error('Gemini returned an empty response.');
+          activeModelName = modelName;
+          return text;
+        }catch(err){
+          lastError = err;
+          console.warn(`[Firebase AI] Model ${modelName} attempt ${attempt + 1} failed:`, err?.message || err);
+          if(attempt === 0 && isDemandOrTransientError(err)){
+            await new Promise(r => setTimeout(r, 600));
+            continue;
+          }
+          break;
+        }
       }
+    }
+    if(isDemandOrTransientError(lastError)){
+      throw new Error('Google AI is currently experiencing high demand. Please try again in a few moments.');
     }
     throw lastError || new Error('All Gemini AI models failed to generate content.');
   };
@@ -105,24 +123,35 @@ const firebaseAiLogicInitialization = (async()=>{
     let lastError = null;
 
     for(const modelName of modelsToTry){
-      try{
-        const model = createModel(modelName, generationConfig);
-        const result = await model.generateContentStream(normalizedContents);
-        let text = '';
-        for await(const chunk of result.stream){
-          const part = String(chunk?.text?.() || '');
-          if(!part) continue;
-          text += part;
-          if(typeof onText === 'function') onText(text);
+      for(let attempt = 0; attempt < 2; attempt++){
+        try{
+          const model = createModel(modelName, generationConfig);
+          const result = await model.generateContentStream(normalizedContents);
+          let text = '';
+          for await(const chunk of result.stream){
+            const part = String(chunk?.text?.() || '');
+            if(!part) continue;
+            text += part;
+            if(typeof onText === 'function') onText(text);
+          }
+          text = text.trim();
+          if(!text) throw new Error('Gemini returned an empty response.');
+          activeModelName = modelName;
+          return text;
+        }catch(err){
+          lastError = err;
+          console.warn(`[Firebase AI Stream] Model ${modelName} attempt ${attempt + 1} failed:`, err?.message || err);
+          if(typeof onText === 'function') onText('');
+          if(attempt === 0 && isDemandOrTransientError(err)){
+            await new Promise(r => setTimeout(r, 600));
+            continue;
+          }
+          break;
         }
-        text = text.trim();
-        if(!text) throw new Error('Gemini returned an empty response.');
-        activeModelName = modelName;
-        return text;
-      }catch(err){
-        lastError = err;
-        console.warn(`[Firebase AI Stream] Model ${modelName} failed, trying next candidate:`, err?.message || err);
       }
+    }
+    if(isDemandOrTransientError(lastError)){
+      throw new Error('Google AI is currently experiencing high demand. Please try again in a few moments.');
     }
     throw lastError || new Error('All Gemini AI models failed to stream content.');
   };

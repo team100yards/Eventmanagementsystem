@@ -10048,9 +10048,12 @@ async function generateMatchReport() {
     renderMatchReportPanel();
   } catch (error) {
     console.error('Gemini match report error:', error);
-    const detail = error?.name === 'AbortError' || /action aborted|request aborted|aborted/i.test(String(error.message || ''))
-      ? 'Gemini interrupted the request. Try again; if it keeps happening, check Firebase AI Logic status and quota.'
-      : (error.message || String(error));
+    let detail = error?.message || String(error);
+    if (error?.name === 'AbortError' || /action aborted|request aborted|aborted/i.test(detail)) {
+      detail = 'Gemini interrupted the request. Try again; if it keeps happening, check Firebase AI Logic status and quota.';
+    } else if (/high demand|spikes in demand|500.*demand/i.test(detail)) {
+      detail = 'Google AI is currently experiencing high demand. Please wait a few moments and click Generate Report again.';
+    }
     reportErrorMessage = `Could not generate the report: ${detail}`;
     if (status) status.textContent = reportErrorMessage;
   } finally {
