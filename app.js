@@ -1585,8 +1585,19 @@ function renderAdminPlayers() {
     `;
   }).join('');
 
+  const curFormation = selectedTeam?.squad?.formation || '4-4-2';
+
   html += `
-    <div style="background:var(--card,#fff);border:1px solid var(--bd);border-radius:12px;overflow:hidden;margin-top:12px;margin-bottom:24px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-top:14px;margin-bottom:8px;">
+      <div style="font-size:13px;font-weight:700;color:var(--tx);display:flex;align-items:center;gap:8px;">
+        <span style="color:var(--mt);text-transform:uppercase;font-size:11px;letter-spacing:0.5px;">Squad Formation:</span>
+        <span class="admin-player-disp-pill" style="font-size:12.5px;padding:3px 10px;font-weight:800;color:#1a5c1a;background:#eef5ee;border:1px solid #1a5c1a;">${esc(curFormation)}</span>
+      </div>
+      <button type="button" class="obtn" style="padding:6px 12px;font-size:12px;font-weight:700;display:inline-flex;align-items:center;gap:6px;" onclick="curTeam=teams.find(t=>t.id==='${selectedTeam.id}');openTeamFormationVisualizer();">
+        <span>♟️</span><span>Pitch Visualizer</span>
+      </button>
+    </div>
+    <div style="background:var(--card,#fff);border:1px solid var(--bd);border-radius:12px;overflow:hidden;margin-bottom:24px;">
       <table class="admin-player-table" style="margin:0;">
         <thead>
           <tr>
@@ -3093,15 +3104,31 @@ function renderSquadPlayingList() {
     else fwdIndices.push(idx);
   });
 
+  const curFormation = curTeam?.squad?.formation || '4-4-2';
+  const formationList = ['4-3-3', '4-4-2', '4-2-3-1', '3-5-2', '3-4-3', '5-3-2', '4-1-4-1', '4-5-1', '5-4-1', '3-5-1-1'];
+  if (!formationList.includes(curFormation)) formationList.unshift(curFormation);
+  const formationOptionsHtml = formationList.map(f => `<option value="${f}" ${f === curFormation ? 'selected' : ''}>${f}</option>`).join('');
+
   let html = `
     <!-- SECTION 1: PLAYING XI -->
     <div class="squad-section-card squad-xi-card">
-      <div class="squad-section-head">
+      <div class="squad-section-head" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
         <div class="squad-section-title">
           <span>⚽ PLAYING XI (STARTING XI)</span>
           <span class="squad-badge">${teamSquadData.playingXi.length} / 11 Playing</span>
         </div>
-        <button type="button" class="squad-btn-secondary" style="padding:6px 12px;font-size:12px;" onclick="openAddSquadMemberModal('playingXi')">＋ Add Starter</button>
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+          <div style="display:flex;align-items:center;gap:6px;background:var(--card,#fff);border:1.5px solid var(--bd);padding:4px 10px;border-radius:8px;">
+            <span style="font-size:11px;font-weight:700;color:var(--mt);text-transform:uppercase;letter-spacing:0.5px;">Formation:</span>
+            <select id="squad-formation-sel" onchange="changeTeamSquadFormation(this.value)" style="border:none;background:transparent;font-weight:800;font-size:13px;color:var(--tx);cursor:pointer;outline:none;">
+              ${formationOptionsHtml}
+            </select>
+          </div>
+          <button type="button" class="squad-btn-secondary" style="padding:6px 12px;font-size:12px;font-weight:700;display:inline-flex;align-items:center;gap:6px;background:#1e4d2b;color:#f4f1e8;border:1px solid #e8b34c;" onclick="openTeamFormationVisualizer()" title="Open Tactical Pitch Formation Visualizer">
+            <span>♟️</span><span>Pitch Visualizer</span>
+          </button>
+          <button type="button" class="squad-btn-secondary" style="padding:6px 12px;font-size:12px;" onclick="openAddSquadMemberModal('playingXi')">＋ Add Starter</button>
+        </div>
       </div>
 
       ${renderSubCategory('Goalkeepers (GK)', '🧤', gkList, gkIndices)}
@@ -3478,6 +3505,34 @@ async function removeSquadMember(listType, index) {
   renderAdminPlayers();
   await persistTeamSquadNow(false);
 }
+
+async function changeTeamSquadFormation(newFormation) {
+  if (!curTeam && activeAdminPlayerTeamId) {
+    curTeam = teams.find(t => t.id === activeAdminPlayerTeamId);
+  }
+  if (!curTeam) return;
+  if (!curTeam.squad) curTeam.squad = {};
+  curTeam.squad.formation = newFormation;
+  const inArr = teams.find(t => t.id === curTeam.id);
+  if (inArr) {
+    if (!inArr.squad) inArr.squad = {};
+    inArr.squad.formation = newFormation;
+  }
+  await persistTeamSquadNow(true);
+  renderSquadPlayingList();
+  renderAdminPlayers();
+}
+window.changeTeamSquadFormation = changeTeamSquadFormation;
+
+function openTeamFormationVisualizer() {
+  if (!curTeam && activeAdminPlayerTeamId) {
+    curTeam = teams.find(t => t.id === activeAdminPlayerTeamId);
+  }
+  if (!curTeam) return;
+  buildFormationSyncPayload(curTeam);
+  window.open('formation-builder.html?v=48.0', '_blank');
+}
+window.openTeamFormationVisualizer = openTeamFormationVisualizer;
 
 window.openAddSquadMemberModal = openAddSquadMemberModal;
 window.openEditSquadMemberModal = openEditSquadMemberModal;
