@@ -1,0 +1,1277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Line-Up Builder</title>
+
+<!-- Tailwind (utility classes used throughout the component) -->
+<script src="https://cdn.tailwindcss.com"></script>
+
+<!-- React + Babel (same in-browser JSX pattern as the rest of the app) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js" crossorigin></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js" crossorigin></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.24.7/babel.min.js" crossorigin></script>
+
+<!-- Optional: Firebase (uncomment + configure to pull the roster live from Football Forum's Firestore) -->
+<!--
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+-->
+
+<style>
+  html, body { margin: 0; padding: 0; }
+  html:fullscreen, html:-webkit-full-screen { background: #0F1B14; overflow-y: auto; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel" data-presets="react">
+const { useState, useMemo, useRef, useEffect } = React;
+
+/* ==========================================================================
+   OPTIONAL FIRESTORE SYNC
+   To pull the roster live from Football Forum's database instead of pasting
+   or importing a file, fill in your Firebase config below, uncomment the
+   Firebase <script> tags in <head>, and uncomment the block below.
+   This assumes a collection (e.g. "players") with documents shaped like
+   { name: "...", number: "...", position: "..." } — adjust field names to
+   match your actual Football Forum schema.
+============================================================================
+const firebaseConfig = {
+  apiKey: "...",
+  authDomain: "...",
+  projectId: "...",
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+function useFootballForumRoster(collectionName) {
+  const [rows, setRows] = useState([]);
+  useEffect(() => {
+    const unsub = db.collection(collectionName).onSnapshot((snap) => {
+      const players = snap.docs.map((doc) => {
+        const d = doc.data();
+        return `${d.number || "-"}, ${d.name || ""}, ${d.position || "ST"}`;
+      });
+      setRows(players.join("\n"));
+    });
+    return () => unsub();
+  }, [collectionName]);
+  return rows;
+}
+============================================================================ */
+
+
+// ---------- Position vocabulary ----------
+// Standardized to the same 15 codes used across the whole app:
+// GK, RB, LB, CB, RWB, LWB, CDM, CM, CAM, RM, LM, RW, LW, CF, ST
+const ALIASES = {
+  GK: "GK", GOALKEEPER: "GK", GOALIE: "GK",
+  RB: "RB", RIGHTBACK: "RB", DR: "RB",
+  LB: "LB", LEFTBACK: "LB", DL: "LB",
+  CB: "CB", "CENTRE-BACK": "CB", CENTERBACK: "CB", CENTREBACK: "CB", DC: "CB", D: "CB", DF: "CB", DEF: "CB", SWEEPER: "CB", CD: "CB",
+  RWB: "RWB", RIGHTWINGBACK: "RWB",
+  LWB: "LWB", LEFTWINGBACK: "LWB",
+  CDM: "CDM", DM: "CDM", DMC: "CDM",
+  CM: "CM", MC: "CM", MID: "CM", MIDFIELDER: "CM", M: "CM",
+  CAM: "CAM", AM: "CAM", AMC: "CAM", "10": "CAM",
+  RM: "RM", RIGHTMID: "RM", RIGHTMIDFIELDER: "RM",
+  LM: "LM", LEFTMID: "LM", LEFTMIDFIELDER: "LM",
+  RW: "RW", RIGHTWINGER: "RW",
+  LW: "LW", LEFTWINGER: "LW",
+  CF: "CF", CENTREFORWARD: "CF", CENTERFORWARD: "CF", SECONDSTRIKER: "CF",
+  ST: "ST", STRIKER: "ST", FW: "ST", FORWARD: "ST", F: "ST", ATT: "ST",
+};
+const GROUP = {
+  GK: "GK",
+  RB: "DEF", LB: "DEF", CB: "DEF", RWB: "DEF", LWB: "DEF",
+  CDM: "MID", CM: "MID", CAM: "MID", RM: "MID", LM: "MID",
+  RW: "FWD", LW: "FWD", CF: "FWD", ST: "FWD",
+};
+const SIDE = {
+  GK: "C", RB: "R", LB: "L", CB: "C", RWB: "R", LWB: "L",
+  CDM: "C", CM: "C", CAM: "C", RM: "R", LM: "L",
+  RW: "R", LW: "L", CF: "C", ST: "C",
+};
+const canonicalize = (raw) => {
+  const key = String(raw || "").trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
+  return ALIASES[key] || (key ? key : "ST");
+};
+
+const POSITION_OPTIONS = [
+  { code: "GK", label: "GK — Goalkeeper" },
+  { code: "RB", label: "RB — Right Back" },
+  { code: "LB", label: "LB — Left Back" },
+  { code: "CB", label: "CB — Centre Back" },
+  { code: "RWB", label: "RWB — Right Wing Back" },
+  { code: "LWB", label: "LWB — Left Wing Back" },
+  { code: "CDM", label: "CDM — Central Defensive Mid" },
+  { code: "CM", label: "CM — Central Midfielder" },
+  { code: "CAM", label: "CAM — Central Attacking Mid" },
+  { code: "RM", label: "RM — Right Midfielder" },
+  { code: "LM", label: "LM — Left Midfielder" },
+  { code: "RW", label: "RW — Right Winger" },
+  { code: "LW", label: "LW — Left Winger" },
+  { code: "CF", label: "CF — Centre Forward" },
+  { code: "ST", label: "ST — Striker" },
+];
+
+const ZONE_COLORS = {
+  GK: "#8B5FBF",
+  DEF: "#3D7DB0",
+  MID: "#D9A63E",
+  FWD: "#C0453A",
+};
+// Per-code overrides — used when a specific position needs to stand out from its broader
+// group (color) or needs a shape that reflects how much ground that role actually covers (size).
+const CODE_COLORS = {
+  CDM: "#4FA37A", // distinct from the rest of midfield (CM/CAM/RM/LM stay MID gold)
+};
+const CODE_ZONE_SIZE = {
+  // Wing-backs patrol the full flank, box to box — much taller/narrower zone than a regular back.
+  LWB: [18, 52],
+  RWB: [18, 52],
+};
+// Vertical anchor (0 = jersey at top of zone, 0.5 = centered, 1 = jersey at bottom of zone).
+// Wing-backs sit near the bottom of their zone since the zone represents how far forward
+// they push from their base position, not ground behind them.
+const CODE_ZONE_ANCHOR = {
+  LWB: 0.88,
+  RWB: 0.88,
+};
+const hexToRgba = (hex, alpha) => {
+  const n = parseInt(hex.slice(1), 16);
+  const r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
+  return `rgba(${r},${g},${b},${alpha})`;
+};
+
+
+const FORMATIONS = {
+  "4-4-2": [
+    { code: "GK", label: "GK", x: 50, y: 93 },
+    { code: "LB", label: "LB", x: 14, y: 74 },
+    { code: "CB", label: "CB", x: 37, y: 78 },
+    { code: "CB", label: "CB", x: 63, y: 78 },
+    { code: "RB", label: "RB", x: 86, y: 74 },
+    { code: "LM", label: "LM", x: 14, y: 46 },
+    { code: "CM", label: "CM", x: 37, y: 50 },
+    { code: "CM", label: "CM", x: 63, y: 50 },
+    { code: "RM", label: "RM", x: 86, y: 46 },
+    { code: "ST", label: "ST", x: 37, y: 15 },
+    { code: "ST", label: "ST", x: 63, y: 15 },
+  ],
+  "4-3-3": [
+    { code: "GK", label: "GK", x: 50, y: 93 },
+    { code: "LB", label: "LB", x: 14, y: 74 },
+    { code: "CB", label: "CB", x: 37, y: 78 },
+    { code: "CB", label: "CB", x: 63, y: 78 },
+    { code: "RB", label: "RB", x: 86, y: 74 },
+    { code: "CM", label: "CM", x: 30, y: 52 },
+    { code: "CDM", label: "CDM", x: 50, y: 58 },
+    { code: "CM", label: "CM", x: 70, y: 52 },
+    { code: "LW", label: "LW", x: 16, y: 20 },
+    { code: "ST", label: "ST", x: 50, y: 12 },
+    { code: "RW", label: "RW", x: 84, y: 20 },
+  ],
+  "4-2-3-1": [
+    { code: "GK", label: "GK", x: 50, y: 93 },
+    { code: "LB", label: "LB", x: 14, y: 74 },
+    { code: "CB", label: "CB", x: 37, y: 78 },
+    { code: "CB", label: "CB", x: 63, y: 78 },
+    { code: "RB", label: "RB", x: 86, y: 74 },
+    { code: "CDM", label: "CDM", x: 36, y: 60 },
+    { code: "CDM", label: "CDM", x: 64, y: 60 },
+    { code: "LM", label: "LAM", x: 18, y: 35 },
+    { code: "CAM", label: "CAM", x: 50, y: 32 },
+    { code: "RM", label: "RAM", x: 82, y: 35 },
+    { code: "ST", label: "ST", x: 50, y: 12 },
+  ],
+  "3-5-2": [
+    { code: "GK", label: "GK", x: 50, y: 93 },
+    { code: "CB", label: "CB", x: 28, y: 78 },
+    { code: "CB", label: "CB", x: 50, y: 80 },
+    { code: "CB", label: "CB", x: 72, y: 78 },
+    { code: "LWB", label: "LWB", x: 9, y: 54 },
+    { code: "CM", label: "CM", x: 34, y: 50 },
+    { code: "CDM", label: "CDM", x: 50, y: 55 },
+    { code: "CM", label: "CM", x: 66, y: 50 },
+    { code: "RWB", label: "RWB", x: 91, y: 54 },
+    { code: "ST", label: "ST", x: 37, y: 15 },
+    { code: "ST", label: "ST", x: 63, y: 15 },
+  ],
+  "3-4-3": [
+    { code: "GK", label: "GK", x: 50, y: 93 },
+    { code: "CB", label: "CB", x: 28, y: 78 },
+    { code: "CB", label: "CB", x: 50, y: 80 },
+    { code: "CB", label: "CB", x: 72, y: 78 },
+    { code: "LM", label: "LM", x: 14, y: 50 },
+    { code: "CM", label: "CM", x: 37, y: 53 },
+    { code: "CM", label: "CM", x: 63, y: 53 },
+    { code: "RM", label: "RM", x: 86, y: 50 },
+    { code: "LW", label: "LW", x: 20, y: 18 },
+    { code: "ST", label: "ST", x: 50, y: 12 },
+    { code: "RW", label: "RW", x: 80, y: 18 },
+  ],
+  "5-3-2": [
+    { code: "GK", label: "GK", x: 50, y: 93 },
+    { code: "LWB", label: "LWB", x: 10, y: 68 },
+    { code: "CB", label: "CB", x: 30, y: 78 },
+    { code: "CB", label: "CB", x: 50, y: 80 },
+    { code: "CB", label: "CB", x: 70, y: 78 },
+    { code: "RWB", label: "RWB", x: 90, y: 68 },
+    { code: "CM", label: "CM", x: 30, y: 48 },
+    { code: "CDM", label: "CDM", x: 50, y: 52 },
+    { code: "CM", label: "CM", x: 70, y: 48 },
+    { code: "ST", label: "ST", x: 37, y: 15 },
+    { code: "ST", label: "ST", x: 63, y: 15 },
+  ],
+};
+
+const ZONE_SIZE = { GK: [22, 15], DEF: [30, 20], MID: [34, 22], FWD: [30, 22] };
+
+
+function assignToFormation(players, slots) {
+  const pool = [...players];
+  const filled = slots.map((slot) => {
+    let idx = pool.findIndex((p) => p.canonical === slot.code);
+    if (idx === -1) {
+      const group = GROUP[slot.code] || "MID";
+      const side = SIDE[slot.code] || "C";
+      idx = pool.findIndex((p) => p.group === group && p.side === side);
+    }
+    if (idx === -1) {
+      const group = GROUP[slot.code] || "MID";
+      idx = pool.findIndex((p) => p.group === group);
+    }
+    if (idx === -1) return { slot, player: null };
+    const [player] = pool.splice(idx, 1);
+    return { slot, player };
+  });
+  const order = { GK: 0, DEF: 1, MID: 2, FWD: 3 };
+  pool.sort((a, b) => (order[a.group] - order[b.group]) || a.name.localeCompare(b.name));
+  return { filled, subs: pool };
+}
+
+function FormationBuilder() {
+  const [manualPlayers, setManualPlayers] = useState([]);
+  const [formationKey, setFormationKey] = useState("4-3-3");
+  const [showZones, setShowZones] = useState(true);
+  const [showThirds, setShowThirds] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const LINE_GROUPS = ["GK", "DEF", "MID", "FWD"];
+  const [activeLines, setActiveLines] = useState(LINE_GROUPS);
+  const [ballPos, setBallPos] = useState({ x: 50, y: 50 });
+  const [panelOpen, setPanelOpen] = useState(true);
+  const [customPos, setCustomPos] = useState({});
+  const [dragKey, setDragKey] = useState(null);
+  const [syncInfo, setSyncInfo] = useState("");
+  const pitchRef = useRef(null);
+  const [pitchHeight, setPitchHeight] = useState(null);
+  const [showChat, setShowChat] = useState(() => {
+    try { return localStorage.getItem("cms_fb_chat") !== "hidden"; } catch(e) { return true; }
+  });
+  const [chatMsgs, setChatMsgs] = useState([]);
+  const [isCoach, setIsCoach] = useState(false);
+  const [myChatId, setMyChatId] = useState({ name: 'Visitor', role: 'member' });
+  const [chatInputText, setChatInputText] = useState('');
+  const chatMessagesEndRef = useRef(null);
+
+  // ---------- Exact Match XI slot data (the source of truth for pitch placement) ----------
+  // exactStarters[i] lines up 1:1 with FORMATIONS[syncedFormationKey][i] — this is what
+  // guarantees the pitch always matches Match XI exactly, with no re-calculation/mismatch.
+  const [exactStarters, setExactStarters] = useState(null);
+  const [exactSubs, setExactSubs] = useState(null);
+  const [syncedFormationKey, setSyncedFormationKey] = useState(null);
+  const [isDirty, setIsDirty] = useState(false); // true once the roster is hand-edited
+
+  const reportHeight = () => {
+    try {
+      if (window.parent && window.parent !== window) {
+        const h = document.documentElement.scrollHeight;
+        window.parent.postMessage({ type: "ff-height", height: h }, "*");
+      }
+    } catch (e) {}
+  };
+
+  // Builds a pitch layout (x/y per slot) for ANY formation given just its role/count
+  // definition (e.g. [{r:'GK',n:1},{r:'DEF',n:4},{r:'MID',n:4},{r:'FWD',n:2}]) — this is
+  // what lets custom formations from Match XI render here even though they're not one of
+  // the 6 built-in shapes.
+  const autoLayoutFormation = (def) => {
+    const roleCode = { GK: "GK", DEF: "CB", MID: "CM", FWD: "ST" };
+    const lines = (def || []).filter((l) => l && l.n > 0);
+    const outfield = lines.length - 1;
+    const slots = [];
+    lines.forEach((line, li) => {
+      let y;
+      if (li === 0) y = 93;
+      else if (outfield <= 1) y = 45;
+      else y = 76 - (li - 1) * (64 / (outfield - 1));
+      const n = line.n;
+      for (let i = 0; i < n; i++) {
+        const x = 8 + (84 / (n + 1)) * (i + 1);
+        const code = roleCode[line.r] || "CM";
+        slots.push({ code, label: line.lbl || code, x, y });
+      }
+    });
+    return slots;
+  };
+
+  // ---------- Sync roster from the Football Forum parent app (Match XI: playing 11 + subs + management) ----------
+  const applySyncPayload = (data) => {
+    if (!data) return;
+    if (data.formation && !FORMATIONS[data.formation] && data.formationDef) {
+      FORMATIONS[data.formation] = autoLayoutFormation(data.formationDef);
+    }
+    if (data.customPos && typeof data.customPos === "object") {
+      setCustomPos(data.customPos);
+    }
+    if (data.ballPos && typeof data.ballPos === "object" && data.ballPos.x != null) {
+      setBallPos(data.ballPos);
+    }
+    if (data.formation && FORMATIONS[data.formation]) {
+      setFormationKey(data.formation);
+    }
+    if (data.starters) {
+      // Exact per-slot data from a saved Match XI squad — preserves placement exactly.
+      setExactStarters(data.starters);
+      setExactSubs(data.subs || []);
+      setSyncedFormationKey(data.formation && FORMATIONS[data.formation] ? data.formation : null);
+      const startRows = [];
+      data.starters.forEach((p) => { if (p) startRows.push({ ...p, type: "start" }); });
+      const subRows = (data.subs || []).map((p) => ({ ...p, type: "sub" }));
+      const flat = [...startRows, ...subRows];
+      setManualPlayers(flat.map((p) => ({
+        id: p.id || `sync-${Math.random().toString(36).slice(2, 8)}`,
+        name: p.name || "",
+        number: p.number != null && p.number !== "" ? String(p.number) : "-",
+        position: p.position || "ST",
+        type: p.type,
+      })));
+    } else {
+      // No saved Match XI squad — fell back to the full player database (flat list only).
+      // Split it the same way the pitch would: first N (formation size) as Playing XI, rest as Substitutes.
+      setExactStarters(null);
+      setExactSubs(null);
+      setSyncedFormationKey(null);
+      const startCount = (FORMATIONS[data.formation || formationKey] || FORMATIONS["4-3-3"]).length;
+      const incoming = (data.players || []).map((p, idx) => ({
+        id: p.id || `sync-${Math.random().toString(36).slice(2, 8)}`,
+        name: p.name || "",
+        number: p.number != null && p.number !== "" ? String(p.number) : "-",
+        position: p.position || "ST",
+        type: idx < startCount ? "start" : "sub",
+      }));
+      setManualPlayers(incoming);
+    }
+    const incomingMgmt = (data.management || []).map((m) => ({
+      id: m.id || `mg-${Math.random().toString(36).slice(2, 8)}`,
+      name: m.name || "",
+      role: m.role || "Other",
+    }));
+    setManagement(incomingMgmt.length ? incomingMgmt : [{ id: "mg-1", name: "", role: "Head Coach" }]);
+    setIsDirty(false);
+    setPanelOpen(true);
+    setSyncInfo(data.source || "Synced from Football Forum");
+    setTimeout(reportHeight, 50);
+    setTimeout(reportHeight, 300);
+  };
+
+  useEffect(() => {
+    const handleMessage = (e) => {
+      const data = e.data;
+      if (!data || typeof data !== "object") return;
+      if (data.type === "ff-sync") applySyncPayload(data);
+      if (data.type === "ff-chat-sync") {
+        if (Array.isArray(data.msgs)) setChatMsgs(data.msgs);
+        if (typeof data.isCoach === "boolean") setIsCoach(data.isCoach);
+        if (data.currentId) setMyChatId(data.currentId);
+        setTimeout(() => {
+          if (chatMessagesEndRef.current) {
+            chatMessagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+          }
+        }, 50);
+      }
+    };
+    window.addEventListener("message", handleMessage);
+    // Let the parent app know we're mounted and ready to receive the roster
+    try {
+      if (window.parent && window.parent !== window) {
+        window.parent.postMessage({ type: "ff-ready" }, "*");
+      }
+    } catch (e) {}
+    reportHeight();
+    const ro = new ResizeObserver(() => reportHeight());
+    ro.observe(document.documentElement);
+    window.addEventListener("resize", reportHeight);
+    const t1 = setTimeout(reportHeight, 300);
+    const t2 = setTimeout(reportHeight, 1000);
+    return () => {
+      window.removeEventListener("message", handleMessage);
+      window.removeEventListener("resize", reportHeight);
+      ro.disconnect();
+      clearTimeout(t1);
+      clearTimeout(t2);
+    };
+  }, []);
+
+  const requestResync = () => {
+    try {
+      if (window.parent && window.parent !== window) {
+        window.parent.postMessage({ type: "ff-request-sync" }, "*");
+      }
+    } catch (e) {}
+  };
+
+  const toggleFullscreen = () => {
+    const el = document.documentElement;
+    if (!document.fullscreenElement) {
+      (el.requestFullscreen || el.webkitRequestFullscreen || (() => {})).call(el);
+    } else {
+      (document.exitFullscreen || document.webkitExitFullscreen || (() => {})).call(document);
+    }
+  };
+
+  useEffect(() => {
+    const onFsChange = () => setIsFullscreen(!!document.fullscreenElement);
+    document.addEventListener("fullscreenchange", onFsChange);
+    document.addEventListener("webkitfullscreenchange", onFsChange);
+    return () => {
+      document.removeEventListener("fullscreenchange", onFsChange);
+      document.removeEventListener("webkitfullscreenchange", onFsChange);
+    };
+  }, []);
+
+  const toggleChatVisibility = () => {
+    setShowChat(prev => {
+      const next = !prev;
+      try { localStorage.setItem("cms_fb_chat", next ? "visible" : "hidden"); } catch(e) {}
+      return next;
+    });
+  };
+
+  useEffect(() => {
+    const updatePitchHeight = () => {
+      if (pitchRef.current) {
+        const h = pitchRef.current.getBoundingClientRect().height;
+        if (h > 50) setPitchHeight(Math.round(h));
+      }
+    };
+    updatePitchHeight();
+    const ro = new ResizeObserver(() => {
+      requestAnimationFrame(updatePitchHeight);
+    });
+    if (pitchRef.current) ro.observe(pitchRef.current);
+    window.addEventListener("resize", updatePitchHeight);
+    document.addEventListener("fullscreenchange", updatePitchHeight);
+    document.addEventListener("webkitfullscreenchange", updatePitchHeight);
+    const t1 = setTimeout(updatePitchHeight, 50);
+    const t2 = setTimeout(updatePitchHeight, 250);
+    const t3 = setTimeout(updatePitchHeight, 600);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("resize", updatePitchHeight);
+      document.removeEventListener("fullscreenchange", updatePitchHeight);
+      document.removeEventListener("webkitfullscreenchange", updatePitchHeight);
+      clearTimeout(t1);
+      clearTimeout(t2);
+      clearTimeout(t3);
+    };
+  }, [formationKey, isFullscreen]);
+
+  const sendChatMessage = (e) => {
+    if (e) e.preventDefault();
+    const text = chatInputText.trim();
+    if (!text) return;
+    setChatInputText('');
+    try {
+      if (window.parent && window.parent !== window) {
+        window.parent.postMessage({ type: "ff-chat-send", text }, "*");
+      }
+    } catch(err) {}
+  };
+
+  const togglePinMessage = (msgId, currentPinned) => {
+    try {
+      if (window.parent && window.parent !== window) {
+        window.parent.postMessage({ type: "ff-chat-pin", msgId, currentPinned }, "*");
+      }
+    } catch(err) {}
+  };
+
+  const deleteChatMessage = (msgId) => {
+    try {
+      if (window.parent && window.parent !== window) {
+        window.parent.postMessage({ type: "ff-chat-delete", msgId }, "*");
+      }
+    } catch(err) {}
+  };
+
+  const clearAllChat = () => {
+    try {
+      if (window.parent && window.parent !== window) {
+        window.parent.postMessage({ type: "ff-chat-clear" }, "*");
+      }
+    } catch(err) {}
+  };
+
+  const openIdentityModal = () => {
+    try {
+      if (window.parent && window.parent !== window) {
+        window.parent.postMessage({ type: "ff-chat-change-id" }, "*");
+      }
+    } catch(err) {}
+  };
+
+  const formatTime = (iso) => {
+    if (!iso) return '';
+    try {
+      const d = new Date(iso);
+      if (isNaN(d.getTime())) return '';
+      return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    } catch(e) { return ''; }
+  };
+
+  const updateManualRow = (id, field, value) => {
+    setIsDirty(true);
+    setManualPlayers((prev) => prev.map((p) => (p.id === id ? { ...p, [field]: value } : p)));
+  };
+
+  const addManualRow = (type) => {
+    setIsDirty(true);
+    setManualPlayers((prev) => [
+      ...prev,
+      { id: `m-${Math.random().toString(36).slice(2, 8)}`, name: "", number: String(prev.length + 1), position: "ST", type: type || "sub" },
+    ]);
+  };
+
+  const removeManualRow = (id) => {
+    setIsDirty(true);
+    setManualPlayers((prev) => prev.filter((p) => p.id !== id));
+  };
+
+  const MANAGEMENT_ROLES = ["Head Coach", "Assistant Coach", "Goalkeeping Coach", "Fitness Coach", "Physiotherapist", "Team Manager", "Kit Manager", "Analyst", "Other"];
+  const [management, setManagement] = useState([
+    { id: "mg-1", name: "", role: "Head Coach" },
+  ]);
+
+  const addManagementRow = () => {
+    setManagement((prev) => [...prev, { id: `mg-${Math.random().toString(36).slice(2, 8)}`, name: "", role: "Other" }]);
+  };
+  const updateManagementRow = (id, field, value) => {
+    setManagement((prev) => prev.map((m) => (m.id === id ? { ...m, [field]: value } : m)));
+  };
+  const removeManagementRow = (id) => {
+    setManagement((prev) => prev.filter((m) => m.id !== id));
+  };
+  const managementFilled = useMemo(() => management.filter((m) => m.name.trim()), [management]);
+
+  const canonicalizePlayer = (p) => {
+    const canonical = canonicalize(p.position);
+    return {
+      id: p.id,
+      number: p.number || "-",
+      name: p.name,
+      rawPosition: p.position,
+      canonical,
+      group: GROUP[canonical] || "MID",
+      side: SIDE[canonical] || "C",
+    };
+  };
+
+  const manualPlayersParsed = useMemo(() => {
+    return manualPlayers
+      .filter((p) => p.name.trim())
+      .map((p) => canonicalizePlayer({ ...p, name: p.name.trim() }));
+  }, [manualPlayers]);
+
+  const players = manualPlayersParsed;
+  const slots = FORMATIONS[formationKey];
+
+  // Use the exact Match XI slot-by-slot placement whenever it's still valid (not hand-edited,
+  // and the selected formation matches what was saved in Match XI) — this is what removes the
+  // mismatch between Match XI and the Formation Builder. Otherwise fall back to auto-placement
+  // by position, e.g. when exploring a different formation than the one saved in Match XI.
+  const usingExactPlacement = !isDirty && !!exactStarters && formationKey === syncedFormationKey;
+
+  const { filled, subs } = useMemo(() => {
+    if (usingExactPlacement) {
+      const filledExact = slots.map((slot, i) => ({
+        slot,
+        player: exactStarters[i] ? canonicalizePlayer(exactStarters[i]) : null,
+      }));
+      const subsExact = (exactSubs || []).map(canonicalizePlayer);
+      return { filled: filledExact, subs: subsExact };
+    }
+    return assignToFormation(players, slots);
+  }, [usingExactPlacement, exactStarters, exactSubs, players, slots]);
+
+  const handlePrint = () => window.print();
+
+  const getSlotKey = (i) => `${formationKey}::${i}`;
+  const getPos = (slot, i) => customPos[getSlotKey(i)] || { x: slot.x, y: slot.y };
+  const toggleLine = (g) => {
+    setActiveLines((prev) => {
+      if (prev.includes(g)) {
+        if (prev.length === 1) return prev; // keep at least one line visible
+        return prev.filter((x) => x !== g);
+      }
+      return [...prev, g];
+    });
+  };
+
+  const saveVisualizerPositions = (newCustomPos, newBallPos, key) => {
+    if (!isCoach) return;
+    try {
+      if (window.parent && window.parent !== window) {
+        window.parent.postMessage({
+          type: "ff-visualizer-save",
+          customPos: newCustomPos || customPos,
+          ballPos: newBallPos || ballPos,
+          formationKey: key || formationKey
+        }, "*");
+      }
+    } catch (e) {}
+  };
+
+  const resetPositions = () => {
+    setCustomPos((prev) => {
+      const next = { ...prev };
+      Object.keys(next).forEach((k) => {
+        if (k.startsWith(`${formationKey}::`)) delete next[k];
+      });
+      saveVisualizerPositions(next, ballPos, formationKey);
+      return next;
+    });
+  };
+
+  const onFormationChange = (newKey) => {
+    setFormationKey(newKey);
+    saveVisualizerPositions(customPos, ballPos, newKey);
+  };
+
+  useEffect(() => {
+    if (!dragKey) return;
+    const clamp = (v) => Math.max(3, Math.min(97, v));
+    let curCustom = customPos;
+    let curBall = ballPos;
+    const handleMove = (e) => {
+      if (!pitchRef.current) return;
+      const rect = pitchRef.current.getBoundingClientRect();
+      const point = e.touches ? e.touches[0] : e;
+      const x = clamp(((point.clientX - rect.left) / rect.width) * 100);
+      const y = clamp(((point.clientY - rect.top) / rect.height) * 100);
+      if (dragKey === "ball") {
+        curBall = { x, y };
+        setBallPos(curBall);
+      } else {
+        curCustom = { ...curCustom, [dragKey]: { x, y } };
+        setCustomPos(curCustom);
+      }
+    };
+    const handleUp = () => {
+      setDragKey(null);
+      if (isCoach) {
+        saveVisualizerPositions(curCustom, curBall, formationKey);
+      }
+    };
+    window.addEventListener("pointermove", handleMove);
+    window.addEventListener("pointerup", handleUp);
+    window.addEventListener("touchmove", handleMove, { passive: false });
+    window.addEventListener("touchend", handleUp);
+    return () => {
+      window.removeEventListener("pointermove", handleMove);
+      window.removeEventListener("pointerup", handleUp);
+      window.removeEventListener("touchmove", handleMove);
+      window.removeEventListener("touchend", handleUp);
+    };
+  }, [dragKey, isCoach, formationKey, customPos, ballPos]);
+
+  const C = {
+    bg: "#0F1B14",
+    panel: "#132B1C",
+    border: "#3A5A44",
+    cream: "#F4F1E8",
+    creamSoft: "#DCE8DE",
+    sage: "#8FBF9F",
+    amber: "#E8B34C",
+    ink: "#132B1C",
+  };
+
+  return (
+    <div className="w-full" style={{ background: C.bg, fontFamily: "'Inter', sans-serif" }}>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Oswald:wght@400;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@600&display=swap');
+        .oswald { font-family: 'Oswald', sans-serif; }
+        .mono { font-family: 'JetBrains Mono', monospace; }
+        .pitch-stripe { background-image: repeating-linear-gradient(to bottom, #1E4D2B 0, #1E4D2B 9.09%, #21532F 9.09%, #21532F 18.18%); }
+        .token { transition: transform .15s ease; }
+        .token:hover { transform: translate(-50%, -50%) scale(1.08); }
+        .roster-toggle:hover { background: #1E4D2B; }
+        .roster-input:focus { outline: none; border-color: #E8B34C; }
+        .mode-tab { transition: background .15s ease, color .15s ease; }
+        @media print {
+          body { background: white; }
+          .no-print { display: none !important; }
+          .print-grid { display: block !important; }
+          .print-pitch-wrap { max-width: 480px; margin: 0 auto; }
+          .print-title { display: block !important; }
+        }
+        .chat-scroll {
+          scrollbar-width: thin;
+          scrollbar-color: #3A5A44 rgba(19, 43, 28, 0.5);
+        }
+        .chat-scroll::-webkit-scrollbar {
+          width: 6px;
+        }
+        .chat-scroll::-webkit-scrollbar-track {
+          background: rgba(19, 43, 28, 0.5);
+        }
+        .chat-scroll::-webkit-scrollbar-thumb {
+          background: #3A5A44;
+          border-radius: 3px;
+        }
+        .chat-scroll::-webkit-scrollbar-thumb:hover {
+          background: #8FBF9F;
+        }
+      `}</style>
+
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-10 py-6 md:py-8">
+        <div className="flex items-baseline justify-between mb-4 flex-wrap gap-2 no-print">
+          <div>
+            <div className="oswald" style={{ fontSize: 12, letterSpacing: "0.3em", color: C.sage, marginBottom: 2 }}>SQUAD SHEET</div>
+            <h1 className="oswald text-3xl md:text-4xl" style={{ color: C.cream, fontWeight: 600, letterSpacing: "0.02em" }}>Line-Up Builder</h1>
+          </div>
+          <div className="flex gap-2 flex-wrap">
+            <button
+              onClick={requestResync}
+              className="oswald"
+              style={{ fontSize: 13, letterSpacing: "0.02em", padding: "7px 14px", borderRadius: 6, border: `1px solid ${C.border}`, color: C.creamSoft, background: "transparent", fontWeight: 600, cursor: "pointer" }}
+            >
+              🔄 Sync from Match XI
+            </button>
+            <button
+              onClick={handlePrint}
+              className="oswald"
+              style={{ fontSize: 13, letterSpacing: "0.02em", padding: "7px 14px", borderRadius: 6, border: "none", color: C.ink, background: C.amber, fontWeight: 600, cursor: "pointer" }}
+            >
+              Print formation
+            </button>
+          </div>
+        </div>
+
+        {syncInfo && (
+          <div className="no-print" style={{ fontSize: 12, color: C.sage, background: C.panel, border: `1px solid ${C.border}`, borderRadius: 6, padding: "8px 12px", marginBottom: 14, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
+            <span>✅ {syncInfo}</span>
+          </div>
+        )}
+
+        <div className="print-title" style={{ display: "none" }}>
+          <h1 className="oswald" style={{ fontSize: 26, color: "#132B1C", fontWeight: 700, textAlign: "center", marginBottom: 12 }}>
+            FORMATION: {formationKey}
+          </h1>
+        </div>
+
+        {/* TOP TOOLBAR: Controls & Settings spanning the full width above Pitch & Chat */}
+        <div className="no-print" style={{ background: C.panel, border: `1px solid ${C.border}`, borderRadius: 10, padding: "10px 14px", marginBottom: 16 }}>
+          <div className="flex items-center justify-between flex-wrap gap-3">
+            <div className="flex items-center gap-2 flex-wrap">
+              <button
+                onClick={resetPositions}
+                className="oswald"
+                style={{ fontSize: 12, letterSpacing: "0.02em", color: C.sage, background: "transparent", border: `1px solid ${C.border}`, borderRadius: 6, padding: "6px 10px", cursor: "pointer" }}
+              >
+                Reset positions
+              </button>
+              <select
+                value={formationKey}
+                onChange={(e) => onFormationChange(e.target.value)}
+                className="oswald"
+                style={{ background: C.bg, color: C.cream, border: `1px solid ${C.border}`, borderRadius: 6, padding: "6px 10px", fontSize: 13, letterSpacing: "0.02em" }}
+              >
+                {Object.keys(FORMATIONS).map((k) => (
+                  <option key={k} value={k}>{k}</option>
+                ))}
+              </select>
+              <div className="flex items-center gap-1 flex-wrap">
+                {LINE_GROUPS.map((g) => {
+                  const on = activeLines.includes(g);
+                  const color = ZONE_COLORS[g];
+                  const labels = { GK: "GK", DEF: "DEF", MID: "MID", FWD: "FWD" };
+                  return (
+                    <button
+                      key={g}
+                      onClick={() => toggleLine(g)}
+                      className="oswald"
+                      style={{
+                        fontSize: 11.5, letterSpacing: "0.02em", fontWeight: 700, padding: "5px 8px", borderRadius: 6,
+                        border: `1px solid ${on ? color : C.border}`,
+                        background: on ? hexToRgba(color, 0.28) : "transparent",
+                        color: on ? C.cream : C.sage,
+                        cursor: "pointer",
+                      }}
+                    >
+                      {labels[g]}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 flex-wrap">
+              <label className="flex items-center gap-1.5 oswald" style={{ fontSize: 13, color: C.creamSoft, letterSpacing: "0.02em", cursor: "pointer" }}>
+                <input type="checkbox" checked={showZones} onChange={(e) => setShowZones(e.target.checked)} />
+                Position zones
+              </label>
+              <label className="flex items-center gap-1.5 oswald" style={{ fontSize: 13, color: C.creamSoft, letterSpacing: "0.02em", cursor: "pointer" }}>
+                <input type="checkbox" checked={showThirds} onChange={(e) => setShowThirds(e.target.checked)} />
+                Pitch thirds
+              </label>
+              <button
+                onClick={toggleChatVisibility}
+                className="oswald"
+                style={{
+                  fontSize: 12,
+                  letterSpacing: "0.02em",
+                  fontWeight: 700,
+                  color: showChat ? C.cream : C.ink,
+                  background: showChat ? "rgba(244,241,232,0.14)" : C.amber,
+                  border: `1px solid ${showChat ? C.border : C.amber}`,
+                  borderRadius: 6,
+                  padding: "6px 12px",
+                  cursor: "pointer"
+                }}
+              >
+                {showChat ? "💬 Hide Chat" : "💬 Show Chat"}
+              </button>
+              <button
+                onClick={toggleFullscreen}
+                className="oswald"
+                style={{ fontSize: 12, letterSpacing: "0.02em", fontWeight: 700, color: C.ink, background: C.amber, border: "none", borderRadius: 6, padding: "6px 12px", cursor: "pointer" }}
+              >
+                {isFullscreen ? "⤡ Exit Full Screen" : "⛶ Full Screen"}
+              </button>
+            </div>
+          </div>
+          <div className="oswald" style={{ fontSize: 11, color: "rgba(143,191,159,0.75)", marginTop: 6, letterSpacing: "0.02em" }}>
+            Drag any jersey or the ball to fine-tune the picture. Tap GK / DEF / MID / FWD to combine lines.
+          </div>
+        </div>
+
+        {/* SYMMETRIC STAGE: FOOTBALL GROUND (Left) & TEAM CHAT BOX (Right) */}
+        <div
+          className={showChat ? "grid grid-cols-1 md:grid-cols-2 gap-6 print-grid mb-8" : "flex justify-center print-grid mb-8"}
+          style={{ alignItems: "start" }}
+        >
+          {/* LEFT: THE FOOTBALL GROUND (Pitch) */}
+          <div
+            className="print-pitch-wrap w-full flex flex-col justify-start"
+            style={{
+              maxWidth: showChat ? "100%" : (isFullscreen ? "calc((100vh - 140px) * 0.68)" : 680),
+              margin: showChat ? "0" : "0 auto",
+              ...(isFullscreen ? { maxHeight: "calc(100vh - 140px)", display: "flex", alignItems: "center" } : {})
+            }}
+          >
+            <div
+              ref={pitchRef}
+              className="relative w-full rounded-lg overflow-hidden pitch-stripe"
+              style={{
+                aspectRatio: "68 / 100",
+                maxHeight: isFullscreen ? "calc(100vh - 140px)" : "none",
+                maxWidth: isFullscreen ? "calc((100vh - 140px) * 0.68)" : "100%",
+                border: `2px solid rgba(220,232,222,0.7)`,
+                touchAction: "none",
+                width: "100%",
+                boxSizing: "border-box",
+                margin: "0 auto"
+              }}
+            >
+              {/* pitch markings */}
+              <svg
+                viewBox="0 0 68 100"
+                preserveAspectRatio="none"
+                className="absolute inset-0 w-full h-full"
+                style={{ pointerEvents: "none" }}
+              >
+                <g fill="none" stroke="rgba(244,241,232,0.55)" strokeWidth="0.35">
+                  <rect x="1" y="1" width="66" height="98" />
+                  <line x1="1" y1="50" x2="67" y2="50" />
+                  <circle cx="34" cy="50" r="9.15" />
+                  <circle cx="34" cy="50" r="0.4" fill="rgba(244,241,232,0.55)" />
+                  {/* top penalty box + six-yard box (attacking end) */}
+                  <rect x="13.85" y="1" width="40.3" height="16.5" />
+                  <rect x="24.84" y="1" width="18.32" height="5.5" />
+                  <circle cx="34" cy="12" r="0.4" fill="rgba(244,241,232,0.55)" />
+                  <path d="M 26.69,17.5 A 9.15,9.15 0 0 0 41.31,17.5" />
+                  {/* bottom penalty box + six-yard box (goalkeeper end) */}
+                  <rect x="13.85" y="82.5" width="40.3" height="16.5" />
+                  <rect x="24.84" y="93.5" width="18.32" height="5.5" />
+                  <circle cx="34" cy="88" r="0.4" fill="rgba(244,241,232,0.55)" />
+                  <path d="M 26.69,82.5 A 9.15,9.15 0 0 1 41.31,82.5" />
+                  {/* corner arcs */}
+                  <path d="M 1,3 A 2,2 0 0 0 3,1" />
+                  <path d="M 65,1 A 2,2 0 0 0 67,3" />
+                  <path d="M 67,97 A 2,2 0 0 0 65,99" />
+                  <path d="M 3,99 A 2,2 0 0 0 1,97" />
+                </g>
+              </svg>
+
+              {/* pitch thirds */}
+              {showThirds && (
+                <>
+                  <div className="absolute no-print" style={{ left: 0, top: "0%", width: "100%", height: "33.33%", background: "rgba(220,38,38,0.20)", borderBottom: "1px dashed rgba(220,38,38,0.55)", pointerEvents: "none" }}>
+                    <div className="oswald" style={{ position: "absolute", top: 6, left: 8, fontSize: 10, letterSpacing: "0.15em", color: "#F4F1E8", opacity: 0.85 }}>ATTACKING THIRD</div>
+                  </div>
+                  <div className="absolute no-print" style={{ left: 0, top: "33.33%", width: "100%", height: "33.34%", background: "rgba(234,179,8,0.18)", borderBottom: "1px dashed rgba(234,179,8,0.55)", pointerEvents: "none" }}>
+                    <div className="oswald" style={{ position: "absolute", top: 6, left: 8, fontSize: 10, letterSpacing: "0.15em", color: "#F4F1E8", opacity: 0.85 }}>MIDDLE THIRD</div>
+                  </div>
+                  <div className="absolute no-print" style={{ left: 0, top: "66.67%", width: "100%", height: "33.33%", background: "rgba(37,99,235,0.18)", pointerEvents: "none" }}>
+                    <div className="oswald" style={{ position: "absolute", top: 6, left: 8, fontSize: 10, letterSpacing: "0.15em", color: "#F4F1E8", opacity: 0.85 }}>DEFENSIVE THIRD</div>
+                  </div>
+                </>
+              )}
+
+              {/* zones */}
+              {showZones &&
+                filled.map(({ slot, player }, i) => {
+                  const code = player ? player.canonical : slot.code;
+                  const group = GROUP[code] || "MID";
+                  if (!activeLines.includes(group)) return null;
+                  const [rw, rh] = CODE_ZONE_SIZE[code] || ZONE_SIZE[group];
+                  const color = CODE_COLORS[code] || ZONE_COLORS[group];
+                  const anchorY = CODE_ZONE_ANCHOR[code] != null ? CODE_ZONE_ANCHOR[code] : 0.5;
+                  const pos = getPos(slot, i);
+                  return (
+                    <div
+                      key={`zone-${i}`}
+                      className="absolute"
+                      style={{
+                        left: `${pos.x}%`,
+                        top: `${pos.y}%`,
+                        width: `${rw}%`,
+                        height: `${rh}%`,
+                        transform: `translate(-50%,-${anchorY * 100}%)`,
+                        borderRadius: 14,
+                        background: `radial-gradient(ellipse at center, ${hexToRgba(color, 0.32)} 0%, ${hexToRgba(color, 0.08)} 75%, transparent 100%)`,
+                        border: `2px dashed ${hexToRgba(color, 0.65)}`,
+                        pointerEvents: "none",
+                      }}
+                    />
+                  );
+                })}
+
+              {/* players */}
+              {filled.map(({ slot, player }, i) => {
+                const pos = getPos(slot, i);
+                const key = getSlotKey(i);
+                const dragging = dragKey === key;
+                const code = player ? player.canonical : slot.code;
+                const group = GROUP[code] || "MID";
+                const groupColor = CODE_COLORS[code] || ZONE_COLORS[group];
+                const dimmed = !activeLines.includes(group);
+                return (
+                  <div
+                    key={`slot-${i}`}
+                    className="token absolute flex flex-col items-center"
+                    onPointerDown={(e) => {
+                      e.preventDefault();
+                      setDragKey(key);
+                    }}
+                    onTouchStart={(e) => {
+                      e.preventDefault();
+                      setDragKey(key);
+                    }}
+                    style={{
+                      left: `${pos.x}%`,
+                      top: `${pos.y}%`,
+                      transform: "translate(-50%,-50%)",
+                      cursor: dragging ? "grabbing" : "grab",
+                      zIndex: dragging ? 20 : 10,
+                      userSelect: "none",
+                      opacity: dimmed ? 0.25 : 1,
+                    }}
+                  >
+                    <svg width="40" height="40" viewBox="0 0 64 64" style={{ filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.4))", pointerEvents: "none" }}>
+                      <path
+                        d="M20,6 L8,14 L14,26 L20,22 L20,58 L44,58 L44,22 L50,26 L56,14 L44,6 L38,10 Q32,16 26,10 Z"
+                        fill={player ? C.cream : "rgba(244,241,232,0.25)"}
+                        stroke={groupColor}
+                        strokeWidth="2.5"
+                        strokeLinejoin="round"
+                      />
+                      <text
+                        x="32" y="42"
+                        textAnchor="middle"
+                        fontSize="18"
+                        fontWeight="700"
+                        fill={C.ink}
+                        style={{ fontFamily: "'JetBrains Mono', monospace" }}
+                      >
+                        {player ? player.number : "–"}
+                      </text>
+                    </svg>
+                    <div
+                      className="oswald text-center leading-tight truncate"
+                      style={{ fontSize: 11, color: C.cream, marginTop: 4, maxWidth: 70, pointerEvents: "none" }}
+                    >
+                      {player ? player.name : slot.label}
+                    </div>
+                    <div style={{ fontSize: 9, color: groupColor, letterSpacing: "0.02em", pointerEvents: "none", fontWeight: 700 }}>{player ? player.canonical : slot.label}</div>
+                  </div>
+                );
+              })}
+
+              {/* floating ball */}
+              <div
+                onPointerDown={(e) => {
+                  e.preventDefault();
+                  setDragKey("ball");
+                }}
+                onTouchStart={(e) => {
+                  e.preventDefault();
+                  setDragKey("ball");
+                }}
+                className="absolute"
+                style={{
+                  left: `${ballPos.x}%`,
+                  top: `${ballPos.y}%`,
+                  transform: "translate(-50%,-50%)",
+                  cursor: dragKey === "ball" ? "grabbing" : "grab",
+                  zIndex: 30,
+                  userSelect: "none",
+                }}
+              >
+                <svg width="28" height="28" viewBox="0 0 100 100" style={{ filter: "drop-shadow(0 2px 3px rgba(0,0,0,0.5))", pointerEvents: "none" }}>
+                  <defs>
+                    <clipPath id="ballClip">
+                      <circle cx="50" cy="50" r="47" />
+                    </clipPath>
+                  </defs>
+                  <circle cx="50" cy="50" r="47" fill="#FFFFFF" stroke="#111111" strokeWidth="3" />
+                  <g clipPath="url(#ballClip)">
+                    <g stroke="#111111" strokeWidth="1.6" fill="none">
+                      <line x1="50" y1="36" x2="50" y2="3" />
+                      <line x1="63.31" y1="45.67" x2="94.7" y2="35.47" />
+                      <line x1="58.23" y1="61.33" x2="77.62" y2="88.03" />
+                      <line x1="41.77" y1="61.33" x2="22.38" y2="88.03" />
+                      <line x1="36.69" y1="45.67" x2="5.3" y2="35.47" />
+                    </g>
+                    <g fill="#111111" stroke="#111111" strokeWidth="1.2" strokeLinejoin="round">
+                      <polygon points="50,36 63.31,45.67 58.23,61.33 41.77,61.33 36.69,45.67" />
+                      <polygon points="50,1 58.56,7.22 55.29,17.29 44.71,17.29 41.44,7.22" />
+                      <polygon points="88.04,28.64 96.6,34.86 93.33,44.93 82.75,44.93 79.48,34.86" />
+                      <polygon points="73.51,73.36 82.07,79.58 78.8,89.65 68.22,89.65 64.95,79.58" />
+                      <polygon points="26.49,73.36 35.05,79.58 31.78,89.65 21.2,89.65 17.93,79.58" />
+                      <polygon points="11.96,28.64 20.52,34.86 17.25,44.93 6.67,44.93 3.4,34.86" />
+                    </g>
+                  </g>
+                </svg>
+              </div>
+            </div>
+          </div>
+
+          {/* RIGHT: THE LIVE TEAM CHAT BOX (Exact equal length to Pitch) */}
+          {showChat && (
+          <div
+            className="no-print flex flex-col"
+            style={{
+              background: C.panel,
+              border: `1px solid ${C.border}`,
+              borderRadius: 10,
+              overflow: "hidden",
+              height: pitchHeight ? `${pitchHeight}px` : "100%",
+              maxHeight: pitchHeight ? `${pitchHeight}px` : "none",
+              minHeight: pitchHeight ? `${pitchHeight}px` : "100%",
+              boxSizing: "border-box"
+            }}
+          >
+            {/* Chat Header */}
+            <div className="flex items-center justify-between px-4 py-3 border-b flex-shrink-0" style={{ borderColor: C.border, background: "rgba(19,43,28,0.85)" }}>
+              <div className="flex items-center gap-2">
+                <span style={{ fontSize: 18 }}>💬</span>
+                <div>
+                  <div className="oswald" style={{ fontSize: 14, letterSpacing: "0.15em", color: C.cream, fontWeight: 700 }}>TEAM CHAT & NOTICES</div>
+                  <div style={{ fontSize: 11, color: C.sage }}>
+                    Posting as: <strong style={{ color: C.amber }}>{isCoach ? (myChatId.name || "Head Coach") : (myChatId.name || "Visitor")}</strong> {(!isCoach) && <button onClick={openIdentityModal} style={{ textDecoration: "underline", color: C.cream, marginLeft: 6, background: "none", border: "none", cursor: "pointer", fontSize: 11 }}>Change</button>}
+                  </div>
+                </div>
+              </div>
+              {isCoach && (
+                <button
+                  onClick={clearAllChat}
+                  className="oswald"
+                  style={{ fontSize: 11, color: "#E88A6D", background: "rgba(220,38,38,0.12)", border: "1px solid rgba(220,38,38,0.3)", borderRadius: 6, padding: "4px 8px", cursor: "pointer" }}
+                >
+                  🗑️ Clear
+                </button>
+              )}
+            </div>
+
+            {/* Pinned Notice Card */}
+            {chatMsgs.find(m => m.pinned) && (() => {
+              const pinnedMsg = chatMsgs.find(m => m.pinned);
+              return (
+                <div className="flex items-start gap-2 px-4 py-2 border-b flex-shrink-0" style={{ borderColor: C.border, background: "rgba(232,179,76,0.12)" }}>
+                  <span style={{ fontSize: 15 }}>📌</span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div className="oswald" style={{ fontSize: 10, letterSpacing: "0.1em", color: C.amber, fontWeight: 700 }}>PINNED ANNOUNCEMENT</div>
+                    <div style={{ fontSize: 12, color: C.cream, wordBreak: "break-word" }}>{pinnedMsg.senderName} ({formatTime(pinnedMsg.createdAt)}): {pinnedMsg.text}</div>
+                  </div>
+                  {isCoach && (
+                    <button onClick={() => togglePinMessage(pinnedMsg.id, true)} style={{ color: C.sage, background: "none", border: "none", cursor: "pointer", fontSize: 12 }}>✕</button>
+                  )}
+                </div>
+              );
+            })()}
+
+            {/* Scrollable Messages Stream */}
+            <div className="chat-scroll flex-1 overflow-y-auto p-4 flex flex-col gap-3" style={{ minHeight: 0 }}>
+              {chatMsgs.length === 0 ? (
+                <div className="m-auto text-center py-8" style={{ color: C.sage }}>
+                  <div style={{ fontSize: 32, marginBottom: 6 }}>💬</div>
+                  <div className="oswald" style={{ fontSize: 14, color: C.creamSoft }}>No messages yet</div>
+                  <div style={{ fontSize: 11.5, marginTop: 4, opacity: 0.8 }}>Start a tactical discussion with the squad!</div>
+                </div>
+              ) : (
+                chatMsgs.map((m) => {
+                  const isMine = isCoach ? (m.senderRole === 'coach') : (m.senderName === myChatId.name);
+                  const isCoachMsg = m.senderRole === 'coach';
+                  const roleLabel = (m.senderRole || 'member').toUpperCase();
+                  const timeStr = formatTime(m.createdAt);
+                  let avatar = '💬';
+                  if (isCoachMsg) avatar = '👑';
+                  else if (m.senderRole === 'player') avatar = '⚽';
+                  else if (m.senderRole === 'staff') avatar = '🧑‍💼';
+
+                  return (
+                    <div key={m.id} className={`flex gap-2.5 items-start ${isMine ? 'flex-row-reverse self-end' : 'self-start'}`} style={{ maxWidth: "88%" }}>
+                      <div className="flex items-center justify-center rounded-full flex-shrink-0" style={{ width: 28, height: 28, background: "rgba(244,241,232,0.1)", border: `1px solid ${C.border}`, fontSize: 12 }}>
+                        {avatar}
+                      </div>
+                      <div className="flex flex-col gap-0.5" style={{ alignItems: isMine ? "flex-end" : "flex-start" }}>
+                        <div className="flex items-center gap-1.5" style={{ fontSize: 10, color: C.sage }}>
+                          <span style={{ fontWeight: 700, color: C.cream }}>{m.senderName}</span>
+                          <span className="mono rounded px-1" style={{ fontSize: 8.5, background: isCoachMsg ? "rgba(232,179,76,0.2)" : "rgba(244,241,232,0.1)", color: isCoachMsg ? C.amber : C.sage }}>{roleLabel}</span>
+                        </div>
+                        <div className="rounded-xl px-3 py-2 relative group" style={{
+                          background: isMine ? "#1A5C1A" : "rgba(30,77,43,0.6)",
+                          border: `1px solid ${isMine ? "#237A23" : C.border}`,
+                          color: C.cream,
+                          fontSize: 13,
+                          lineHeight: 1.35,
+                          wordBreak: "break-word",
+                          borderTopLeftRadius: !isMine ? 2 : 12,
+                          borderTopRightRadius: isMine ? 2 : 12,
+                        }}>
+                          {isCoach && (
+                            <div className="hidden group-hover:flex absolute -top-3 right-1 gap-1 px-1.5 py-0.5 rounded" style={{ background: C.panel, border: `1px solid ${C.border}`, fontSize: 10 }}>
+                              <button onClick={() => togglePinMessage(m.id, !!m.pinned)} style={{ color: C.amber, background: "none", border: "none", cursor: "pointer", fontSize: 10 }}>{m.pinned ? '📌 Unpin' : '📌 Pin'}</button>
+                              <button onClick={() => deleteChatMessage(m.id)} style={{ color: "#E88A6D", background: "none", border: "none", cursor: "pointer", fontSize: 10 }}>🗑️</button>
+                            </div>
+                          )}
+                          <div>{m.text}</div>
+                          <div style={{ fontSize: 9, opacity: 0.6, marginTop: 3, textAlign: "right" }}>{timeStr} {m.pinned ? '📌' : ''}</div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+              <div ref={chatMessagesEndRef} />
+            </div>
+
+            {/* Message Input Row */}
+            <form onSubmit={sendChatMessage} className="flex gap-2 p-3 border-t flex-shrink-0" style={{ borderColor: C.border, background: "rgba(19,43,28,0.95)" }}>
+              <input
+                type="text"
+                placeholder={isCoach ? "Post a message as Coach…" : "Type a message to chat with the team…"}
+                value={chatInputText}
+                onChange={(e) => setChatInputText(e.target.value)}
+                className="flex-1 px-3.5 py-2 rounded-full text-sm outline-none"
+                style={{ background: C.bg, border: `1px solid ${C.border}`, color: C.cream }}
+              />
+              <button
+                type="submit"
+                className="w-9 h-9 rounded-full flex items-center justify-center text-white flex-shrink-0 cursor-pointer hover:scale-105 transition-transform"
+                style={{ background: "#1A5C1A", border: "none", boxShadow: "0 2px 8px rgba(0,0,0,0.3)" }}
+                title="Send"
+              >
+                ➤
+              </button>
+            </form>
+          </div>
+          )}
+        </div>
+
+        {/* GAME CHANGERS + MANAGEMENT SECTION (Below the Pitch & Chat stage) */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Substitutes */}
+          <div>
+            <div className="oswald" style={{ fontSize: 12, letterSpacing: "0.3em", color: C.sage, marginBottom: 8 }}>
+              GAME CHANGERS · {subs.length}
+            </div>
+            {subs.length === 0 ? (
+              <div style={{ fontSize: 14, color: "rgba(143,191,159,0.7)", fontStyle: "italic", background: C.panel, border: `1px solid ${C.border}`, borderRadius: 6, padding: "12px 16px" }}>No players left on the bench.</div>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                {subs.map((p) => (
+                  <div
+                    key={p.id}
+                    className="flex items-center gap-3"
+                    style={{ background: C.panel, border: `1px solid ${C.border}`, borderRadius: 6, padding: "8px 12px" }}
+                  >
+                    <div className="mono font-bold text-center" style={{ color: C.amber, fontSize: 14, width: 24 }}>{p.number}</div>
+                    <div style={{ minWidth: 0 }}>
+                      <div className="truncate" style={{ color: C.cream, fontSize: 13 }}>{p.name}</div>
+                      <div style={{ fontSize: 10, color: C.sage, letterSpacing: "0.02em" }}>{p.rawPosition}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Management / Staff */}
+          <div>
+            <div className="oswald" style={{ fontSize: 12, letterSpacing: "0.3em", color: C.sage, marginBottom: 8 }}>
+              MANAGEMENT / STAFF · {managementFilled.length}
+            </div>
+            {managementFilled.length === 0 ? (
+              <div style={{ fontSize: 14, color: "rgba(143,191,159,0.7)", fontStyle: "italic", background: C.panel, border: `1px solid ${C.border}`, borderRadius: 6, padding: "12px 16px" }}>No management staff assigned.</div>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                {managementFilled.map((m) => (
+                  <div
+                    key={m.id}
+                    className="flex items-center gap-3"
+                    style={{ background: C.panel, border: `1px solid ${C.border}`, borderRadius: 6, padding: "8px 12px" }}
+                  >
+                    <div
+                      className="flex items-center justify-center"
+                      style={{ width: 26, height: 26, borderRadius: "50%", background: "rgba(139,95,191,0.25)", border: `1px solid ${ZONE_COLORS.GK}`, flexShrink: 0 }}
+                    >
+                      <span style={{ fontSize: 12 }}>👔</span>
+                    </div>
+                    <div style={{ minWidth: 0 }}>
+                      <div className="truncate" style={{ color: C.cream, fontSize: 13 }}>{m.name}</div>
+                      <div style={{ fontSize: 10, color: C.sage, letterSpacing: "0.02em" }}>{m.role}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+const root = ReactDOM.createRoot(document.getElementById("root"));
+root.render(<FormationBuilder />);
+</script>
+</body>
+</html>

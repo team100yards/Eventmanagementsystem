@@ -1,0 +1,44 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Settings (App Branding & Credentials)
+    match /settings/{docId} {
+      allow read, write: if true;
+    }
+
+    // Teams: Teams management, squads, lineups, and staff
+    match /teams/{teamId} {
+      allow read, write: if true;
+
+      // Discussions subcollection for team discussion board
+      match /discussions/{msgId} {
+        allow read, write: if true;
+      }
+
+      // Chat subcollection for tactical match / lineup chat
+      match /chat/{msgId} {
+        allow read, write: if true;
+      }
+    }
+
+    // Players: Player registration, squad database, and player photos
+    match /players/{playerId} {
+      allow read, write: if true;
+    }
+
+    // Tournaments: Tournament configuration, teams list, groups, and awards
+    match /tournaments/{tournamentId} {
+      allow read, write: if true;
+    }
+
+    // Matches: Standalone and tournament match sheets, lineups, and timeline events
+    match /matches/{matchId} {
+      allow read, write: if true;
+    }
+
+    // Fallback for all other collections
+    match /{document=**} {
+      allow read, write: if true;
+    }
+  }
+}

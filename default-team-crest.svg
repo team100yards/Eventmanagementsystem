@@ -1,0 +1,87 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 240" width="200" height="240">
+  <defs>
+    <!-- Rich Golden Gradient -->
+    <linearGradient id="crestGold" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffd54f" />
+      <stop offset="45%" stop-color="#ffb300" />
+      <stop offset="75%" stop-color="#f57f17" />
+      <stop offset="100%" stop-color="#ff6f00" />
+    </linearGradient>
+
+    <!-- Deep Club Royal Navy Gradient -->
+    <linearGradient id="crestNavy" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1e293b" />
+      <stop offset="50%" stop-color="#0f172a" />
+      <stop offset="100%" stop-color="#020617" />
+    </linearGradient>
+
+    <!-- Crimson Stripe Gradient -->
+    <linearGradient id="crestCrimson" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#ef4444" />
+      <stop offset="100%" stop-color="#b91c1c" />
+    </linearGradient>
+
+    <!-- 3D Ball Spherical Gradient -->
+    <radialGradient id="crestBallLight" cx="35%" cy="32%" r="65%">
+      <stop offset="0%" stop-color="#ffffff" />
+      <stop offset="55%" stop-color="#f1f5f9" />
+      <stop offset="85%" stop-color="#cbd5e1" />
+      <stop offset="100%" stop-color="#64748b" />
+    </radialGradient>
+
+    <!-- Shield Clip Path -->
+    <clipPath id="shieldInnerClip">
+      <path d="M 22 28 C 72 20 128 20 178 28 C 178 95 174 158 100 226 C 26 158 22 95 22 28 Z" />
+    </clipPath>
+  </defs>
+
+  <!-- Drop Shadow -->
+  <path d="M 16 26 C 70 17 130 17 184 26 C 184 98 180 164 100 236 C 20 164 16 98 16 26 Z" fill="rgba(0,0,0,0.5)" filter="blur(4px)" />
+
+  <!-- Outer Golden Shield Rim -->
+  <path d="M 16 24 C 70 15 130 15 184 24 C 184 98 180 164 100 234 C 20 164 16 98 16 24 Z" fill="url(#crestGold)" stroke="#b45309" stroke-width="2.5" />
+
+  <!-- Inner Navy Shield Field -->
+  <path d="M 22 28 C 72 20 128 20 178 28 C 178 95 174 158 100 226 C 26 158 22 95 22 28 Z" fill="url(#crestNavy)" />
+
+  <!-- Clipped Interior Pattern & Stripes -->
+  <g clip-path="url(#shieldInnerClip)">
+    <!-- Club Vertical Stripes -->
+    <rect x="52" y="10" width="22" height="230" fill="url(#crestCrimson)" opacity="0.9" />
+    <rect x="89" y="10" width="22" height="230" fill="url(#crestGold)" opacity="0.85" />
+    <rect x="126" y="10" width="22" height="230" fill="url(#crestCrimson)" opacity="0.9" />
+
+    <!-- Upper Chevron / Banner Divider -->
+    <path d="M 20 85 L 100 110 L 180 85 L 180 30 L 20 30 Z" fill="rgba(15,23,42,0.92)" stroke="url(#crestGold)" stroke-width="2.5" />
+
+    <!-- FC Text / Star on Banner -->
+    <text x="100" y="70" font-family="'Montserrat', 'Inter', sans-serif" font-weight="900" font-size="24" fill="#ffffff" text-anchor="middle" letter-spacing="3">TEAM FC</text>
+    <text x="100" y="85" font-family="'Montserrat', 'Inter', sans-serif" font-weight="700" font-size="9" fill="#ffd54f" text-anchor="middle" letter-spacing="2">100 YARDS</text>
+  </g>
+
+  <!-- Central Soccer Ball -->
+  <g transform="translate(100, 155)">
+    <!-- Ball Drop Shadow -->
+    <circle cx="0" cy="2" r="32" fill="rgba(0,0,0,0.6)" />
+    <!-- Ball Base -->
+    <circle cx="0" cy="0" r="30" fill="url(#crestBallLight)" stroke="url(#crestGold)" stroke-width="2.5" />
+    
+    <!-- Central Black Pentagon -->
+    <polygon points="0,-12 11,-4 7,10 -7,10 -11,-4" fill="#0f172a" stroke="#000000" stroke-width="1.2" />
+
+    <!-- Radiating Seam Lines to Outer Patches -->
+    <line x1="0" y1="-12" x2="0" y2="-28" stroke="#0f172a" stroke-width="2" stroke-linecap="round" />
+    <line x1="11" y1="-4" x2="26" y2="-9" stroke="#0f172a" stroke-width="2" stroke-linecap="round" />
+    <line x1="7" y1="10" x2="19" y2="22" stroke="#0f172a" stroke-width="2" stroke-linecap="round" />
+    <line x1="-7" y1="10" x2="-19" y2="22" stroke="#0f172a" stroke-width="2" stroke-linecap="round" />
+    <line x1="-11" y1="-4" x2="-26" y2="-9" stroke="#0f172a" stroke-width="2" stroke-linecap="round" />
+
+    <!-- Outer Perimeter Pentagon Points -->
+    <polygon points="-7,-30 7,-30 0,-28" fill="#0f172a" />
+    <polygon points="26,-9 29,3 24,12" fill="#0f172a" />
+    <polygon points="-26,-9 -29,3 -24,12" fill="#0f172a" />
+  </g>
+
+  <!-- Top Championship Star -->
+  <polygon points="100,2 104,12 115,12 106,19 110,29 100,23 90,29 94,19 85,12 96,12" fill="url(#crestGold)" stroke="#b45309" stroke-width="1" />
+</svg>

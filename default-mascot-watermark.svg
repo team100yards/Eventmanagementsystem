@@ -1,0 +1,109 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 700" width="600" height="700" style="background:transparent;">
+  <defs>
+    <filter id="wmGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#000000" flood-opacity="0.85" />
+    </filter>
+  </defs>
+
+  <g id="mascot-full-logo" filter="url(#wmGlow)">
+    <!-- 100 YARDS EAGLE MASCOT — WHITE LINE ART -->
+    <g id="mascot-eagle-icon" stroke="#ffffff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      
+      <!-- Head Crest & Feathers -->
+      <path d="M 330 85 C 345 70 365 72 375 88 C 362 92 355 100 365 110 C 352 114 348 124 360 135 C 345 138 340 150 355 165 C 335 168 330 185 345 200" />
+      <path d="M 330 85 C 310 80 285 92 270 115 C 265 125 260 140 262 155" />
+      
+      <!-- Brow & Fierce Eye -->
+      <path d="M 276 130 C 285 124 300 125 315 132" stroke-width="3.8" />
+      <circle cx="295" cy="138" r="9" stroke-width="2.8" />
+      <circle cx="293" cy="138" r="4.5" fill="#ffffff" stroke="none" />
+      
+      <!-- Curved Hooked Beak -->
+      <path d="M 262 155 C 248 152 232 165 225 180 C 220 195 226 215 245 218 C 258 220 272 208 280 198" />
+      <path d="M 245 218 C 260 215 275 205 285 190" />
+      <path d="M 248 178 C 255 174 262 176 266 182" />
+      
+      <!-- Lower Beak & Chin -->
+      <path d="M 280 198 C 286 212 295 220 308 222 C 318 223 325 216 332 208" />
+      
+      <!-- Feathered Neck Ruff / Collar -->
+      <path d="M 275 205 C 282 225 292 240 285 260 C 298 250 310 248 318 268 C 328 252 338 252 346 270 C 356 250 368 250 380 265 C 388 245 396 242 410 252 C 405 235 412 222 422 225 C 415 212 418 200 425 192" />
+      <path d="M 300 220 C 315 235 330 242 348 240" />
+
+      <!-- Soccer Jersey & Torso -->
+      <path d="M 285 260 C 275 280 265 305 258 330 C 270 338 290 342 305 338" />
+      <path d="M 285 260 C 310 295 335 320 355 335 L 340 375" />
+      <path d="M 346 270 C 375 285 400 308 415 340" />
+      
+      <!-- V-Neck Collar Trim -->
+      <path d="M 302 265 L 320 292 L 342 272" stroke-width="2.6" />
+      <path d="M 296 268 L 320 302 L 348 276" stroke-width="2.2" />
+
+      <!-- Left Sleeve & Muscular Wing Arm (Resting on Hip) -->
+      <path d="M 410 252 C 435 265 455 290 460 320 C 452 338 440 345 422 342" />
+      <path d="M 460 320 C 468 345 462 375 448 398 C 438 412 422 420 405 418 C 392 415 385 402 388 388 C 392 372 405 365 415 360" />
+      <!-- Wing/Hand Clenched on Hip -->
+      <path d="M 405 418 C 395 422 382 418 376 405 C 370 392 374 380 382 372" />
+
+      <!-- Right Wing/Arm (Forearm & Wing Feathers) -->
+      <path d="M 258 330 C 252 348 248 370 252 390 C 256 405 268 415 282 418 C 295 420 306 412 312 398 C 318 385 315 370 310 355" />
+      <path d="M 252 390 C 245 402 242 415 248 425 C 255 432 265 430 272 422" />
+
+      <!-- Tail Feathers -->
+      <path d="M 425 410 C 445 425 465 440 480 465 C 465 462 450 455 440 445" />
+      <path d="M 432 432 C 450 448 465 468 472 490 C 455 482 442 472 432 458" />
+      <path d="M 428 450 C 440 465 450 485 452 505 C 438 495 428 480 422 465" />
+
+      <!-- Soccer Shorts -->
+      <path d="M 295 365 C 280 380 262 402 248 430 C 255 455 272 470 292 472 C 308 474 322 460 326 442 L 340 445 C 348 472 368 495 395 498 C 418 500 435 485 442 460 C 445 440 440 422 432 405 C 400 398 368 390 340 375" />
+      <!-- Shorts Center Seam -->
+      <path d="M 326 442 C 332 425 336 405 340 375" stroke-dasharray="6 3" stroke-width="2.2" />
+
+      <!-- Standing Left Leg (Firm on Turf) -->
+      <path d="M 390 498 C 395 530 398 560 405 590" />
+      <path d="M 428 485 C 426 520 424 555 428 588" />
+      <!-- Left Sock & Top Band -->
+      <path d="M 405 565 C 412 563 420 563 427 565" stroke-width="2.6" />
+      <path d="M 405 572 C 412 570 420 570 428 572" stroke-width="2.6" />
+      <!-- Left Soccer Boot / Cleat -->
+      <path d="M 404 595 C 392 602 376 612 365 625 C 360 632 365 640 375 642 C 392 645 412 640 425 632 C 435 625 438 610 432 598 C 426 590 415 588 404 595 Z" />
+      <!-- Boot Laces & Studs -->
+      <path d="M 392 608 L 398 615 M 402 612 L 408 619" stroke-width="2.2" />
+      <path d="M 372 644 L 370 652 M 382 645 L 380 653 M 415 638 L 415 646 M 426 632 L 428 640" stroke-width="3" />
+
+      <!-- Right Leg (Bent Over Soccer Ball) -->
+      <path d="M 262 455 C 265 480 270 502 278 525" />
+      <path d="M 292 472 C 298 495 304 518 310 538" />
+      <!-- Right Sock & Bands -->
+      <path d="M 275 510 C 285 508 298 508 306 510" stroke-width="2.6" />
+      <path d="M 278 518 C 286 516 298 516 308 518" stroke-width="2.6" />
+      <!-- Right Soccer Boot Resting on Ball -->
+      <path d="M 276 535 C 262 542 245 550 236 560 C 232 566 238 574 248 575 C 266 577 288 574 302 566 C 314 558 318 545 310 535 C 300 528 288 528 276 535 Z" />
+      <!-- Boot Laces & Heel -->
+      <path d="M 264 548 L 270 554 M 274 550 L 280 556" stroke-width="2.2" />
+      <path d="M 298 568 L 300 575 M 308 564 L 312 571" stroke-width="3" />
+
+      <!-- Soccer Ball Under Right Cleat -->
+      <circle cx="260" cy="605" r="48" stroke-width="3.5" />
+      <!-- Classic 32-Panel Pentagons & Seams -->
+      <!-- Center Pentagon -->
+      <polygon points="260,582 276,594 270,612 250,612 244,594" stroke-width="2.6" />
+      <!-- Radiating Seam Lines & Outer Pentagons -->
+      <path d="M 260 582 L 260 562" stroke-width="2.4" />
+      <path d="M 276 594 L 296 588" stroke-width="2.4" />
+      <path d="M 270 612 L 284 628" stroke-width="2.4" />
+      <path d="M 250 612 L 236 628" stroke-width="2.4" />
+      <path d="M 244 594 L 224 588" stroke-width="2.4" />
+      <path d="M 284 628 C 275 642 260 648 245 645" stroke-width="2.2" />
+      <path d="M 236 628 C 225 618 216 605 218 592" stroke-width="2.2" />
+      <path d="M 296 588 C 304 600 306 615 300 628" stroke-width="2.2" />
+    </g>
+
+    <!-- ORIGINAL 100 YARDS BRAND TYPOGRAPHY (WHITE VECTOR TEXT) -->
+    <g id="mascot-brand-text">
+      <text x="300" y="678" text-anchor="middle" font-family="'Montserrat', 'Bebas Neue', 'Inter', sans-serif" font-weight="900" font-size="28" fill="#ffffff" letter-spacing="4">100 YARDS</text>
+      <!-- Sparkle / Star Icon at Right -->
+      <path d="M 480 668 Q 486 668 486 662 Q 486 668 492 668 Q 486 668 486 674 Q 486 668 480 668 Z" fill="#ffffff" stroke="none" />
+    </g>
+  </g>
+</svg>
