@@ -1287,12 +1287,15 @@
                           strokeLinejoin="round"
                         />
                         <text
-                          x="32" y="41"
+                          x="32" y={String(player ? player.number : "").length >= 2 ? "40" : "41"}
                           textAnchor="middle"
-                          fontSize="22"
+                          fontSize={String(player ? player.number : "").length >= 2 ? "16" : "21"}
                           fontWeight="800"
                           fill={C.ink}
-                          style={{ fontFamily: "'JetBrains Mono', monospace" }}
+                          style={{
+                            fontFamily: "'JetBrains Mono', monospace",
+                            letterSpacing: String(player ? player.number : "").length >= 2 ? "-0.5px" : "normal"
+                          }}
                         >
                           {player ? player.number : "–"}
                         </text>

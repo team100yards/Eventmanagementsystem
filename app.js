@@ -1012,7 +1012,7 @@ function openLiveMatchDeskDirect() {
 window.openLiveMatchDeskDirect = openLiveMatchDeskDirect;
 
 function openFormationBuilderDirect() {
-  window.open('formation-builder.html?v=60.0', '_blank');
+  window.open('formation-builder.html?v=61.0', '_blank');
 }
 window.openFormationBuilderDirect = openFormationBuilderDirect;
 
@@ -1350,7 +1350,7 @@ function showAdminTab(tab, keepTeam = false) {
     populateAdminFormationTeamSelect();
     const f = $('adm-formation-frame');
     if (f && (!f.src || f.src === 'about:blank' || !f.src.includes('formation-builder.html'))) {
-      f.src = 'formation-builder.html?v=60.0';
+      f.src = 'formation-builder.html?v=61.0';
     } else {
       setTimeout(() => sendAdmFormationSync(), 150);
       setTimeout(() => sendAdmFormationSync(), 450);
@@ -1421,6 +1421,11 @@ function renderBirthdayBanner(allPlayers) {
 
 function openTeamRosterView(teamId) {
   activeAdminPlayerTeamId = teamId;
+  const targetTeam = teams.find(t => t.id === teamId);
+  if (targetTeam) {
+    curTeam = targetTeam;
+    if (typeof initTeamSquadData === 'function') initTeamSquadData();
+  }
   showAdminTab('players', true);
   renderAdminPlayers();
 }
@@ -2862,7 +2867,7 @@ function showTab(n) {
   if (n === 'formation') {
     const frame = $('formation-builder-frame');
     if (frame && (!frame.src || frame.src === 'about:blank' || !frame.src.includes('formation-builder.html'))) {
-      frame.src = 'formation-builder.html?v=60.0';
+      frame.src = 'formation-builder.html?v=61.0';
     } else {
       setTimeout(() => sendFormationSync(), 150);
       setTimeout(() => sendFormationSync(), 450);
@@ -3399,6 +3404,14 @@ async function persistTeamSquadNow(showToast = true) {
     if (activeAdminPlayerTeamId) curTeam = teams.find(t => t.id === activeAdminPlayerTeamId);
   }
   if (!curTeam || !curTeam.id) return false;
+
+  // Safety guard: if teamSquadData has 0 players but curTeam.squad already has players, re-initialize to prevent accidental wipe
+  if ((!teamSquadData.playingXi || !teamSquadData.playingXi.length) && (!teamSquadData.bench || !teamSquadData.bench.length)) {
+    if (curTeam && curTeam.squad && ((curTeam.squad.playingXi && curTeam.squad.playingXi.length) || (curTeam.squad.bench && curTeam.squad.bench.length) || (curTeam.squad.slots && curTeam.squad.slots.some(s => s && s.player)))) {
+      console.warn('persistTeamSquadNow prevented accidental squad wipe. Re-initializing from curTeam.squad.');
+      initTeamSquadData();
+    }
+  }
 
   const formationKey = curTeam.squad?.formation || '4-4-2';
   const flat = flattenFormation(formationKey);
@@ -4238,6 +4251,13 @@ function openEdit(id) {
     }
   }
   if (!p) return;
+  if (p.teamId) {
+    const t = teams.find(x => x.id === p.teamId);
+    if (t) {
+      curTeam = t;
+      if (typeof initTeamSquadData === 'function') initTeamSquadData();
+    }
+  }
   editId = id;
   editPhotoData = p.photo || null;
   const epPrev = $('e-photo-preview'), epPh = $('e-photo-ph'), epInp = $('e-photo-inp');
@@ -4318,6 +4338,12 @@ async function saveEdit() {
     };
     if (editPhotoData !== undefined) updateData.photo = editPhotoData;
 
+    const inCache = allPlayersCache.find(x => x.id === editId);
+    const targetTeam = curTeam || (inCache ? teams.find(t => t.id === inCache.teamId) : null);
+    const teamId = targetTeam ? targetTeam.id : (inCache ? inCache.teamId : '');
+    if (teamId) updateData.teamId = teamId;
+    if (targetTeam && targetTeam.name) updateData.teamName = targetTeam.name;
+
     // 1. Update Firestore players collection (with merge so it succeeds even if doc did not previously exist)
     try {
       await setDoc(doc(db, 'players', editId), updateData, { merge: true });
@@ -4326,7 +4352,6 @@ async function saveEdit() {
     }
 
     // 2. Update allPlayersCache in memory
-    const inCache = allPlayersCache.find(x => x.id === editId);
     if (inCache) {
       Object.assign(inCache, updateData);
     }
@@ -4338,7 +4363,6 @@ async function saveEdit() {
     }
 
     // 4. Update team players array if present
-    const targetTeam = curTeam || (inCache ? teams.find(t => t.id === inCache.teamId) : null);
     if (targetTeam && Array.isArray(targetTeam.players)) {
       const pInTeam = targetTeam.players.find(x => x.id === editId || (x.name && x.name.toLowerCase() === (inCache?.name || name).toLowerCase()));
       if (pInTeam) {
@@ -4351,9 +4375,9 @@ async function saveEdit() {
       }
     }
 
-    // 5. Update team squad if player is in Playing XI or Bench
-    let squadChanged = false;
+    // 5. Update team squad directly and safely in-place without wiping
     if (targetTeam && targetTeam.squad) {
+      let squadChanged = false;
       ['playingXi', 'bench'].forEach(sec => {
         const list = targetTeam.squad[sec];
         if (Array.isArray(list)) {
@@ -4369,24 +4393,62 @@ async function saveEdit() {
           }
         }
       });
-      if (squadChanged) {
-        if (typeof teamSquadData !== 'undefined' && teamSquadData) {
-          ['playingXi', 'bench'].forEach(sec => {
-            const list = teamSquadData[sec];
-            if (Array.isArray(list)) {
-              const item = list.find(x => x.id === editId || (x.name && x.name.toLowerCase() === (inCache?.name || name).toLowerCase()));
-              if (item) {
-                item.name = name;
-                item.displayName = displayName;
-                item.shortName = displayName;
-                item.position = position;
-                item.jersey = jersey || playernum || '';
-                if (editPhotoData !== undefined) item.photo = editPhotoData;
-              }
-            }
-          });
+
+      // Also update any matching slot in targetTeam.squad.slots
+      if (Array.isArray(targetTeam.squad.slots)) {
+        targetTeam.squad.slots.forEach(slot => {
+          if (slot && slot.player && (slot.player.id === editId || (slot.player.name && slot.player.name.toLowerCase() === (inCache?.name || name).toLowerCase()))) {
+            slot.player.name = name;
+            slot.player.displayName = displayName;
+            slot.player.shortName = displayName;
+            slot.player.position = position;
+            slot.player.jersey = jersey || playernum || '';
+            slot.player.matchPosition = posCode(position);
+            if (editPhotoData !== undefined) slot.player.photo = editPhotoData;
+            squadChanged = true;
+          }
+        });
+      }
+
+      // Also update in subs array if present
+      if (Array.isArray(targetTeam.squad.subs)) {
+        const subItem = targetTeam.squad.subs.find(x => x.id === editId || (x.name && x.name.toLowerCase() === (inCache?.name || name).toLowerCase()));
+        if (subItem) {
+          subItem.name = name;
+          subItem.displayName = displayName;
+          subItem.shortName = displayName;
+          subItem.position = position;
+          subItem.jersey = jersey || playernum || '';
+          if (editPhotoData !== undefined) subItem.photo = editPhotoData;
+          squadChanged = true;
         }
-        await persistTeamSquadNow(false);
+      }
+
+      // Keep active in-memory teamSquadData in sync if loaded
+      if (typeof teamSquadData !== 'undefined' && teamSquadData) {
+        ['playingXi', 'bench'].forEach(sec => {
+          const list = teamSquadData[sec];
+          if (Array.isArray(list)) {
+            const item = list.find(x => x.id === editId || (x.name && x.name.toLowerCase() === (inCache?.name || name).toLowerCase()));
+            if (item) {
+              item.name = name;
+              item.displayName = displayName;
+              item.shortName = displayName;
+              item.position = position;
+              item.jersey = jersey || playernum || '';
+              if (editPhotoData !== undefined) item.photo = editPhotoData;
+            }
+          }
+        });
+      }
+
+      if (squadChanged) {
+        targetTeam.squad.updatedAt = new Date().toISOString();
+        try {
+          await updateDoc(doc(db, 'teams', targetTeam.id), { squad: targetTeam.squad });
+        } catch (sqErr) {
+          console.warn('Failed to update squad on team doc:', sqErr);
+        }
       }
     }
 
@@ -4663,7 +4725,7 @@ function openFormationBuilderFullscreen() {
   if (targetTeam) {
     buildFormationSyncPayload(targetTeam);
   }
-  window.open('formation-builder.html?v=60.0', '_blank');
+  window.open('formation-builder.html?v=61.0', '_blank');
 }
 window.openFormationBuilderFullscreen = openFormationBuilderFullscreen;
 
