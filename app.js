@@ -3340,17 +3340,15 @@ function renderSquadPlayingList() {
         <div class="squad-row-left">
           <div class="squad-avatar-wrap" onclick="triggerRowPhotoUpload('${listType}',${idx})" title="Click to upload/change photo">
             ${photoImg}
-            <div class="squad-avatar-btn">📷 PHOTO</div>
+            <div class="squad-avatar-btn">📷</div>
           </div>
           ${jerseyDisplay}
-          <div style="min-width:0;flex:1;">
-            <div class="squad-name" title="${esc(p.name)}">
-              ${esc(p.name)}
-              ${hasDiffDisp ? `<span style="font-size:12px;color:var(--mt);font-weight:normal;margin-left:4px;">(${esc(dispName)})</span>` : ''}
-            </div>
-            <div style="display:flex;align-items:center;gap:6px;margin-top:2px;flex-wrap:wrap;">
+          <div class="squad-row-text">
+            <div class="squad-name" title="${esc(p.name)}">${esc(p.name)}</div>
+            <div class="squad-meta-line">
               ${posBadge}
-              ${p.role ? `<span class="squad-pos-pill" style="background:#e2e8f0;color:#2d3748;">${esc(p.role)}</span>` : ''}
+              ${hasDiffDisp ? `<span class="squad-disp-pill" title="Display Name: ${esc(dispName)}">${esc(dispName)}</span>` : ''}
+              ${p.role ? `<span class="squad-role-pill" title="${esc(p.role)}">${esc(p.role)}</span>` : ''}
             </div>
           </div>
         </div>
@@ -3367,9 +3365,12 @@ function renderSquadPlayingList() {
   const renderSubCategory = (title, icon, list, listType, origIndices) => {
     return `
       <div class="squad-subcat-box">
-        <div class="squad-subcat-title">${icon} ${title} (${list.length})</div>
+        <div class="squad-subcat-title">
+          <span>${icon} ${title}</span>
+          <span class="squad-subcat-count">${list.length}</span>
+        </div>
         <div class="squad-list-grid">
-          ${list.length ? list.map((p, i) => renderPlayerRow(p, listType, origIndices[i])).join('') : `<div class="squad-empty-box" style="padding:10px;font-size:12px;">No ${title.toLowerCase()} assigned.</div>`}
+          ${list.length ? list.map((p, i) => renderPlayerRow(p, listType, origIndices[i])).join('') : `<div class="squad-empty-box">No ${title.toLowerCase()} assigned.</div>`}
         </div>
       </div>
     `;
@@ -3381,11 +3382,11 @@ function renderSquadPlayingList() {
   const formationOptionsHtml = formationList.map(f => `<option value="${f}" ${f === curFormation ? 'selected' : ''}>${f}</option>`).join('');
 
   let html = `
-    <!-- TOP SECTION: BALANCED 2-COLUMN GRID (PLAYING XI LEFT & BENCH RIGHT) -->
-    <div class="squad-columns-layout">
-      <!-- 1. LEFT COLUMN: PLAYING XI -->
-      <div class="squad-section-card squad-xi-card">
-        <div class="squad-section-head">
+    <!-- TOP SECTION: HEADER CONTROLS (PLAYING XI LEFT & BENCH RIGHT) -->
+    <div class="squad-columns-layout squad-header-grid" style="margin-bottom:14px;">
+      <!-- 1. LEFT HEADER: PLAYING XI -->
+      <div class="squad-section-card squad-xi-card squad-header-box">
+        <div class="squad-section-head" style="margin-bottom:0;">
           <div class="squad-section-title">
             <span>⚽ PLAYING XI (STARTING XI)</span>
             <span class="squad-badge">${teamSquadData.playingXi.length} / 11 Playing</span>
@@ -3403,16 +3404,11 @@ function renderSquadPlayingList() {
             <button type="button" class="squad-btn-secondary" onclick="openAddSquadMemberModal('playingXi')">＋ Add Starter</button>
           </div>
         </div>
-
-        ${renderSubCategory('Goalkeepers (GK)', '🧤', xiGkList, 'playingXi', xiGkIndices)}
-        ${renderSubCategory('Defenders (DF)', '🛡️', xiDefList, 'playingXi', xiDefIndices)}
-        ${renderSubCategory('Midfielders (MF)', '⚙️', xiMidList, 'playingXi', xiMidIndices)}
-        ${renderSubCategory('Forwards (FW)', '⚡', xiFwdList, 'playingXi', xiFwdIndices)}
       </div>
 
-      <!-- 2. RIGHT COLUMN: BENCH PLAYERS (EXACT MATCHING CATEGORIES) -->
-      <div class="squad-section-card squad-bench-card">
-        <div class="squad-section-head">
+      <!-- 2. RIGHT HEADER: BENCH PLAYERS -->
+      <div class="squad-section-card squad-bench-card squad-header-box">
+        <div class="squad-section-head" style="margin-bottom:0;">
           <div class="squad-section-title">
             <span>💺 BENCH PLAYERS (SUBSTITUTES)</span>
             <span class="squad-badge bench">${teamSquadData.bench.length} Substitutes</span>
@@ -3421,11 +3417,49 @@ function renderSquadPlayingList() {
             <button type="button" class="squad-btn-secondary" onclick="openAddSquadMemberModal('bench')">＋ Add Bench Player</button>
           </div>
         </div>
+      </div>
+    </div>
 
-        ${renderSubCategory('Goalkeepers (GK)', '🧤', benchGkList, 'bench', benchGkIndices)}
-        ${renderSubCategory('Defenders (DF)', '🛡️', benchDefList, 'bench', benchDefIndices)}
-        ${renderSubCategory('Midfielders (MF)', '⚙️', benchMidList, 'bench', benchMidIndices)}
-        ${renderSubCategory('Forwards (FW)', '⚡', benchFwdList, 'bench', benchFwdIndices)}
+    <!-- SYNCHRONIZED POSITIONAL TIERS (ROW-BY-ROW HORIZONTAL PAIRS) -->
+    <div class="squad-tiers-container">
+      <!-- TIER 1: GOALKEEPERS -->
+      <div class="squad-tier-row">
+        <div class="squad-tier-side left">
+          ${renderSubCategory('Goalkeepers (GK)', '🧤', xiGkList, 'playingXi', xiGkIndices)}
+        </div>
+        <div class="squad-tier-side right">
+          ${renderSubCategory('Goalkeepers (GK)', '🧤', benchGkList, 'bench', benchGkIndices)}
+        </div>
+      </div>
+
+      <!-- TIER 2: DEFENDERS -->
+      <div class="squad-tier-row">
+        <div class="squad-tier-side left">
+          ${renderSubCategory('Defenders (DF)', '🛡️', xiDefList, 'playingXi', xiDefIndices)}
+        </div>
+        <div class="squad-tier-side right">
+          ${renderSubCategory('Defenders (DF)', '🛡️', benchDefList, 'bench', benchDefIndices)}
+        </div>
+      </div>
+
+      <!-- TIER 3: MIDFIELDERS -->
+      <div class="squad-tier-row">
+        <div class="squad-tier-side left">
+          ${renderSubCategory('Midfielders (MF)', '⚙️', midList, 'playingXi', xiMidIndices)}
+        </div>
+        <div class="squad-tier-side right">
+          ${renderSubCategory('Midfielders (MF)', '⚙️', benchMidList, 'bench', benchMidIndices)}
+        </div>
+      </div>
+
+      <!-- TIER 4: FORWARDS -->
+      <div class="squad-tier-row">
+        <div class="squad-tier-side left">
+          ${renderSubCategory('Forwards (FW)', '⚡', xiFwdList, 'playingXi', xiFwdIndices)}
+        </div>
+        <div class="squad-tier-side right">
+          ${renderSubCategory('Forwards (FW)', '⚡', benchFwdList, 'bench', benchFwdIndices)}
+        </div>
       </div>
     </div>
 
