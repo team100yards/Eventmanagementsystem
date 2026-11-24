@@ -4813,31 +4813,24 @@ textarea {
 }
 
 .sb-team-events {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px 10px;
+  align-content: start;
   width: 100%;
-  max-width: 320px;
-  max-height: 180px;
+  max-width: 480px;
+  max-height: 200px;
   overflow-y: auto;
   overscroll-behavior: contain;
   scrollbar-width: thin;
 }
 
-.sb-events-col.home .sb-team-events {
-  align-items: flex-end;
-}
-
-.sb-events-col.away .sb-team-events {
-  align-items: flex-start;
-}
-
 .sb-event-item {
-  display: inline-flex;
+  display: flex;
   align-items: center;
   gap: 6px;
-  width: auto;
-  max-width: 100%;
+  width: 100%;
+  min-width: 0;
   background: rgba(0, 0, 0, .28);
   border: 1px solid rgba(255, 255, 255, .16);
   border-radius: 8px;
@@ -5596,8 +5589,11 @@ textarea {
   }
 
   .sb-team-events {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 5px 8px;
     max-width: 100%;
-    max-height: 140px;
+    max-height: 150px;
   }
 
   .sb-event-item {
@@ -5653,7 +5649,10 @@ textarea {
   }
 
   .sb-team-events {
-    max-width: 95px;
+    grid-template-columns: 1fr;
+    max-width: 100%;
+    max-height: 140px;
+    gap: 4px;
   }
 
   .sb-event-item {
