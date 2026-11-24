@@ -26,6 +26,14 @@
     body {
       margin: 0;
       padding: 0;
+      min-height: 100%;
+      height: auto;
+      overflow-x: hidden;
+      overflow-y: auto !important;
+      background: #0F1B14;
+      color: #F4EEDD;
+      -webkit-overflow-scrolling: touch;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     }
 
     html:fullscreen,
@@ -116,14 +124,14 @@
     };
     const GROUP = {
       GK: "GK",
-      RB: "DEF", LB: "DEF", CB: "DEF", RWB: "DEF", LWB: "DEF",
-      CDM: "MID", CM: "MID", CAM: "MID", RM: "MID", LM: "MID",
-      RW: "FWD", LW: "FWD", CF: "FWD", ST: "FWD",
+      RB: "DEF", LB: "DEF", CB: "DEF", RWB: "DEF", LWB: "DEF", CD: "DEF", DF: "DEF", DEF: "DEF",
+      CDM: "MID", CM: "MID", CAM: "MID", RM: "MID", LM: "MID", MF: "MID", MID: "MID",
+      RW: "FWD", LW: "FWD", CF: "FWD", ST: "FWD", FW: "FWD", FWD: "FWD",
     };
     const SIDE = {
-      GK: "C", RB: "R", LB: "L", CB: "C", RWB: "R", LWB: "L",
-      CDM: "C", CM: "C", CAM: "C", RM: "R", LM: "L",
-      RW: "R", LW: "L", CF: "C", ST: "C",
+      GK: "C", RB: "R", LB: "L", CB: "C", CD: "C", RWB: "R", LWB: "L", DF: "C", DEF: "C",
+      CDM: "C", CM: "C", CAM: "C", RM: "R", LM: "L", MF: "C", MID: "C",
+      RW: "R", LW: "L", CF: "C", ST: "C", FW: "C", FWD: "C",
     };
     const canonicalize = (raw) => {
       const key = String(raw || "").trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
@@ -399,60 +407,59 @@
       // Rule 1: Goalkeeper rules (absolute priority & protection)
       if (sGroup === "GK" || sCanon === "GK") {
         if (pGroup === "GK" || pCanon === "GK") return 1000;
-        return -500; // Outfield player in goal is heavily penalized
+        return -1000;
       }
       if (pGroup === "GK" || pCanon === "GK") {
         return -1000; // Goalkeeper should NEVER play outfield
       }
 
-      // Rule 2: Exact canonical match
-      if (pCanon === sCanon) return 100;
-
-      // Rule 3: Natural tactical equivalents
-      const EQUIV = {
-        LB: ["LWB", "CB", "DF"],
-        RB: ["RWB", "CB", "DF"],
-        CB: ["SW", "CD", "DEF", "LB", "RB", "CDM"],
-        LWB: ["LB", "LM", "LW"],
-        RWB: ["RB", "RM", "RW"],
-        CDM: ["CM", "CAM", "CB"],
-        CM: ["CDM", "CAM", "LM", "RM"],
-        CAM: ["CM", "CDM", "CF", "ST", "LM", "RM"],
-        LM: ["LW", "LWB", "CM"],
-        RM: ["RW", "RWB", "CM"],
-        LW: ["LM", "LF", "ST", "CF"],
-        RW: ["RM", "RF", "ST", "CF"],
-        CF: ["ST", "CAM", "LW", "RW"],
-        ST: ["CF", "LW", "RW", "CAM"]
-      };
-      if (EQUIV[sCanon]) {
-        const idx = EQUIV[sCanon].indexOf(pCanon);
-        if (idx !== -1) return 92 - (idx * 4);
-      }
-
-      // Rule 4: Same positional group
+      // Rule 2: Same positional group (DEF -> DEF, MID -> MID, FWD -> FWD)
+      // High score bracket: 100 - 135 (ALWAYS beats cross-group matching)
       if (pGroup === sGroup) {
-        let score = 65;
-        if (pSide === sSide) score += 20; // Same flank (e.g. Left defender in Left Back)
-        else if (pSide === "C" || sSide === "C") score += 10; // Central flexibility
-        else score -= 15; // Flank mismatch (e.g. Left player in Right slot)
+        let score = 100;
+        if (pCanon === sCanon) return 135;
+
+        // Defense specific
+        if (sGroup === "DEF") {
+          if ((sCanon === "LB" && pCanon === "LWB") || (sCanon === "RB" && pCanon === "RWB")) return 130;
+          if (sCanon === "CB" && (pCanon === "CD" || pCanon === "DEF" || pCanon === "DF")) return 132;
+          if (sSide === pSide && sSide !== "C") return 126;
+          if (sSide === "C" && (pSide === "C" || pCanon === "CB" || pCanon === "CD")) return 120;
+          if (sSide !== pSide && sSide !== "C" && pSide !== "C") return 90; // Flank mismatch (e.g. Left defender in Right Back)
+          return 110;
+        }
+
+        // Midfield specific
+        if (sGroup === "MID") {
+          if ((sCanon === "CM" && (pCanon === "CDM" || pCanon === "CAM")) ||
+              (sCanon === "CDM" && pCanon === "CM") ||
+              (sCanon === "CAM" && pCanon === "CM")) return 128;
+          if (sSide === pSide && sSide !== "C") return 126;
+          if (sSide === "C" && pSide === "C") return 120;
+          if (sSide !== pSide && sSide !== "C" && pSide !== "C") return 90; // Flank mismatch (e.g. LM in RM)
+          return 110;
+        }
+
+        // Forward specific
+        if (sGroup === "FWD") {
+          if ((sCanon === "ST" && (pCanon === "CF" || pCanon === "FW" || pCanon === "FWD")) ||
+              (sCanon === "CF" && (pCanon === "ST" || pCanon === "FW" || pCanon === "FWD"))) return 130;
+          if (sSide === pSide && sSide !== "C") return 126;
+          if (sSide === "C" && (pSide === "C" || pCanon === "ST" || pCanon === "CF" || pCanon === "FW")) return 120;
+          return 115;
+        }
+
         return score;
       }
 
-      // Rule 5: Adjacent positional line (flexibility)
+      // Rule 3: Cross-group fallback (strictly penalized <= 35 so in-group players ALWAYS get assigned first)
       if ((pGroup === "DEF" && sGroup === "MID") || (pGroup === "MID" && sGroup === "DEF")) {
-        let score = 30;
-        if (pSide === sSide) score += 10;
-        return score;
+        return (pSide === sSide && pSide !== "C") ? 35 : 25;
       }
       if ((pGroup === "MID" && sGroup === "FWD") || (pGroup === "FWD" && sGroup === "MID")) {
-        let score = 30;
-        if (pSide === sSide) score += 10;
-        return score;
+        return (pSide === sSide && pSide !== "C") ? 35 : 25;
       }
-
-      // Rule 6: Opposite line (DEF <-> FWD)
-      return 5;
+      return 10;
     };
 
     function assignTacticalLineup(startersPool, subsPool, slots) {
@@ -1039,7 +1046,7 @@
         }
       `}</style>
 
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-10 py-6 md:py-8">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 md:py-6 w-full box-border">
           <div className="flex items-baseline justify-between mb-4 flex-wrap gap-2 no-print">
             <div>
               <div className="oswald" style={{ fontSize: 12, letterSpacing: "0.3em", color: C.sage, marginBottom: 2 }}>SQUAD SHEET</div>
