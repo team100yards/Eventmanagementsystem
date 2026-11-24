@@ -988,7 +988,7 @@ function openLiveMatchDeskDirect() {
 window.openLiveMatchDeskDirect = openLiveMatchDeskDirect;
 
 function openFormationBuilderDirect() {
-  window.open('formation-builder.html?v=52.0', '_blank');
+  window.open('formation-builder.html?v=53.0', '_blank');
 }
 window.openFormationBuilderDirect = openFormationBuilderDirect;
 
@@ -1323,7 +1323,7 @@ function showAdminTab(tab, keepTeam = false) {
     populateAdminFormationTeamSelect();
     const f = $('adm-formation-frame');
     if (f && (!f.src || f.src === 'about:blank' || !f.src.includes('formation-builder.html'))) {
-      f.src = 'formation-builder.html?v=52.0';
+      f.src = 'formation-builder.html?v=53.0';
     } else {
       setTimeout(() => sendAdmFormationSync(), 150);
     }
@@ -2881,7 +2881,7 @@ function showTab(n) {
   if (n === 'formation') {
     const frame = $('formation-builder-frame');
     if (frame && (!frame.src || frame.src === 'about:blank' || !frame.src.includes('formation-builder.html'))) {
-      frame.src = 'formation-builder.html?v=52.0';
+      frame.src = 'formation-builder.html?v=53.0';
     } else {
       setTimeout(() => sendFormationSync(), 150);
     }
@@ -3632,7 +3632,7 @@ function openTeamFormationVisualizer() {
   if (teamScreen && teamScreen.classList.contains('active')) {
     showTab('formation');
   } else {
-    window.open('formation-builder.html?v=52.0', '_blank');
+    window.open('formation-builder.html?v=53.0', '_blank');
   }
 }
 window.openTeamFormationVisualizer = openTeamFormationVisualizer;
@@ -4645,7 +4645,7 @@ function openFormationBuilderFullscreen() {
   if (targetTeam) {
     buildFormationSyncPayload(targetTeam);
   }
-  window.open('formation-builder.html?v=52.0', '_blank');
+  window.open('formation-builder.html?v=53.0', '_blank');
 }
 window.openFormationBuilderFullscreen = openFormationBuilderFullscreen;
 
@@ -12362,33 +12362,45 @@ function renderLiveMatchScreen() {
     stageTag.textContent = tourn ? `${tourn.name} · MATCH CENTER` : 'FRIENDLY MATCH CENTER';
   }
 
-  // 3. Goal scorers ticker underneath hero scoreboard
+  // 3. Two-column key events ticker underneath hero scoreboard
   const scorersWrap = $('as-hero-scorers');
   const hScorersList = $('as-home-scorers-list');
   const aScorersList = $('as-away-scorers-list');
 
-  const homeGoals = (m.events || []).filter(e => e.type === 'goal' && e.team === 'home');
-  const awayGoals = (m.events || []).filter(e => e.type === 'goal' && e.team === 'away');
+  const homeKeyEvents = (m.events || []).filter(e => (e.team === 'home' || !e.team) && (e.type === 'goal' || e.type === 'own_goal' || e.type === 'yellow' || e.type === 'red'));
+  const awayKeyEvents = (m.events || []).filter(e => e.team === 'away' && (e.type === 'goal' || e.type === 'own_goal' || e.type === 'yellow' || e.type === 'red'));
 
-  if (homeGoals.length || awayGoals.length) {
+  if (homeKeyEvents.length || awayKeyEvents.length) {
     if (scorersWrap) scorersWrap.style.display = 'grid';
     if (hScorersList) {
-      hScorersList.innerHTML = homeGoals.map(g => `
-        <div class="as-scorer-item">
-          <span>⚽</span>
-          <strong>${esc(g.playerName)}</strong>
-          <span style="color:#94a3b8;">${g.minute ? g.minute + "'" : ''}</span>
-        </div>
-      `).join('');
+      hScorersList.innerHTML = homeKeyEvents.map(ev => {
+        let ico = '⚽';
+        if (ev.type === 'own_goal') ico = '🔁';
+        else if (ev.type === 'yellow') ico = '🟨';
+        else if (ev.type === 'red') ico = '🟥';
+        return `
+          <div class="as-scorer-item">
+            <span>${ico}</span>
+            <strong>${esc(ev.playerName || 'Player')}</strong>
+            <span style="color:#94a3b8;">${ev.minute != null ? ev.minute + "'" : ''}</span>
+          </div>
+        `;
+      }).join('');
     }
     if (aScorersList) {
-      aScorersList.innerHTML = awayGoals.map(g => `
-        <div class="as-scorer-item">
-          <span>⚽</span>
-          <strong>${esc(g.playerName)}</strong>
-          <span style="color:#94a3b8;">${g.minute ? g.minute + "'" : ''}</span>
-        </div>
-      `).join('');
+      aScorersList.innerHTML = awayKeyEvents.map(ev => {
+        let ico = '⚽';
+        if (ev.type === 'own_goal') ico = '🔁';
+        else if (ev.type === 'yellow') ico = '🟨';
+        else if (ev.type === 'red') ico = '🟥';
+        return `
+          <div class="as-scorer-item">
+            <span>${ico}</span>
+            <strong>${esc(ev.playerName || 'Player')}</strong>
+            <span style="color:#94a3b8;">${ev.minute != null ? ev.minute + "'" : ''}</span>
+          </div>
+        `;
+      }).join('');
     }
   } else {
     if (scorersWrap) scorersWrap.style.display = 'none';
@@ -12459,7 +12471,8 @@ function renderLiveTimeline() {
   const feedEl = $('as-timeline-feed');
   if (!feedEl || !curLiveMatch) return;
 
-  const events = [...(curLiveMatch.events || [])].sort((a, b) => {
+  const m = curLiveMatch;
+  const events = [...(m.events || [])].sort((a, b) => {
     const minA = a.minute != null ? a.minute : 999;
     const minB = b.minute != null ? b.minute : 999;
     return minA - minB;
@@ -12467,28 +12480,38 @@ function renderLiveTimeline() {
 
   if (!events.length) {
     feedEl.innerHTML = `
-      <div style="background:#18202d;border-radius:16px;padding:36px 20px;text-align:center;color:#94a3b8;">
+      <div class="as-empty-timeline">
         <div style="font-size:36px;margin-bottom:8px;">⏱️</div>
         <div style="font-size:16px;font-weight:700;color:#fff;margin-bottom:4px;">No match events recorded yet</div>
-        <p style="font-size:12.5px;max-width:380px;margin:0 auto;">Key moments such as goals, cards, and substitutions logged pitchside will appear here in real time.</p>
+        <p style="font-size:12.5px;max-width:380px;margin:0 auto;color:#94a3b8;">Key moments such as goals, cards, and substitutions logged pitchside will appear here in real time.</p>
       </div>`;
     return;
   }
 
-  feedEl.innerHTML = events.map(ev => {
-    const isHome = ev.team === 'home';
-    const teamName = isHome ? (curLiveMatch.home?.name || 'Home') : (curLiveMatch.away?.name || 'Away');
+  const hTeam = teams.find(t => t.id === m.home?.teamId);
+  const aTeam = teams.find(t => t.id === m.away?.teamId);
+  const homeBadge = matchSideIcon(m.home, hTeam);
+  const awayBadge = matchSideIcon(m.away, aTeam);
+
+  const homeEvents = events.filter(e => e.team === 'home' || !e.team);
+  const awayEvents = events.filter(e => e.team === 'away');
+
+  const isAdmin = (sessionStorage.getItem('fhq_session_active') === '1' || !!curUser);
+
+  function renderLiveEventItem(ev, side) {
+    const isHome = side === 'home';
+    const teamName = isHome ? (m.home?.name || 'Home') : (m.away?.name || 'Away');
     const minText = ev.minute != null ? `${ev.minute}'` : '—';
 
     let cardCls = 'goal';
     let icon = '⚽';
-    let titleText = `${esc(ev.playerName)} (${esc(teamName)})`;
+    let typeTag = 'GOAL';
     let subText = '';
 
     if (ev.type === 'goal') {
       cardCls = 'goal';
       icon = '⚽';
-      titleText = `GOAL! ${esc(ev.playerName)} (${esc(teamName)})`;
+      typeTag = 'GOAL';
       if (ev.relatedPlayerId) {
         const assister = findMatchPlayer(ev.relatedPlayerId);
         if (assister) subText = `Assist: ${esc(assister.name)}`;
@@ -12496,28 +12519,29 @@ function renderLiveTimeline() {
     } else if (ev.type === 'own_goal') {
       cardCls = 'goal';
       icon = '🔁';
-      const beneficiary = ev.team === 'home' ? (curLiveMatch.away?.name || 'Away') : (curLiveMatch.home?.name || 'Home');
-      titleText = `OWN GOAL: ${esc(ev.playerName)} (${esc(teamName)}) · Goal for ${esc(beneficiary)}`;
+      typeTag = 'OWN GOAL';
+      const beneficiary = ev.team === 'home' ? (m.away?.name || 'Away') : (m.home?.name || 'Home');
+      subText = `Goal for ${esc(beneficiary)}`;
     } else if (ev.type === 'assist') {
       cardCls = 'sub';
       icon = '👟';
-      titleText = `ASSIST: ${esc(ev.playerName)} (${esc(teamName)})`;
+      typeTag = 'ASSIST';
     } else if (ev.type === 'yellow') {
       cardCls = 'yellow';
       icon = '🟨';
-      titleText = `YELLOW CARD: ${esc(ev.playerName)} (${esc(teamName)})`;
+      typeTag = 'YELLOW';
     } else if (ev.type === 'red') {
       cardCls = 'red';
       icon = '🟥';
-      titleText = `RED CARD: ${esc(ev.playerName)} (${esc(teamName)})`;
+      typeTag = 'RED';
     } else if (ev.type === 'sub') {
       cardCls = 'sub';
       icon = '🔄';
+      typeTag = 'SUB';
       const subIn = findMatchPlayer(ev.playerId) || { name: ev.playerName };
       const subOff = findMatchPlayer(ev.relatedPlayerId);
       const inNum = (subIn.jersey != null && subIn.jersey !== '') ? `#${subIn.jersey} ` : (subIn.number != null && subIn.number !== '' ? `#${subIn.number} ` : '');
       const outNum = (subOff && subOff.jersey != null && subOff.jersey !== '') ? `#${subOff.jersey} ` : (subOff && subOff.number != null && subOff.number !== '' ? `#${subOff.number} ` : '');
-      titleText = `SUBSTITUTION (${esc(teamName)})`;
       subText = `🟢 In: ${esc(inNum)}${esc(subIn.name || ev.playerName)}${subOff ? ' · 🔴 Out: ' + esc(outNum) + esc(subOff.name) : ''}`;
     }
 
@@ -12525,25 +12549,67 @@ function renderLiveTimeline() {
       subText = (subText ? subText + ' · ' : '') + esc(ev.note);
     }
 
-    const adminActions = (sessionStorage.getItem('fhq_session_active') === '1' || !!curUser) ? `
-      <div style="margin-left:auto;display:flex;gap:6px;align-items:center;flex-shrink:0;">
-        <button type="button" class="obtn" style="padding:4px 9px;font-size:11px;font-weight:700;" title="Edit / Correct event" onclick="openEditEventModal('${ev.id}')">✏️ Edit</button>
-        <button type="button" class="obtn" style="padding:4px 9px;font-size:11px;font-weight:700;color:var(--red);border-color:rgba(220,38,38,0.4);" title="Delete event" onclick="deleteMatchEvent('${ev.id}')">🗑️</button>
+    const adminActions = isAdmin ? `
+      <div style="margin-left:auto;display:flex;gap:4px;align-items:center;flex-shrink:0;">
+        <button type="button" class="obtn" style="padding:2px 7px;font-size:10px;font-weight:700;" title="Edit event" onclick="openEditEventModal('${ev.id}')">✏️</button>
+        <button type="button" class="obtn" style="padding:2px 7px;font-size:10px;font-weight:700;color:var(--red);border-color:rgba(220,38,38,0.4);" title="Delete event" onclick="deleteMatchEvent('${ev.id}')">🗑️</button>
       </div>
     ` : '';
 
     return `
-      <div class="as-event-card ${cardCls}">
-        <div class="as-event-min">${esc(minText)}</div>
-        <div class="as-event-icon">${icon}</div>
-        <div class="as-event-details">
-          <div class="as-event-title">${titleText}</div>
-          ${subText ? `<div class="as-event-meta">${subText}</div>` : ''}
+      <div class="as-event-card-compact ${cardCls}">
+        <div class="as-event-min-pill">${esc(minText)}</div>
+        <div class="as-event-icon-wrap">${icon}</div>
+        <div class="as-event-body">
+          <div class="as-event-main-line">
+            <strong class="as-event-player">${esc(ev.playerName || 'Player')}</strong>
+            <span class="as-event-type-tag">${typeTag}</span>
+          </div>
+          ${subText ? `<div class="as-event-sub-line">${subText}</div>` : ''}
         </div>
         ${adminActions}
       </div>
     `;
-  }).join('');
+  }
+
+  const homeEventsHtml = homeEvents.length
+    ? homeEvents.map(e => renderLiveEventItem(e, 'home')).join('')
+    : `<div class="as-no-events-col">No events logged for ${esc(m.home?.name || 'Home')}</div>`;
+
+  const awayEventsHtml = awayEvents.length
+    ? awayEvents.map(e => renderLiveEventItem(e, 'away')).join('')
+    : `<div class="as-no-events-col">No events logged for ${esc(m.away?.name || 'Away')}</div>`;
+
+  feedEl.innerHTML = `
+    <div class="as-timeline-two-col">
+      <!-- HOME COLUMN -->
+      <div class="as-timeline-col home">
+        <div class="as-timeline-col-header">
+          <div class="as-col-team-badge">${homeBadge}</div>
+          <div class="as-col-team-name">${esc(m.home?.name || 'Home Team')}</div>
+          <span class="as-col-count-pill">${homeEvents.length}</span>
+        </div>
+        <div class="as-timeline-events-list">
+          ${homeEventsHtml}
+        </div>
+      </div>
+
+      <!-- TIMELINE DIVIDER -->
+      <div class="as-timeline-divider"></div>
+
+      <!-- AWAY COLUMN -->
+      <div class="as-timeline-col away">
+        <div class="as-timeline-col-header">
+          <div class="as-col-team-badge">${awayBadge}</div>
+          <div class="as-col-team-name">${esc(m.away?.name || 'Away Team')}</div>
+          <span class="as-col-count-pill">${awayEvents.length}</span>
+        </div>
+        <div class="as-timeline-events-list">
+          ${awayEventsHtml}
+        </div>
+      </div>
+    </div>
+  `;
 }
 
 function renderLivePitch() {

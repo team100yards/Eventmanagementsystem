@@ -6281,21 +6281,26 @@ textarea {
 .as-hero-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  margin-bottom: 22px;
+  justify-content: center;
+  margin-bottom: 18px;
+  position: relative;
 }
 
 .as-stage-tag {
-  font-size: 11px;
+  font-size: 11.5px;
   font-weight: 800;
-  letter-spacing: 1.5px;
+  letter-spacing: 2px;
   text-transform: uppercase;
   color: #94a3b8;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 4px 14px;
+  border-radius: 20px;
 }
 
 .as-clock-pill {
   background: rgba(0, 0, 0, 0.45);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.16);
   padding: 4px 12px;
   border-radius: 20px;
   font-size: 12px;
@@ -6306,6 +6311,8 @@ textarea {
   gap: 6px;
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.5px;
+  margin-top: 2px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
 }
 
 .as-clock-pulse {
@@ -6375,7 +6382,8 @@ textarea {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-width: 160px;
+  min-width: 170px;
+  gap: 5px;
 }
 
 .as-score-digits {
@@ -6395,7 +6403,7 @@ textarea {
 }
 
 .as-score-state-badge {
-  margin-top: 8px;
+  margin-top: 2px;
   font-size: 10px;
   font-weight: 800;
   letter-spacing: 1.5px;
@@ -6407,15 +6415,15 @@ textarea {
   border: 1px solid rgba(34, 197, 94, 0.25);
 }
 
-/* HERO SCORERS ROW */
+/* HERO SCORERS / KEY EVENTS TWO-COLUMN ROW */
 .as-hero-scorers {
-  margin-top: 20px;
+  margin-top: 18px;
   padding-top: 14px;
   border-top: 1px solid rgba(255, 255, 255, 0.08);
   display: grid;
   grid-template-columns: 1fr auto 1fr;
-  align-items: start;
-  gap: 12px;
+  align-items: flex-start;
+  gap: 16px;
   font-size: 12px;
   color: #cbd5e1;
 }
@@ -6423,35 +6431,43 @@ textarea {
 .as-scorers-col {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
+  min-width: 0;
 }
 
 .as-scorers-col.home {
-  text-align: right;
+  align-items: flex-end;
 }
 
 .as-scorers-col.away {
-  text-align: left;
+  align-items: flex-start;
 }
 
 .as-scorers-div {
   width: 1px;
-  height: 100%;
-  background: rgba(255, 255, 255, 0.08);
+  align-self: stretch;
+  min-height: 24px;
+  background: rgba(255, 255, 255, 0.12);
 }
 
 .as-scorer-item {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  padding: 3px 9px;
+  font-size: 11.5px;
+  box-sizing: border-box;
+  max-width: 100%;
 }
 
-.as-scorers-col.home .as-scorer-item {
-  justify-content: flex-end;
-}
-
-.as-scorers-col.away .as-scorer-item {
-  justify-content: flex-start;
+.as-scorer-item strong {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 160px;
 }
 
 /* APPLE SPORTS SEGMENTED CONTROL BAR */
@@ -6546,14 +6562,288 @@ textarea {
   gap: 5px;
 }
 
-/* TIMELINE FEED */
+/* ══ 2-COLUMN MATCH EVENTS LAYOUT ══ */
 .as-timeline-container {
   display: flex;
   flex-direction: column;
+  gap: 12px;
+  position: relative;
+  width: 100%;
+}
+
+.as-timeline-two-col {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 18px;
+  align-items: start;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.as-timeline-col {
+  display: flex;
+  flex-direction: column;
   gap: 10px;
+  min-width: 0;
+  width: 100%;
+}
+
+.as-timeline-col-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  margin-bottom: 2px;
+}
+
+.as-timeline-col.home .as-timeline-col-header {
+  border-left: 3.5px solid #22c55e;
+}
+
+.as-timeline-col.away .as-timeline-col-header {
+  border-right: 3.5px solid #38bdf8;
+  flex-direction: row-reverse;
+}
+
+.as-col-team-badge {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #1a2230;
+  border: 1.5px solid rgba(255, 255, 255, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.as-col-team-badge img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.as-col-team-name {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 18px;
+  letter-spacing: 1px;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+}
+
+.as-timeline-col.away .as-col-team-name {
+  text-align: right;
+}
+
+.as-col-count-pill {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #94a3b8;
+  flex-shrink: 0;
+}
+
+.as-timeline-events-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+.as-timeline-divider {
+  width: 1px;
+  background: rgba(255, 255, 255, 0.12);
+  align-self: stretch;
+  min-height: 140px;
   position: relative;
 }
 
+/* COMPACT EVENT CARD (BALANCED & EXTENSIBLE) */
+.as-event-card-compact {
+  background: #18202d;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 12px;
+  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  transition: all 0.15s ease;
+  position: relative;
+  box-sizing: border-box;
+}
+
+.as-event-card-compact:hover {
+  background: #1c2636;
+  border-color: rgba(255, 255, 255, 0.18);
+  transform: translateY(-1px);
+}
+
+.as-event-card-compact.goal {
+  border-left: 3.5px solid #22c55e;
+}
+
+.as-event-card-compact.yellow {
+  border-left: 3.5px solid #f59e0b;
+}
+
+.as-event-card-compact.red {
+  border-left: 3.5px solid #ef4444;
+}
+
+.as-event-card-compact.sub {
+  border-left: 3.5px solid #38bdf8;
+}
+
+.as-event-min-pill {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 15px;
+  letter-spacing: 0.5px;
+  color: #22c55e;
+  background: rgba(34, 197, 94, 0.1);
+  border: 1px solid rgba(34, 197, 94, 0.25);
+  border-radius: 6px;
+  padding: 2px 7px;
+  min-width: 32px;
+  text-align: center;
+  flex-shrink: 0;
+  line-height: 1.1;
+}
+
+.as-event-card-compact.yellow .as-event-min-pill {
+  color: #f59e0b;
+  background: rgba(245, 158, 11, 0.1);
+  border-color: rgba(245, 158, 11, 0.25);
+}
+
+.as-event-card-compact.red .as-event-min-pill {
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.1);
+  border-color: rgba(239, 68, 68, 0.25);
+}
+
+.as-event-card-compact.sub .as-event-min-pill {
+  color: #38bdf8;
+  background: rgba(56, 189, 248, 0.1);
+  border-color: rgba(56, 189, 248, 0.25);
+}
+
+.as-event-icon-wrap {
+  font-size: 18px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.as-event-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.as-event-main-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.as-event-player {
+  font-size: 13px;
+  font-weight: 700;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.as-event-type-tag {
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #94a3b8;
+}
+
+.as-event-card-compact.goal .as-event-type-tag {
+  color: #4ade80;
+  background: rgba(34, 197, 94, 0.15);
+}
+
+.as-event-card-compact.yellow .as-event-type-tag {
+  color: #fbbf24;
+  background: rgba(245, 158, 11, 0.15);
+}
+
+.as-event-card-compact.red .as-event-type-tag {
+  color: #f87171;
+  background: rgba(239, 68, 68, 0.15);
+}
+
+.as-event-card-compact.sub .as-event-type-tag {
+  color: #7dd3fc;
+  background: rgba(56, 189, 248, 0.15);
+}
+
+.as-event-sub-line {
+  font-size: 11px;
+  color: #94a3b8;
+  margin-top: 2px;
+  line-height: 1.3;
+}
+
+.as-no-events-col {
+  padding: 24px 16px;
+  text-align: center;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px dashed rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.as-empty-timeline {
+  background: #18202d;
+  border-radius: 16px;
+  padding: 36px 20px;
+  text-align: center;
+  color: #94a3b8;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+@media (max-width: 680px) {
+  .as-timeline-two-col {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+  .as-timeline-divider {
+    display: none;
+  }
+  .as-timeline-col.away .as-timeline-col-header {
+    flex-direction: row;
+    border-right: none;
+    border-left: 3.5px solid #38bdf8;
+  }
+  .as-timeline-col.away .as-col-team-name {
+    text-align: left;
+  }
+}
+
+/* LEGACY AS EVENT CARD (FALLBACK) */
 .as-event-card {
   background: #18202d;
   border: 1px solid rgba(255, 255, 255, 0.07);
