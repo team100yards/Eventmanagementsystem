@@ -1267,7 +1267,7 @@ function openLiveMatchDeskDirect() {
 window.openLiveMatchDeskDirect = openLiveMatchDeskDirect;
 
 function openFormationBuilderDirect() {
-  window.open('formation-builder.html?v=69.0', '_blank');
+  window.open('formation-builder.html?v=70.0', '_blank');
 }
 window.openFormationBuilderDirect = openFormationBuilderDirect;
 
@@ -1544,7 +1544,7 @@ function showAdminTab(tab, keepTeam = false) {
     populateAdminFormationTeamSelect();
     const f = $('adm-formation-frame');
     if (f && (!f.src || f.src === 'about:blank' || !f.src.includes('formation-builder.html'))) {
-      f.src = 'formation-builder.html?v=69.0';
+      f.src = 'formation-builder.html?v=70.0';
     } else {
       setTimeout(() => sendAdmFormationSync(), 150);
       setTimeout(() => sendAdmFormationSync(), 450);
@@ -3075,7 +3075,7 @@ function showTab(n) {
   if (n === 'formation') {
     const frame = $('formation-builder-frame');
     if (frame && (!frame.src || frame.src === 'about:blank' || !frame.src.includes('formation-builder.html'))) {
-      frame.src = 'formation-builder.html?v=69.0';
+      frame.src = 'formation-builder.html?v=70.0';
     } else {
       setTimeout(() => sendFormationSync(), 150);
       setTimeout(() => sendFormationSync(), 450);
@@ -3966,10 +3966,16 @@ async function persistTeamSquadNow(showToast = true) {
   };
 
   try {
-    await updateDoc(doc(db, 'teams', curTeam.id), { squad });
+    await updateDoc(doc(db, 'teams', curTeam.id), { squad, 'visualizerState.formationKey': formationKey });
     curTeam.squad = squad;
+    if (!curTeam.visualizerState) curTeam.visualizerState = {};
+    curTeam.visualizerState.formationKey = formationKey;
     const teamInArr = teams.find(t => t.id === curTeam.id);
-    if (teamInArr) teamInArr.squad = squad;
+    if (teamInArr) {
+      teamInArr.squad = squad;
+      if (!teamInArr.visualizerState) teamInArr.visualizerState = {};
+      teamInArr.visualizerState.formationKey = formationKey;
+    }
 
     // Sync squad players to Firestore players collection for live match & players tab
     const allSquadPlayers = [...playingXi, ...subs, ...outOfSquadList];
@@ -4163,10 +4169,14 @@ async function changeTeamSquadFormation(newFormation) {
   if (!curTeam) return;
   if (!curTeam.squad) curTeam.squad = {};
   curTeam.squad.formation = newFormation;
+  if (!curTeam.visualizerState) curTeam.visualizerState = {};
+  curTeam.visualizerState.formationKey = newFormation;
   const inArr = teams.find(t => t.id === curTeam.id);
   if (inArr) {
     if (!inArr.squad) inArr.squad = {};
     inArr.squad.formation = newFormation;
+    if (!inArr.visualizerState) inArr.visualizerState = {};
+    inArr.visualizerState.formationKey = newFormation;
   }
   await persistTeamSquadNow(true);
   renderSquadPlayingList();
@@ -4668,10 +4678,16 @@ async function saveSquadPlayingList() {
   };
 
   try {
-    await updateDoc(doc(db, 'teams', curTeam.id), { squad });
+    await updateDoc(doc(db, 'teams', curTeam.id), { squad, 'visualizerState.formationKey': formationKey });
     curTeam.squad = squad;
+    if (!curTeam.visualizerState) curTeam.visualizerState = {};
+    curTeam.visualizerState.formationKey = formationKey;
     const teamInArr = teams.find(t => t.id === curTeam.id);
-    if (teamInArr) teamInArr.squad = squad;
+    if (teamInArr) {
+      teamInArr.squad = squad;
+      if (!teamInArr.visualizerState) teamInArr.visualizerState = {};
+      teamInArr.visualizerState.formationKey = formationKey;
+    }
 
     // Batch sync all players to the Firestore players collection for live match & players tab sync
     const allSquadPlayers = [...squad.playingXi, ...squad.bench, ...(squad.outOfSquad || [])];
@@ -5368,7 +5384,7 @@ function buildFormationSyncPayload(targetTeam) {
       name: s.name || '',
       role: s.role || 'Staff'
     }));
-    const formationKey = (vState && vState.formationKey) || sq.formation || '4-3-3';
+    const formationKey = sq.formation || (vState && vState.formationKey) || '4-4-2';
     const formationDef = FORMATIONS[formationKey] || null;
     const source = `Team: ${target.name || 'Unnamed'}${sq.name ? ' (' + sq.name + ')' : ''}`;
     payload = {
@@ -5402,7 +5418,7 @@ function buildFormationSyncPayload(targetTeam) {
       number: s.jersey || s.playernum || '-',
       position: toFBPositionCode(s.position)
     }));
-    const formationKey = (vState && vState.formationKey) || sq.formation || '4-4-2';
+    const formationKey = sq.formation || (vState && vState.formationKey) || '4-4-2';
     const formationDef = FORMATIONS[formationKey] || null;
     payload = {
       formation: formationKey,
@@ -5428,7 +5444,7 @@ function buildFormationSyncPayload(targetTeam) {
       name: s.name,
       role: s.role || 'Staff'
     }));
-    const formationKey = (vState && vState.formationKey) || '4-3-3';
+    const formationKey = (target.squad && target.squad.formation) || (vState && vState.formationKey) || '4-4-2';
     const formationDef = FORMATIONS[formationKey] || null;
     payload = {
       formation: formationKey,
@@ -5476,7 +5492,7 @@ function openFormationBuilderFullscreen() {
   if (targetTeam) {
     buildFormationSyncPayload(targetTeam);
   }
-  window.open('formation-builder.html?v=69.0', '_blank');
+  window.open('formation-builder.html?v=70.0', '_blank');
 }
 window.openFormationBuilderFullscreen = openFormationBuilderFullscreen;
 
@@ -7860,7 +7876,7 @@ function buildPubFormationSyncPayload() {
     const source = `Synced from Playing List${sq.name ? ' — ' + sq.name : ''}${when ? ' (saved ' + when + ')' : ''}`;
     const starters = (sq.slots || []).map(s => s && s.player ? { id: s.player.id, name: s.player.name, number: s.player.jersey || '-', position: toFBPositionCode(s.player.matchPosition || s.player.position) } : null);
     const subs = (sq.subs || []).map(s => ({ id: s.id, name: s.name, number: s.jersey || '-', position: toFBPositionCode(s.position) }));
-    const formationKey = (vState && vState.formationKey) || sq.formation;
+    const formationKey = sq.formation || (vState && vState.formationKey) || '4-4-2';
     const formationDef = FORMATIONS[formationKey] || null;
     payload = { formation: formationKey, formationDef, starters, subs, management, source };
   } else {
