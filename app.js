@@ -1267,7 +1267,7 @@ function openLiveMatchDeskDirect() {
 window.openLiveMatchDeskDirect = openLiveMatchDeskDirect;
 
 function openFormationBuilderDirect() {
-  window.open('formation-builder.html?v=72.0', '_blank');
+  window.open('formation-builder.html?v=73.0', '_blank');
 }
 window.openFormationBuilderDirect = openFormationBuilderDirect;
 
@@ -1544,7 +1544,7 @@ function showAdminTab(tab, keepTeam = false) {
     populateAdminFormationTeamSelect();
     const f = $('adm-formation-frame');
     if (f && (!f.src || f.src === 'about:blank' || !f.src.includes('formation-builder.html'))) {
-      f.src = 'formation-builder.html?v=72.0';
+      f.src = 'formation-builder.html?v=73.0';
     } else {
       setTimeout(() => sendAdmFormationSync(), 150);
       setTimeout(() => sendAdmFormationSync(), 450);
@@ -3075,7 +3075,7 @@ function showTab(n) {
   if (n === 'formation') {
     const frame = $('formation-builder-frame');
     if (frame && (!frame.src || frame.src === 'about:blank' || !frame.src.includes('formation-builder.html'))) {
-      frame.src = 'formation-builder.html?v=72.0';
+      frame.src = 'formation-builder.html?v=73.0';
     } else {
       setTimeout(() => sendFormationSync(), 150);
       setTimeout(() => sendFormationSync(), 450);
@@ -5524,7 +5524,7 @@ function openFormationBuilderFullscreen() {
   if (targetTeam) {
     buildFormationSyncPayload(targetTeam);
   }
-  window.open('formation-builder.html?v=72.0', '_blank');
+  window.open('formation-builder.html?v=73.0', '_blank');
 }
 window.openFormationBuilderFullscreen = openFormationBuilderFullscreen;
 
@@ -13439,6 +13439,98 @@ async function deleteMatchEvent(eventId) {
       alert('❌ Could not save lineup: ' + (e.message || e));
     }
   }
+
+  function openMatchFormationVisualizer(side) {
+    if (!curMatch) return;
+    const targetSide = side === 'away' ? 'away' : 'home';
+    const sideData = curMatch[targetSide] || {};
+    const teamId = sideData.teamId;
+    const teamObj = teams.find(t => t.id === teamId);
+    const lineup = sideData.lineup || {};
+    const formationKey = lineup.formation || (teamObj?.squad?.formation) || '4-4-2';
+    const formationDef = FORMATIONS[formationKey] || null;
+
+    // Starters
+    const rawStarters = Array.isArray(lineup.starters) ? lineup.starters : [];
+    const starters = rawStarters.map(p => {
+      if (!p) return null;
+      const fullP = (allPlayersCache && allPlayersCache.find(x => x.id === (p.playerId || p.id))) || p;
+      const disp = String(p.displayName || fullP.displayName || p.shortName || fullP.shortName || getPlayerDisplayName(fullP) || getPlayerDisplayName(p) || p.name || '').trim();
+      return {
+        id: p.playerId || p.id || ('xi_' + String(Math.random()).slice(2, 8)),
+        name: p.name || '',
+        displayName: disp,
+        shortName: disp,
+        number: p.jersey || p.number || p.playernum || '-',
+        position: toFBPositionCode(p.matchPosition || p.position)
+      };
+    });
+
+    // Subs
+    const rawSubs = Array.isArray(lineup.subs) ? lineup.subs : [];
+    const subs = rawSubs.map(p => {
+      if (!p) return null;
+      const fullP = (allPlayersCache && allPlayersCache.find(x => x.id === (p.playerId || p.id))) || p;
+      const disp = String(p.displayName || fullP.displayName || p.shortName || fullP.shortName || getPlayerDisplayName(fullP) || getPlayerDisplayName(p) || p.name || '').trim();
+      return {
+        id: p.playerId || p.id || ('sub_' + String(Math.random()).slice(2, 8)),
+        name: p.name || '',
+        displayName: disp,
+        shortName: disp,
+        number: p.jersey || p.number || p.playernum || '-',
+        position: toFBPositionCode(p.position)
+      };
+    }).filter(Boolean);
+
+    const teamName = sideData.name || (targetSide === 'home' ? 'Home Team' : 'Away Team');
+    const source = `Live Match: ${teamName} (${formationKey})`;
+
+    const payload = {
+      formation: formationKey,
+      formationDef,
+      starters,
+      subs,
+      source,
+      teamId: teamId || targetSide,
+      teamName: teamName,
+      matchId: curMatch.id
+    };
+
+    if (!starters.some(Boolean)) {
+      const teamPlayers = teamId ? allPlayersCache.filter(p => p.teamId === teamId) : [];
+      if (teamPlayers.length) {
+        payload.players = teamPlayers.map(p => {
+          const disp = String(p.displayName || p.shortName || getPlayerDisplayName(p) || p.name || '').trim();
+          return {
+            id: p.id || ('p_' + String(Math.random()).slice(2, 8)),
+            name: p.name || '',
+            displayName: disp,
+            shortName: disp,
+            number: p.jersey || p.number || p.playernum || '-',
+            position: toFBPositionCode(p.position)
+          };
+        });
+        delete payload.starters;
+        delete payload.subs;
+      }
+    }
+
+    try {
+      localStorage.setItem('ems_active_formation_payload', JSON.stringify(payload));
+    } catch (e) { }
+
+    window.open('formation-builder.html?v=73.0', '_blank');
+  }
+  window.openMatchFormationVisualizer = openMatchFormationVisualizer;
+
+  function openMatchFormationVisualizerFromTop() {
+    if (!curMatch) return;
+    const homeName = curMatch.home?.name || 'Home';
+    const awayName = curMatch.away?.name || 'Away';
+    const choice = confirm(`Open Formation Visualizer for ${homeName}? (Click OK for ${homeName}, Cancel for ${awayName})`);
+    openMatchFormationVisualizer(choice ? 'home' : 'away');
+  }
+  window.openMatchFormationVisualizerFromTop = openMatchFormationVisualizerFromTop;
 
 
   // ══════════════════════════════════════════════════════════════

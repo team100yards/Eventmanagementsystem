@@ -12,7 +12,7 @@
     { id: 'teams', name: 'Teams & Clubs', icon: '🏟️', url: 'index.html?tab=teams', desc: 'Team rosters, crests, squad lists & coaches' },
     { id: 'players', name: 'Players Directory', icon: '👥', url: 'index.html?tab=players', desc: 'Player database, stats, photos & numbers' },
     { id: 'desk', name: 'Live Match Phone Desk', icon: '📱', url: 'match-phone.html', desc: 'Pitchside mobile operator desk for live scoring' },
-    { id: 'formation', name: 'Formation Visualizer', icon: '♟️', url: 'index.html?tab=formation', desc: 'Tactical pitch lineup builder & visualizer' }
+    { id: 'formation', name: 'Formation Visualizer', icon: '📋', url: 'index.html?tab=formation', desc: 'Tactical pitch lineup builder & visualizer' }
   ];
 
   function getCurrentTool() {

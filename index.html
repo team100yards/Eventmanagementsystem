@@ -15,9 +15,9 @@
   <meta name="twitter:card" content="summary_large_image">
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600;700;800&display=swap"
     rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=72.0">
+  <link rel="stylesheet" href="style.css?v=73.0">
   <link rel="stylesheet" href="cms-tokens.css">
-  <link rel="stylesheet" href="cms-nav.css?v=72.0">
+  <link rel="stylesheet" href="cms-nav.css?v=73.0">
   <script>
     (function () {
       try {
@@ -434,7 +434,7 @@
           <button type="button" class="dash-nav-tile" id="dash-nav-formation" role="tab" aria-selected="false"
             aria-controls="adm-page-formation" onclick="showAdminTab('formation')"
             style="--tile-accent:#10b981;--tile-glow:rgba(16,185,129,0.08);">
-            <span class="dash-nav-icon">♟️</span>
+            <span class="dash-nav-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none;"><rect x="3" y="3" width="18" height="18" rx="2"></rect><line x1="3" y1="12" x2="21" y2="12"></line><circle cx="12" cy="12" r="3.2"></circle><path d="M7 6l2 2m0-2L7 8"></path><circle cx="16" cy="7" r="1.2"></circle><path d="M15 16l2 2m0-2l-2 2"></path><circle cx="8" cy="17" r="1.2"></circle></svg></span>
             <span class="dash-nav-copy">
               <strong>Formations</strong>
               <small>Tactical visualizer &amp; pitch lineups</small>
@@ -516,7 +516,7 @@
             <div class="dash-section-header"
               style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:14px;">
               <div>
-                <div class="dash-section-title">♟️ Tactical Formation Visualizer</div>
+                <div class="dash-section-title" style="display:flex;align-items:center;gap:8px;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none;"><rect x="3" y="3" width="18" height="18" rx="2"></rect><line x1="3" y1="12" x2="21" y2="12"></line><circle cx="12" cy="12" r="3.2"></circle><path d="M7 6l2 2m0-2L7 8"></path><circle cx="16" cy="7" r="1.2"></circle><path d="M15 16l2 2m0-2l-2 2"></path><circle cx="8" cy="17" r="1.2"></circle></svg> Tactical Formation Visualizer</div>
                 <p style="margin:4px 0 0 0;font-size:12.5px;color:var(--mt);">Interactive 2D pitch lineup builder, squad
                   positions, tactics &amp; custom formations</p>
               </div>
@@ -544,7 +544,7 @@
             </div>
 
             <div style="border-radius:14px;border:1.5px solid var(--bd);background:#0a1e0a;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.25);">
-              <iframe id="adm-formation-frame" src="formation-builder.html?v=72.0" title="Formation Visualizer Studio"
+              <iframe id="adm-formation-frame" src="formation-builder.html?v=73.0" title="Formation Visualizer Studio"
                 allow="fullscreen" allowfullscreen
                 scrolling="yes"
                 style="width:100%;height:calc(100vh - 200px);min-height:860px;border:none;display:block;"></iframe>
@@ -830,7 +830,7 @@
     </div>
     <div class="tabs">
       <div class="tab active" id="tab-squad" onclick="showTab('squad')">🏆 Squad &amp; Playing List</div>
-      <div class="tab" id="tab-formation" onclick="showTab('formation')">♟️ Formation Pitch</div>
+      <div class="tab" id="tab-formation" onclick="showTab('formation')" style="display:inline-flex;align-items:center;gap:6px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none;"><rect x="3" y="3" width="18" height="18" rx="2"></rect><line x1="3" y1="12" x2="21" y2="12"></line><circle cx="12" cy="12" r="3.2"></circle><path d="M7 6l2 2m0-2L7 8"></path><circle cx="16" cy="7" r="1.2"></circle><path d="M15 16l2 2m0-2l-2 2"></path><circle cx="8" cy="17" r="1.2"></circle></svg> Formation Pitch</div>
       <div class="tab" id="tab-setup" onclick="showTab('setup')">⚙️ Setup</div>
     </div>
     <div class="tmain tmain-wide">
@@ -877,7 +877,7 @@
           <button type="button" class="squad-btn-secondary" onclick="openFormationBuilderFullscreen()">↗ Open Fullscreen</button>
         </div>
         <div style="border-radius:14px;border:1.5px solid var(--bd);background:#0a1e0a;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.25);">
-          <iframe id="formation-builder-frame" src="formation-builder.html?v=72.0" title="Formation Visualizer Studio"
+          <iframe id="formation-builder-frame" src="formation-builder.html?v=73.0" title="Formation Visualizer Studio"
             allow="fullscreen" allowfullscreen
             scrolling="yes"
             style="width:100%;height:calc(100vh - 180px);min-height:860px;border:none;display:block;"></iframe>
@@ -1022,6 +1022,10 @@
           title="Open in new window / tab">↗ New Window</button>
         <button class="tbtn ms-share-live-top" onclick="openShareMatchModal(curMatch?.id)"
           title="Share live score link on Facebook and with fans">🔗 Share Live Match</button>
+        <button type="button" class="tbtn" onclick="openMatchFormationVisualizerFromTop()"
+          title="Tactical Board (Formation Visualizer)" aria-label="Tactical Board" style="display:inline-flex;align-items:center;justify-content:center;padding:6px 10px;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none;"><rect x="3" y="3" width="18" height="18" rx="2"></rect><line x1="3" y1="12" x2="21" y2="12"></line><circle cx="12" cy="12" r="3"></circle><path d="M7 6l2 2m0-2L7 8"></path><circle cx="16" cy="7" r="1"></circle><path d="M15 16l2 2m0-2l-2 2"></path><circle cx="8" cy="17" r="1"></circle></svg>
+        </button>
         <button class="tbtn" onclick="openAddEventModal()">➕ Log Event</button>
         <button class="tbtn" id="ms-btn-adjust-time" onclick="openAdjustMatchClockModal()">⏱️ Clock Settings</button>
         <button class="tbtn" onclick="openEditMatchDetails()">✏️ Edit</button>
@@ -1097,8 +1101,12 @@
               <span id="ms-home-header-badge">⚽</span>
               <span id="ms-home-header-name">Home Squad</span>
             </div>
-            <button class="obtn" style="padding:4px 10px;font-size:11px;" onclick="openAdjustLineup('home')">⚙️
-              Lineup</button>
+            <div style="display:flex;align-items:center;gap:4px;">
+              <button type="button" class="obtn" style="padding:4px 8px;font-size:13px;display:inline-flex;align-items:center;justify-content:center;" onclick="openAdjustLineup('home')" title="Lineup" aria-label="Lineup">⚙️</button>
+              <button type="button" class="obtn" style="padding:4px 8px;font-size:13px;display:inline-flex;align-items:center;justify-content:center;" onclick="openMatchFormationVisualizer('home')" title="Home Tactical Board (Formation Visualizer)" aria-label="Home Tactical Board">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none;"><rect x="3" y="3" width="18" height="18" rx="2"></rect><line x1="3" y1="12" x2="21" y2="12"></line><circle cx="12" cy="12" r="3.2"></circle><path d="M7 6l2 2m0-2L7 8"></path><circle cx="16" cy="7" r="1.2"></circle><path d="M15 16l2 2m0-2l-2 2"></path><circle cx="8" cy="17" r="1.2"></circle></svg>
+              </button>
+            </div>
           </div>
           <div>
             <div class="lc-title" style="margin:6px 0 8px;">Starting XI (<span id="ms-home-starters-cnt">0</span>)</div>
@@ -1251,8 +1259,12 @@
               <span id="ms-away-header-badge">⚽</span>
               <span id="ms-away-header-name">Away Squad</span>
             </div>
-            <button class="obtn" style="padding:4px 10px;font-size:11px;" onclick="openAdjustLineup('away')">⚙️
-              Lineup</button>
+            <div style="display:flex;align-items:center;gap:4px;">
+              <button type="button" class="obtn" style="padding:4px 8px;font-size:13px;display:inline-flex;align-items:center;justify-content:center;" onclick="openAdjustLineup('away')" title="Lineup" aria-label="Lineup">⚙️</button>
+              <button type="button" class="obtn" style="padding:4px 8px;font-size:13px;display:inline-flex;align-items:center;justify-content:center;" onclick="openMatchFormationVisualizer('away')" title="Away Tactical Board (Formation Visualizer)" aria-label="Away Tactical Board">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none;"><rect x="3" y="3" width="18" height="18" rx="2"></rect><line x1="3" y1="12" x2="21" y2="12"></line><circle cx="12" cy="12" r="3.2"></circle><path d="M7 6l2 2m0-2L7 8"></path><circle cx="16" cy="7" r="1.2"></circle><path d="M15 16l2 2m0-2l-2 2"></path><circle cx="8" cy="17" r="1.2"></circle></svg>
+              </button>
+            </div>
           </div>
           <div>
             <div class="lc-title" style="margin:6px 0 8px;">Starting XI (<span id="ms-away-starters-cnt">0</span>)</div>
@@ -1414,7 +1426,7 @@
       </div>
       <div id="pv-page-lineup" class="page">
         <div class="macts" style="margin-bottom:14px;flex-wrap:wrap;">
-          <button class="mc" onclick="openPubFormationVisualizer()">🧩 Formation Visualizer</button>
+          <button class="mc" onclick="openPubFormationVisualizer()" style="display:inline-flex;align-items:center;gap:6px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none;"><rect x="3" y="3" width="18" height="18" rx="2"></rect><line x1="3" y1="12" x2="21" y2="12"></line><circle cx="12" cy="12" r="3.2"></circle><path d="M7 6l2 2m0-2L7 8"></path><circle cx="16" cy="7" r="1.2"></circle><path d="M15 16l2 2m0-2l-2 2"></path><circle cx="8" cy="17" r="1.2"></circle></svg> Formation Visualizer</button>
         </div>
         <div id="pv-lineup-content"></div>
       </div>
@@ -1422,7 +1434,7 @@
         <div class="macts" style="margin-bottom:14px;flex-wrap:wrap;">
           <button class="mok" onclick="backToPubPlayingList()">← Back to Playing List</button>
         </div>
-        <iframe id="pv-formation-frame" src="formation-builder.html?v=72.0" title="Formation Visualizer" allow="fullscreen"
+        <iframe id="pv-formation-frame" src="formation-builder.html?v=73.0" title="Formation Visualizer" allow="fullscreen"
           allowfullscreen
           scrolling="yes"
           style="width:100%;height:calc(100vh - 140px);min-height:860px;border:none;border-radius:14px;display:block;"></iframe>
@@ -2673,7 +2685,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-check-compat.js"></script>
-  <script src="cms-auth.js?v=72.0"></script>
+  <script src="cms-auth.js?v=73.0"></script>
   <script>
     window.firebaseAiLogicLoadState = 'loading';
     window.firebaseAiLogicReady = new Promise((resolve, reject) => {
@@ -2688,10 +2700,10 @@
     });
     window.firebaseAiLogicReady.catch(() => { });
   </script>
-  <script src="app.js?v=72.0"></script>
-  <script src="cms-nav.js?v=72.0"></script>
+  <script src="app.js?v=73.0"></script>
+  <script src="cms-nav.js?v=73.0"></script>
   <script type="module">
-    import('./firebase-ai-logic.js?v=72.0').catch(error => {
+    import('./firebase-ai-logic.js?v=73.0').catch(error => {
       window.rejectFirebaseAiLogicModule?.(error instanceof Error ? error : new Error(String(error || 'Firebase AI Logic module import failed.')));
     });
   </script>
