@@ -6479,6 +6479,25 @@ textarea {
   border-radius: 16px;
   gap: 4px;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+@media (max-width: 600px) {
+  .as-segmented-bar {
+    white-space: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .as-segmented-bar::-webkit-scrollbar {
+    display: none;
+  }
+  .as-seg-btn {
+    flex: 0 0 auto;
+    padding: 8px 12px;
+    font-size: 13px;
+  }
 }
 
 .as-seg-btn {
@@ -8958,7 +8977,9 @@ textarea {
   background: var(--card, #fff);
   border: 1px solid var(--bd);
   border-radius: 14px;
-  overflow: hidden;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
   margin-bottom: 24px;
 }

@@ -15,9 +15,9 @@
   <meta name="twitter:card" content="summary_large_image">
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600;700;800&display=swap"
     rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=55.0">
+  <link rel="stylesheet" href="style.css?v=56.0">
   <link rel="stylesheet" href="cms-tokens.css">
-  <link rel="stylesheet" href="cms-nav.css?v=55.0">
+  <link rel="stylesheet" href="cms-nav.css?v=56.0">
   <script>
     (function () {
       try {
@@ -547,7 +547,7 @@
             </div>
 
             <div style="border-radius:14px;overflow:hidden;border:1.5px solid var(--bd);background:#0a1e0a;">
-              <iframe id="adm-formation-frame" src="formation-builder.html?v=55.0" title="Formation Visualizer Studio"
+              <iframe id="adm-formation-frame" src="formation-builder.html?v=56.0" title="Formation Visualizer Studio"
                 allow="fullscreen" allowfullscreen
                 style="width:100%;height:calc(100vh - 230px);min-height:720px;border:none;display:block;"></iframe>
             </div>
@@ -877,7 +877,7 @@
           <button type="button" class="squad-btn-secondary" onclick="openFormationBuilderFullscreen()">↗ Open Fullscreen</button>
         </div>
         <div style="border-radius:14px;overflow:hidden;border:1.5px solid var(--bd);background:#0a1e0a;">
-          <iframe id="formation-builder-frame" src="formation-builder.html?v=55.0" title="Formation Visualizer Studio"
+          <iframe id="formation-builder-frame" src="formation-builder.html?v=56.0" title="Formation Visualizer Studio"
             allow="fullscreen" allowfullscreen
             style="width:100%;height:calc(100vh - 200px);min-height:720px;border:none;display:block;"></iframe>
         </div>
@@ -1021,7 +1021,7 @@
           title="Open in new window / tab">↗ New Window</button>
         <button class="tbtn ms-share-live-top" onclick="openShareMatchModal(curMatch?.id)"
           title="Share live score link on Facebook and with fans">🔗 Share Live Match</button>
-        <button class="tbtn" id="ms-btn-reopen" style="display:none;" onclick="setMatchStatus('live')">🔄
+        <button class="tbtn" id="ms-btn-reopen-header" style="display:none;" onclick="setMatchStatus('live')">🔄
           Reopen</button>
         <button class="tbtn" onclick="openAddEventModal()">➕ Log Event</button>
         <button class="tbtn" id="ms-btn-adjust-time" onclick="openAdjustMatchClockModal()">⏱️ Clock Settings</button>
@@ -1409,7 +1409,7 @@
         <div class="macts" style="margin-bottom:14px;flex-wrap:wrap;">
           <button class="mok" onclick="backToPubPlayingList()">← Back to Playing List</button>
         </div>
-        <iframe id="pv-formation-frame" src="formation-builder.html?v=55.0" title="Formation Visualizer" allow="fullscreen"
+        <iframe id="pv-formation-frame" src="formation-builder.html?v=56.0" title="Formation Visualizer" allow="fullscreen"
           allowfullscreen
           style="width:100%;height:calc(100vh - 140px);min-height:750px;border:none;border-radius:14px;display:block;"></iframe>
       </div>
@@ -2659,7 +2659,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-check-compat.js"></script>
-  <script src="cms-auth.js?v=55.0"></script>
+  <script src="cms-auth.js?v=56.0"></script>
   <script>
     window.firebaseAiLogicLoadState = 'loading';
     window.firebaseAiLogicReady = new Promise((resolve, reject) => {
@@ -2674,10 +2674,10 @@
     });
     window.firebaseAiLogicReady.catch(() => { });
   </script>
-  <script src="app.js?v=55.0"></script>
-  <script src="cms-nav.js?v=55.0"></script>
+  <script src="app.js?v=56.0"></script>
+  <script src="cms-nav.js?v=56.0"></script>
   <script type="module">
-    import('./firebase-ai-logic.js?v=55.0').catch(error => {
+    import('./firebase-ai-logic.js?v=56.0').catch(error => {
       window.rejectFirebaseAiLogicModule?.(error instanceof Error ? error : new Error(String(error || 'Firebase AI Logic module import failed.')));
     });
   </script>
@@ -2758,6 +2758,27 @@
       <div class="macts">
         <button class="mc" onclick="closeM('m-pl-add-player')">Cancel</button>
         <button class="mok" id="pl-add-save-btn" onclick="confirmAddPlayerToSection()">ADD PLAYER</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ CHAT IDENTITY MODAL ══ -->
+  <div class="mov" id="m-chat-identity">
+    <div class="mbox" style="max-width:440px;text-align:left;">
+      <div class="mtit">💬 CHAT IDENTITY</div>
+      <div style="margin-top:14px;">
+        <div class="field">
+          <label>Select From Team (Optional)</label>
+          <select id="chat-id-select" onchange="handleChatSelectChange(this)"></select>
+        </div>
+        <div class="field" style="margin-top:12px;">
+          <label>Display Name *</label>
+          <input type="text" id="chat-id-name" placeholder="Your name (e.g. Coach Danish or Player Name)">
+        </div>
+      </div>
+      <div class="macts" style="margin-top:20px;">
+        <button type="button" class="mc" onclick="closeM('m-chat-identity')">Cancel</button>
+        <button type="button" class="mok" onclick="saveChatIdentity()">Save Identity</button>
       </div>
     </div>
   </div>

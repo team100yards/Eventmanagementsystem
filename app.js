@@ -33,6 +33,7 @@ const getDocs = (q) => q.get();
 const getDoc = (ref) => ref.get();
 const deleteDoc = (ref) => ref.delete();
 const doc = (db, col, id) => id ? db.collection(col).doc(id) : (col ? db.collection(col).doc() : db.doc());
+const setDoc = (ref, data, opts) => opts ? ref.set(data, opts) : ref.set(data);
 const updateDoc = (ref, data) => ref.update(data);
 const onSnapshot = (q, cb, err) => q.onSnapshot(cb, err);
 const where = (f, op, v) => ({ _type: 'where', f, op, v });
@@ -361,6 +362,8 @@ function openM(id) {
   if (el) {
     el.classList.add('open');
     el.style.display = 'flex';
+    document.body.classList.add('modal-open');
+    document.body.style.overflow = 'hidden';
   } else {
     console.error('Modal element not found:', id);
   }
@@ -370,8 +373,29 @@ function closeM(id) {
   if (el) {
     el.classList.remove('open');
     el.style.display = 'none';
+    const remainingOpen = document.querySelectorAll('.mov.open');
+    if (!remainingOpen || remainingOpen.length === 0) {
+      document.body.classList.remove('modal-open');
+      document.body.style.overflow = '';
+    }
   }
 }
+window.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    const openModals = Array.from(document.querySelectorAll('.mov.open'));
+    if (openModals.length) {
+      const topModal = openModals[openModals.length - 1];
+      if (topModal && topModal.id) {
+        closeM(topModal.id);
+      }
+    }
+  }
+});
+window.addEventListener('click', (e) => {
+  if (e.target && e.target.classList && e.target.classList.contains('mov')) {
+    closeM(e.target.id);
+  }
+});
 function tpw(id, btn) { const i = $(id); i.type = i.type === 'password' ? 'text' : 'password'; btn.textContent = i.type === 'password' ? '👁' : '🙈'; }
 
 function switchLoginMethod(method) {
@@ -988,7 +1012,7 @@ function openLiveMatchDeskDirect() {
 window.openLiveMatchDeskDirect = openLiveMatchDeskDirect;
 
 function openFormationBuilderDirect() {
-  window.open('formation-builder.html?v=55.0', '_blank');
+  window.open('formation-builder.html?v=56.0', '_blank');
 }
 window.openFormationBuilderDirect = openFormationBuilderDirect;
 
@@ -1254,7 +1278,7 @@ async function loadAdmin() {
     try {
       const initParams = new URLSearchParams(window.location.search);
       const targetStatus = initParams.get('status');
-      const targetTab = initParams.get('tab') || currentAdminTab || 'teams';
+      const targetTab = initParams.get('tab') || sessionStorage.getItem('ems_active_admin_tab') || currentAdminTab || 'teams';
       if (targetStatus && (targetStatus === 'live' || targetStatus === 'scheduled')) {
         navigateAdminDashboard(targetStatus);
       } else if (['teams', 'players', 'tournaments', 'matches', 'formation'].includes(targetTab)) {
@@ -1273,6 +1297,9 @@ function showAdminTab(tab, keepTeam = false) {
   // Ensure the main admin screen is shown regardless of previous screen
   ss('s-admin');
   currentAdminTab = tab;
+  try {
+    sessionStorage.setItem('ems_active_admin_tab', tab);
+  } catch (e) {}
   try {
     const currentUrl = new URL(window.location.href);
     if (!currentUrl.searchParams.get('match') && !currentUrl.searchParams.get('live') && !currentUrl.searchParams.get('createMatch')) {
@@ -1323,7 +1350,7 @@ function showAdminTab(tab, keepTeam = false) {
     populateAdminFormationTeamSelect();
     const f = $('adm-formation-frame');
     if (f && (!f.src || f.src === 'about:blank' || !f.src.includes('formation-builder.html'))) {
-      f.src = 'formation-builder.html?v=55.0';
+      f.src = 'formation-builder.html?v=56.0';
     } else {
       setTimeout(() => sendAdmFormationSync(), 150);
       setTimeout(() => sendAdmFormationSync(), 450);
@@ -2883,7 +2910,7 @@ function showTab(n) {
   if (n === 'formation') {
     const frame = $('formation-builder-frame');
     if (frame && (!frame.src || frame.src === 'about:blank' || !frame.src.includes('formation-builder.html'))) {
-      frame.src = 'formation-builder.html?v=55.0';
+      frame.src = 'formation-builder.html?v=56.0';
     } else {
       setTimeout(() => sendFormationSync(), 150);
       setTimeout(() => sendFormationSync(), 450);
@@ -4084,10 +4111,11 @@ function renderPlayers() {
   const posList = (curTeam && curTeam.positions && curTeam.positions.length) ? curTeam.positions : (pos && pos.length ? pos : [...DPOS]);
   const fd = $('dbfilter');
   if (fd) { const c = fd.value; fd.innerHTML = '<option value="">All Positions</option>' + posList.map(x => `<option value="${esc(x)}"${x === c ? ' selected' : ''}>${esc(x)}</option>`).join(''); }
-  $('plstats').style.display = players.length ? 'grid' : 'none';
-  $('pst').textContent = players.length; $('psp').textContent = new Set(players.map(p => posCode(p.position))).size;
+  if ($('plstats')) $('plstats').style.display = players.length ? 'grid' : 'none';
+  if ($('pst')) $('pst').textContent = players.length;
+  if ($('psp')) $('psp').textContent = new Set(players.map(p => posCode(p.position))).size;
   const ages = players.filter(p => p.age).map(p => parseInt(p.age));
-  $('psa').textContent = ages.length ? Math.round(ages.reduce((a, b) => a + b) / ages.length) : '—';
+  if ($('psa')) $('psa').textContent = ages.length ? Math.round(ages.reduce((a, b) => a + b) / ages.length) : '—';
   const list = $('plist'); if (!list) return;
   if (!fil.length) { list.innerHTML = `<div class="empty"><div class="ei">🏟️</div><p>${players.length ? 'No players match your search.' : 'No players yet. Share the registration link!'}</p></div>`; return; }
   list.innerHTML = fil.map(p => `
@@ -4338,11 +4366,11 @@ async function saveEdit() {
     };
     if (editPhotoData !== undefined) updateData.photo = editPhotoData;
 
-    // 1. Update Firestore players collection (if document exists)
+    // 1. Update Firestore players collection (with merge so it succeeds even if doc did not previously exist)
     try {
-      await updateDoc(doc(db, 'players', editId), updateData);
+      await setDoc(doc(db, 'players', editId), updateData, { merge: true });
     } catch (fsErr) {
-      console.warn('Direct doc update in players collection failed/skipped:', fsErr);
+      console.warn('Direct doc set/update in players collection failed/skipped:', fsErr);
     }
 
     // 2. Update allPlayersCache in memory
@@ -4357,9 +4385,22 @@ async function saveEdit() {
       Object.assign(inPlayers, updateData);
     }
 
-    // 4. Update team squad if player is in Playing XI or Bench
-    let squadChanged = false;
+    // 4. Update team players array if present
     const targetTeam = curTeam || (inCache ? teams.find(t => t.id === inCache.teamId) : null);
+    if (targetTeam && Array.isArray(targetTeam.players)) {
+      const pInTeam = targetTeam.players.find(x => x.id === editId || (x.name && x.name.toLowerCase() === (inCache?.name || name).toLowerCase()));
+      if (pInTeam) {
+        Object.assign(pInTeam, updateData);
+        try {
+          await updateDoc(doc(db, 'teams', targetTeam.id), { players: targetTeam.players });
+        } catch (teamErr) {
+          console.warn('Failed to update players array on team doc:', teamErr);
+        }
+      }
+    }
+
+    // 5. Update team squad if player is in Playing XI or Bench
+    let squadChanged = false;
     if (targetTeam && targetTeam.squad) {
       ['playingXi', 'bench'].forEach(sec => {
         const list = targetTeam.squad[sec];
@@ -4670,7 +4711,7 @@ function openFormationBuilderFullscreen() {
   if (targetTeam) {
     buildFormationSyncPayload(targetTeam);
   }
-  window.open('formation-builder.html?v=55.0', '_blank');
+  window.open('formation-builder.html?v=56.0', '_blank');
 }
 window.openFormationBuilderFullscreen = openFormationBuilderFullscreen;
 
@@ -7661,7 +7702,12 @@ function initPubDiscuss() {
 
 function initPublicDiscussion(tid) {
   pubDiscussId = tid;
-  ss('s-public-discuss');
+  if ($('s-public-discuss')) {
+    ss('s-public-discuss');
+  } else {
+    initPublicView(tid);
+    return;
+  }
   window.scrollTo(0, 0);
   updateChatIdentityUI();
 
@@ -9458,6 +9504,11 @@ function updateMatchSheetClockOnly() {
   const btnSecondHalf = $('ms-btn-second-half');
   const btnFinal = $('ms-btn-final');
   const btnReopen = $('ms-btn-reopen');
+  const btnReopenHdr = $('ms-btn-reopen-header');
+  const setReopenDisplay = (disp) => {
+    if (btnReopen) btnReopen.style.display = disp;
+    if (btnReopenHdr) btnReopenHdr.style.display = disp;
+  };
 
   // Match has not started if: status is scheduled OR (clock is stopped and not final)
   const isNotStarted = st === 'scheduled' || (!isRunning && !isPaused && (m.matchClock?.elapsedSeconds || 0) === 0 && !isFinal);
@@ -9471,7 +9522,7 @@ function updateMatchSheetClockOnly() {
     if (btnHalfTime) btnHalfTime.style.display = 'none';
     if (btnSecondHalf) btnSecondHalf.style.display = 'none';
     if (btnFinal) btnFinal.style.display = 'none';
-    if (btnReopen) btnReopen.style.display = 'none';
+    setReopenDisplay('none');
     return;
   }
 
@@ -9486,12 +9537,12 @@ function updateMatchSheetClockOnly() {
       btnFinal.style.display = 'none';
       btnFinal.classList.remove('final-alert-pulse');
     }
-    if (btnReopen) btnReopen.style.display = 'flex';
+    setReopenDisplay('flex');
     return;
   }
 
   // Active / in-progress match (live or paused)
-  if (btnReopen) btnReopen.style.display = 'none';
+  setReopenDisplay('none');
 
   if (period === 'HT') {
     // HALF TIME: clock frozen at HT. Show Start 2nd Half button
