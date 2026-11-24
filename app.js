@@ -988,7 +988,7 @@ function openLiveMatchDeskDirect() {
 window.openLiveMatchDeskDirect = openLiveMatchDeskDirect;
 
 function openFormationBuilderDirect() {
-  window.open('formation-builder.html?v=51.0', '_blank');
+  window.open('formation-builder.html?v=52.0', '_blank');
 }
 window.openFormationBuilderDirect = openFormationBuilderDirect;
 
@@ -1267,7 +1267,7 @@ async function loadAdmin() {
   }
 }
 
-function showAdminTab(tab) {
+function showAdminTab(tab, keepTeam = false) {
   const validTabs = ['teams', 'players', 'tournaments', 'matches', 'formation'];
   if (!validTabs.includes(tab)) return;
   // Ensure the main admin screen is shown regardless of previous screen
@@ -1309,15 +1309,21 @@ function showAdminTab(tab) {
     if (toolObj) pill.textContent = toolObj.name;
   }
 
-  if (tab === 'players') renderAdminPlayers();
+  if (tab === 'teams') {
+    activeAdminPlayerTeamId = null;
+    renderAdmin();
+  }
+  if (tab === 'players') {
+    if (!keepTeam) activeAdminPlayerTeamId = null;
+    renderAdminPlayers();
+  }
   if (tab === 'tournaments') renderAdminTournaments();
   if (tab === 'matches') renderAdminMatches();
-  if (tab === 'teams') renderAdmin();
   if (tab === 'formation') {
     populateAdminFormationTeamSelect();
     const f = $('adm-formation-frame');
     if (f && (!f.src || f.src === 'about:blank' || !f.src.includes('formation-builder.html'))) {
-      f.src = 'formation-builder.html?v=51.0';
+      f.src = 'formation-builder.html?v=52.0';
     } else {
       setTimeout(() => sendAdmFormationSync(), 150);
     }
@@ -1386,7 +1392,7 @@ function renderBirthdayBanner(allPlayers) {
 
 function openTeamRosterView(teamId) {
   activeAdminPlayerTeamId = teamId;
-  showAdminTab('players');
+  showAdminTab('players', true);
   renderAdminPlayers();
 }
 window.openTeamRosterView = openTeamRosterView;
@@ -1414,19 +1420,19 @@ function renderAdmin() {
   el.innerHTML = `
     <div class="admin-player-team-selector-cards" style="margin-bottom:0;">
       ${teams.map(t => {
-        const logoHtml = t.logo ? `<img src="${esc(t.logo)}" alt="" style="width:38px;height:38px;border-radius:50%;object-fit:cover;border:1.5px solid var(--bd);">` : `<span style="font-size:26px;">${t.emoji || '⚽'}</span>`;
+        const logoHtml = t.logo ? `<img src="${esc(t.logo)}" alt="" style="width:40px;height:40px;border-radius:50%;object-fit:cover;border:1.5px solid var(--bd);">` : `<span style="font-size:28px;">${t.emoji || '⚽'}</span>`;
         const tCount = t.pc != null ? t.pc : allPlayersCache.filter(p => p.teamId === t.id).length;
         return `
           <div class="admin-player-team-card" onclick="openTeamRosterView('${t.id}')" style="justify-content:space-between;cursor:pointer;">
-            <div style="display:flex;align-items:center;gap:12px;min-width:0;">
+            <div style="display:flex;align-items:center;gap:14px;min-width:0;flex:1;">
               <div style="flex-shrink:0;">${logoHtml}</div>
-              <div style="min-width:0;">
-                <div style="font-weight:700;font-size:14px;color:var(--tx);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(t.name)}</div>
-                <div style="font-size:12px;color:var(--mt);">${tCount} Players · Tap to view roster</div>
+              <div style="min-width:0;flex:1;">
+                <div style="font-weight:800;font-size:15px;color:var(--tx);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(t.name)}</div>
+                <div style="font-size:12px;color:var(--mt);margin-top:2px;font-weight:600;">${tCount} Players · View Roster →</div>
               </div>
             </div>
-            <div onclick="event.stopPropagation();" style="display:flex;align-items:center;gap:6px;">
-              <button type="button" class="obtn" style="font-size:11.5px;padding:5px 10px;font-weight:700;color:#1a5c1a;" onclick="promptPw('${t.id}')" title="Open Team Dashboard">Dashboard →</button>
+            <div onclick="event.stopPropagation();" style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
+              <button type="button" class="obtn" style="font-size:11.5px;padding:5px 11px;font-weight:700;color:#1a5c1a;background:rgba(26,92,26,0.08);border-color:rgba(26,92,26,0.3);" onclick="promptPw('${t.id}')" title="Open Team Dashboard">Dashboard →</button>
               <button type="button" class="obtn" style="font-size:11px;padding:4px 8px;" onclick="openEditTeam('${t.id}')" title="Edit team">✏️</button>
               <button type="button" class="obtn d" style="font-size:11px;padding:4px 8px;" onclick="promptDelTeam('${t.id}')" title="Delete team">🗑️</button>
             </div>
@@ -1453,11 +1459,11 @@ function getPlayerPosRank(pos) {
 
 function getPlayerPosCategory(pos) {
   const p = String(pos || '').toUpperCase().trim();
-  if (['GK', 'GOALKEEPER', 'GOALIE'].includes(p)) return 'gk';
-  if (['CB', 'LB', 'RB', 'LWB', 'RWB', 'DF', 'DEF', 'DEFENDER', 'SW'].includes(p)) return 'def';
-  if (['CDM', 'CM', 'CAM', 'RM', 'LM', 'MF', 'MID', 'MIDFIELDER', 'AM', 'DM'].includes(p)) return 'mid';
-  if (['ST', 'CF', 'LW', 'RW', 'FW', 'FWD', 'FORWARD', 'ATT', 'ATTACKER', 'SS', 'WINGER'].includes(p)) return 'fwd';
-  return 'sub';
+  if (['GK', 'GOALKEEPER', 'GOALIE', 'GKP'].includes(p)) return 'gk';
+  if (['CB', 'LB', 'RB', 'LWB', 'RWB', 'DF', 'DEF', 'DEFENDER', 'SW', 'LD', 'RD', 'FB', 'WB', 'CD'].includes(p)) return 'def';
+  if (['CDM', 'CM', 'CAM', 'RM', 'LM', 'MF', 'MID', 'MIDFIELDER', 'AM', 'DM', 'MC'].includes(p)) return 'mid';
+  if (['ST', 'CF', 'LW', 'RW', 'FW', 'FWD', 'FORWARD', 'ATT', 'ATTACKER', 'SS', 'WINGER', 'RF', 'LF', 'RS', 'LS'].includes(p)) return 'fwd';
+  return 'mid';
 }
 
 let activeAdminPlayerTeamId = null;
@@ -1484,54 +1490,73 @@ function renderAdminPlayers() {
 
   const filter = $('admin-player-filter-team');
   if (filter) {
-    const selected = filter.value;
-    filter.innerHTML = '<option value="">All Teams</option>' + teams.map(team =>
+    const selected = activeAdminPlayerTeamId || '';
+    filter.innerHTML = '<option value="">All Teams (Cards View)</option>' + teams.map(team =>
       `<option value="${esc(team.id)}" ${selected === team.id ? 'selected' : ''}>${esc(team.name || 'Unnamed team')}</option>`
     ).join('');
-    if ([...filter.options].some(option => option.value === selected)) filter.value = selected;
+    filter.value = selected;
   }
 
   if (!teams.length && !allPlayersCache.length) {
-    el.innerHTML = '<div class="admin-player-empty">No teams or registered players found. Create a team first to add players.</div>';
+    el.innerHTML = '<div class="admin-player-empty" style="background:var(--card,#fff);border:1px solid var(--bd);border-radius:12px;padding:30px;text-align:center;">No teams or registered players found. Create a team first to add players.</div>';
     return;
   }
 
   const query = String($('admin-player-search')?.value || '').toLowerCase().trim();
+
+  // If filter dropdown selection changed
   const filterTeamId = filter?.value || '';
-
-  if (filterTeamId) {
+  if (filterTeamId && filterTeamId !== activeAdminPlayerTeamId) {
     activeAdminPlayerTeamId = filterTeamId;
-  } else if (query && !activeAdminPlayerTeamId && teams.length) {
-    const matchT = teams.find(t => allPlayersCache.some(p => p.teamId === t.id && (p.name || '').toLowerCase().includes(query)));
-    if (matchT) activeAdminPlayerTeamId = matchT.id;
   }
 
-  if (!activeAdminPlayerTeamId && teams.length) {
-    activeAdminPlayerTeamId = teams[0].id;
-  }
+  // 1. TEAMS & PLAYERS TAB VIEW: When no team is selected, display clean, aligned Team Cards
+  if (!activeAdminPlayerTeamId) {
+    const filteredTeams = teams.filter(t => {
+      if (!query) return true;
+      const teamMatch = String(t.name || '').toLowerCase().includes(query);
+      const playerMatch = allPlayersCache.some(p => p.teamId === t.id && (p.name || '').toLowerCase().includes(query));
+      return teamMatch || playerMatch;
+    });
 
-  // 1. Sleek horizontal team selector tabs
-  let html = '<div class="admin-player-team-tabs">';
-  teams.forEach(t => {
-    const isSelected = (t.id === activeAdminPlayerTeamId);
-    const logoHtml = t.logo ? `<img src="${esc(t.logo)}" class="admin-player-tab-logo" alt="">` : `<span style="font-size:16px;">${t.emoji || '⚽'}</span>`;
-    const tCount = allPlayersCache.filter(p => p.teamId === t.id).length;
-    html += `
-      <button type="button" class="admin-player-team-tab ${isSelected ? 'active' : ''}" onclick="activeAdminPlayerTeamId='${t.id}';renderAdminPlayers();">
-        ${logoHtml}
-        <span>${esc(t.name)}</span>
-        <span class="admin-player-tab-count">${tCount}</span>
-      </button>
+    el.innerHTML = `
+      <div style="margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+        <div style="font-size:13.5px;color:var(--mt);font-weight:600;">Select a team below to view its squad roster:</div>
+        <div style="font-size:12px;color:var(--mt);">${teams.length} Teams · ${allPlayersCache.length} Total Players</div>
+      </div>
+      <div class="admin-player-team-selector-cards" style="margin-bottom:0;">
+        ${filteredTeams.map(t => {
+          const logoHtml = t.logo ? `<img src="${esc(t.logo)}" alt="" style="width:40px;height:40px;border-radius:50%;object-fit:cover;border:1.5px solid var(--bd);">` : `<span style="font-size:28px;">${t.emoji || '⚽'}</span>`;
+          const tCount = t.pc != null ? t.pc : allPlayersCache.filter(p => p.teamId === t.id).length;
+          return `
+            <div class="admin-player-team-card" onclick="openTeamRosterView('${t.id}')" style="justify-content:space-between;cursor:pointer;">
+              <div style="display:flex;align-items:center;gap:14px;min-width:0;flex:1;">
+                <div style="flex-shrink:0;">${logoHtml}</div>
+                <div style="min-width:0;flex:1;">
+                  <div style="font-weight:800;font-size:15px;color:var(--tx);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(t.name)}</div>
+                  <div style="font-size:12px;color:var(--mt);margin-top:2px;font-weight:600;">${tCount} Players · View Roster →</div>
+                </div>
+              </div>
+              <div onclick="event.stopPropagation();" style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
+                <button type="button" class="obtn" style="font-size:11.5px;padding:5px 11px;font-weight:700;color:#1a5c1a;background:rgba(26,92,26,0.08);border-color:rgba(26,92,26,0.3);" onclick="promptPw('${t.id}')" title="Open Team Dashboard">Dashboard →</button>
+              </div>
+            </div>
+          `;
+        }).join('')}
+      </div>
     `;
-  });
-  html += '</div>';
-
-  // 2. Selected Team & Players
-  const selectedTeam = teams.find(t => t.id === activeAdminPlayerTeamId) || teams[0];
-  if (!selectedTeam) {
-    el.innerHTML = html;
     return;
   }
+
+  // 2. DEDICATED TEAM ROSTER PAGE: When a team is selected
+  const selectedTeam = teams.find(t => t.id === activeAdminPlayerTeamId);
+  if (!selectedTeam) {
+    activeAdminPlayerTeamId = null;
+    renderAdminPlayers();
+    return;
+  }
+
+  curTeam = selectedTeam;
 
   const matchesQuery = p => {
     if (!query) return true;
@@ -1547,15 +1572,15 @@ function renderAdminPlayers() {
   if (!formationList.includes(curFormation)) formationList.unshift(curFormation);
   const formationOptionsHtml = formationList.map(f => `<option value="${f}" ${f === curFormation ? 'selected' : ''}>${f}</option>`).join('');
 
-  const tLogo = selectedTeam.logo ? `<img src="${esc(selectedTeam.logo)}" alt="" style="width:36px;height:36px;border-radius:50%;object-fit:cover;border:2px solid #1a5c1a;">` : `<span style="font-size:26px;">${selectedTeam.emoji || '⚽'}</span>`;
+  const tLogo = selectedTeam.logo ? `<img src="${esc(selectedTeam.logo)}" alt="" style="width:40px;height:40px;border-radius:50%;object-fit:cover;border:2px solid #1a5c1a;flex-shrink:0;">` : `<span style="font-size:28px;flex-shrink:0;">${selectedTeam.emoji || '⚽'}</span>`;
 
-  html += `
+  let html = `
     <div class="admin-player-squad-bar">
       <div class="admin-player-squad-bar-left" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
-        <button type="button" class="obtn" style="font-size:12px;padding:6px 12px;font-weight:700;display:inline-flex;align-items:center;gap:6px;" onclick="showAdminTab('teams')" title="Return to Teams list">
-          <span>← Back to Teams</span>
+        <button type="button" class="obtn" style="font-size:12px;padding:6px 14px;font-weight:700;display:inline-flex;align-items:center;gap:6px;" onclick="activeAdminPlayerTeamId=null;renderAdminPlayers();" title="Return to Team Cards">
+          <span aria-hidden="true">←</span> <span>Back to Teams</span>
         </button>
-        <div style="display:flex;align-items:center;gap:10px;">
+        <div style="display:flex;align-items:center;gap:12px;">
           ${tLogo}
           <div>
             <div class="admin-player-squad-team-title">${esc(selectedTeam.name)}</div>
@@ -1573,7 +1598,7 @@ function renderAdminPlayers() {
         <button type="button" class="squad-pitch-btn" onclick="curTeam=teams.find(t=>t.id==='${selectedTeam.id}');openTeamFormationVisualizer();" title="Open Tactical Pitch Formation Visualizer">
           <span>♟️ Pitch</span>
         </button>
-        <button type="button" class="squad-pitch-btn" style="background:#1a5c1a;color:#fff;border-color:#1a5c1a;font-weight:700;" onclick="promptPw('${selectedTeam.id}')" title="Go to Team Dashboard">
+        <button type="button" class="squad-pitch-btn" style="background:#1a5c1a;color:#fff;border-color:#1a5c1a;font-weight:700;padding:6px 14px;font-size:12.5px;display:inline-flex;align-items:center;gap:6px;" onclick="promptPw('${selectedTeam.id}')" title="Go to Dashboard to manage team and player details">
           <span>Go to Dashboard →</span>
         </button>
       </div>
@@ -1581,12 +1606,19 @@ function renderAdminPlayers() {
   `;
 
   if (!teamPlayers.length) {
-    html += '<div class="admin-player-empty" style="background:var(--card,#fff);border:1px solid var(--bd);border-radius:12px;padding:30px;text-align:center;">No players registered in this team yet. Open the Team Dashboard to upload or add players.</div>';
+    html += `
+      <div class="admin-player-empty" style="background:var(--card,#fff);border:1px solid var(--bd);border-radius:12px;padding:34px 20px;text-align:center;">
+        <div style="font-size:32px;margin-bottom:8px;">👥</div>
+        <div style="font-weight:700;font-size:15px;color:var(--tx);">No players registered in ${esc(selectedTeam.name)} yet</div>
+        <p style="font-size:12px;color:var(--mt);margin:6px 0 16px;">Open the Team Dashboard to add or upload players to this roster.</p>
+        <button type="button" class="squad-pitch-btn" onclick="promptPw('${selectedTeam.id}')">Go to Dashboard →</button>
+      </div>
+    `;
     el.innerHTML = html;
     return;
   }
 
-  // Segregate players into 4 positions: GK, DEF, MID, FWD
+  // 3. ORDER AND GROUP STRICTLY: Goalkeepers first, then Defenders, then Midfielders, then Forwards
   const gkList = teamPlayers.filter(p => classifyPos(p.position) === 'GK');
   const defList = teamPlayers.filter(p => classifyPos(p.position) === 'DEF');
   const midList = teamPlayers.filter(p => classifyPos(p.position) === 'MID');
@@ -1610,23 +1642,25 @@ function renderAdminPlayers() {
     const pos = posCode(p.position) || p.position || '—';
     const posCat = getPlayerPosCategory(pos);
     const dispName = getPlayerDisplayName(p);
-    const photoImg = p.photo ? `<img src="${esc(p.photo)}" alt="" style="width:24px;height:24px;border-radius:50%;object-fit:cover;vertical-align:middle;margin-right:8px;border:1px solid var(--bd);">` : '';
+    const photoImg = p.photo
+      ? `<img src="${esc(p.photo)}" alt="" style="width:26px;height:26px;border-radius:50%;object-fit:cover;border:1px solid var(--bd);flex-shrink:0;">`
+      : `<div style="width:26px;height:26px;border-radius:50%;background:rgba(0,0,0,0.06);display:inline-flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;">👤</div>`;
     return `
       <tr>
-        <td style="text-align:center;font-weight:800;font-family:'Bebas Neue',sans-serif;font-size:18px;color:#1a5c1a;width:60px;">#${esc(jersey)}</td>
-        <td style="font-weight:600;font-size:13.5px;color:var(--tx);">
-          <div style="display:flex;align-items:center;">
+        <td style="text-align:center;font-weight:800;font-family:'Bebas Neue',sans-serif;font-size:18px;color:#1a5c1a;width:65px;vertical-align:middle;white-space:nowrap;">#${esc(jersey)}</td>
+        <td style="vertical-align:middle;white-space:nowrap;">
+          <div style="display:flex;align-items:center;gap:10px;min-width:0;">
             ${photoImg}
-            <span>${esc(p.name || 'Unnamed')}</span>
+            <span style="font-weight:700;font-size:14px;color:var(--tx);">${esc(p.name || 'Unnamed')}</span>
           </div>
         </td>
-        <td>
+        <td style="vertical-align:middle;white-space:nowrap;">
           ${dispName ? `<span class="admin-player-disp-pill">${esc(dispName)}</span>` : '<span style="color:var(--mt);font-style:italic;">—</span>'}
         </td>
-        <td style="text-align:center;width:110px;">
+        <td style="text-align:center;width:115px;vertical-align:middle;white-space:nowrap;">
           <span class="admin-pos-badge admin-pos-${posCat}">${esc(pos)}</span>
         </td>
-        <td style="text-align:center;width:90px;">
+        <td style="text-align:center;width:85px;vertical-align:middle;white-space:nowrap;">
           <button type="button" class="obtn" style="font-size:11.5px;padding:4px 9px;font-weight:600;" onclick="openEdit('${p.id}')" title="Edit player details and position">✏️ Edit</button>
         </td>
       </tr>
@@ -1638,11 +1672,11 @@ function renderAdminPlayers() {
       <table class="admin-player-table" style="margin:0;width:100%;border-collapse:collapse;">
         <thead>
           <tr>
-            <th style="width:60px;text-align:center;">#</th>
-            <th>PLAYER NAME</th>
-            <th>DISPLAY NAME</th>
-            <th style="text-align:center;width:110px;">POSITION</th>
-            <th style="text-align:center;width:90px;">ACTION</th>
+            <th style="width:65px;text-align:center;white-space:nowrap;">#</th>
+            <th style="text-align:left;white-space:nowrap;">PLAYER NAME</th>
+            <th style="text-align:left;white-space:nowrap;">DISPLAY NAME</th>
+            <th style="text-align:center;width:115px;white-space:nowrap;">POSITION</th>
+            <th style="text-align:center;width:85px;white-space:nowrap;">ACTION</th>
           </tr>
         </thead>
         <tbody>
@@ -1659,7 +1693,7 @@ function renderAdminPlayers() {
             ${renderRows(midList)}
           ` : ''}
           ${fwdList.length ? `
-            <tr class="admin-player-group-hdr"><td colspan="5">⚡ Strikers / Forwards (${fwdList.length})</td></tr>
+            <tr class="admin-player-group-hdr"><td colspan="5">⚡ Forwards (${fwdList.length})</td></tr>
             ${renderRows(fwdList)}
           ` : ''}
         </tbody>
@@ -2847,7 +2881,7 @@ function showTab(n) {
   if (n === 'formation') {
     const frame = $('formation-builder-frame');
     if (frame && (!frame.src || frame.src === 'about:blank' || !frame.src.includes('formation-builder.html'))) {
-      frame.src = 'formation-builder.html?v=51.0';
+      frame.src = 'formation-builder.html?v=52.0';
     } else {
       setTimeout(() => sendFormationSync(), 150);
     }
@@ -3598,7 +3632,7 @@ function openTeamFormationVisualizer() {
   if (teamScreen && teamScreen.classList.contains('active')) {
     showTab('formation');
   } else {
-    window.open('formation-builder.html?v=51.0', '_blank');
+    window.open('formation-builder.html?v=52.0', '_blank');
   }
 }
 window.openTeamFormationVisualizer = openTeamFormationVisualizer;
@@ -4411,11 +4445,11 @@ function flattenFormation(key) {
   return out;
 }
 function classifyPos(position) {
-  const code = posCode(position);
-  if (code === 'GK' || code === 'GKP') return 'GK';
-  if (code === 'RB' || code === 'LB' || code === 'CB' || code === 'RWB' || code === 'LWB' || code === 'DEF' || code === 'FB' || code === 'WB' || code === 'CD' || code === 'SW') return 'DEF';
-  if (code === 'RW' || code === 'LW' || code === 'CF' || code === 'ST' || code === 'FWD' || code === 'FW' || code === 'SS' || code === 'ATT' || code === 'RF' || code === 'LF' || code === 'RS' || code === 'LS') return 'FWD';
-  if (code === 'CM' || code === 'CDM' || code === 'CAM' || code === 'RM' || code === 'LM' || code === 'MID' || code === 'DM' || code === 'AM') return 'MID';
+  const code = String(posCode(position) || position || '').toUpperCase().trim();
+  if (code === 'GK' || code === 'GKP' || code === 'GOALKEEPER' || code === 'GOALIE') return 'GK';
+  if (code === 'RB' || code === 'LB' || code === 'CB' || code === 'RWB' || code === 'LWB' || code === 'DEF' || code === 'FB' || code === 'WB' || code === 'CD' || code === 'SW' || code === 'LD' || code === 'RD' || code === 'DF' || code === 'DEFENDER') return 'DEF';
+  if (code === 'RW' || code === 'LW' || code === 'CF' || code === 'ST' || code === 'FWD' || code === 'FW' || code === 'SS' || code === 'ATT' || code === 'RF' || code === 'LF' || code === 'RS' || code === 'LS' || code === 'FORWARD' || code === 'ATTACKER' || code === 'WINGER') return 'FWD';
+  if (code === 'CM' || code === 'CDM' || code === 'CAM' || code === 'RM' || code === 'LM' || code === 'MID' || code === 'DM' || code === 'AM' || code === 'MF' || code === 'MIDFIELDER' || code === 'MC') return 'MID';
   return 'MID';
 }
 function toFBPositionCode(position) { return posCode(position) || 'ST'; }
@@ -4611,7 +4645,7 @@ function openFormationBuilderFullscreen() {
   if (targetTeam) {
     buildFormationSyncPayload(targetTeam);
   }
-  window.open('formation-builder.html?v=51.0', '_blank');
+  window.open('formation-builder.html?v=52.0', '_blank');
 }
 window.openFormationBuilderFullscreen = openFormationBuilderFullscreen;
 
