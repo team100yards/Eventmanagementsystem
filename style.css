@@ -8147,6 +8147,88 @@ textarea {
   background: #2d3748;
 }
 
+.squad-badge.out {
+  background: #4a5568;
+}
+
+.squad-columns-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 20px;
+  align-items: stretch;
+  margin-bottom: 22px;
+}
+
+@media (max-width: 980px) {
+  .squad-columns-layout {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+}
+
+.squad-columns-layout .squad-section-card {
+  margin-bottom: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* SQUAD TILE GRID (Management & Out of Squad) */
+.squad-tile-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(235px, 1fr));
+  gap: 14px;
+}
+
+.squad-tile {
+  background: #fff;
+  border: 1px solid var(--bd);
+  border-radius: 14px;
+  padding: 13px 15px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 11px;
+  transition: all .18s ease;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.03);
+}
+
+.squad-tile:hover {
+  border-color: #1a5c1a;
+  box-shadow: 0 4px 14px rgba(26, 92, 26, 0.08);
+}
+
+.squad-tile-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.squad-tile-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.squad-tile-name {
+  font-weight: 700;
+  font-size: 13.5px;
+  color: var(--tx);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 3px;
+}
+
+.squad-tile-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  padding-top: 9px;
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+}
+
 .squad-subcat-box {
   margin-bottom: 14px;
   background: rgba(26, 92, 26, .02);

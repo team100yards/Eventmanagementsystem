@@ -299,7 +299,8 @@ function findExistingTeamPlayer(teamId, jersey, name, extraPool = []) {
   if (typeof teamSquadData === 'object' && teamSquadData) {
     const memPool = [
       ...(Array.isArray(teamSquadData.playingXi) ? teamSquadData.playingXi : []),
-      ...(Array.isArray(teamSquadData.bench) ? teamSquadData.bench : [])
+      ...(Array.isArray(teamSquadData.bench) ? teamSquadData.bench : []),
+      ...(Array.isArray(teamSquadData.outOfSquad) ? teamSquadData.outOfSquad : [])
     ];
     const hit = memPool.find(isMatch);
     if (hit) return hit;
@@ -3151,7 +3152,8 @@ function copyShareMessage(type, btnEl) {
 let teamSquadData = {
   playingXi: [],
   bench: [],
-  management: []
+  management: [],
+  outOfSquad: []
 };
 
 let squadPhotoTarget = null;
@@ -3159,13 +3161,15 @@ let modalPhotoData = null;
 
 function initTeamSquadData() {
   const sq = curTeam && curTeam.squad;
-  if (sq && (sq.playingXi || sq.slots || sq.subs || sq.staff)) {
+  if (sq && (sq.playingXi || sq.slots || sq.subs || sq.staff || sq.outOfSquad)) {
     if (Array.isArray(sq.playingXi) && sq.playingXi.length) {
       teamSquadData.playingXi = sq.playingXi.map(p => ({ ...p }));
     } else if (Array.isArray(sq.slots)) {
       teamSquadData.playingXi = sq.slots.map(s => s && s.player).filter(Boolean).map(p => ({
         id: p.id || ('pl_' + Math.random().toString(36).substr(2, 6)),
         name: p.name || '',
+        displayName: p.displayName || p.shortName || '',
+        shortName: p.shortName || p.displayName || '',
         jersey: p.jersey || '',
         position: p.position || 'ST',
         photo: p.photo || null
@@ -3180,12 +3184,20 @@ function initTeamSquadData() {
       teamSquadData.bench = sq.subs.filter(Boolean).map(p => ({
         id: p.id || ('pl_' + Math.random().toString(36).substr(2, 6)),
         name: p.name || '',
+        displayName: p.displayName || p.shortName || '',
+        shortName: p.shortName || p.displayName || '',
         jersey: p.jersey || '',
         position: p.position || 'ST',
         photo: p.photo || null
       }));
     } else {
       teamSquadData.bench = [];
+    }
+
+    if (Array.isArray(sq.outOfSquad) && sq.outOfSquad.length) {
+      teamSquadData.outOfSquad = sq.outOfSquad.map(p => ({ ...p }));
+    } else {
+      teamSquadData.outOfSquad = [];
     }
 
     if (Array.isArray(sq.management) && sq.management.length) {
@@ -3207,6 +3219,29 @@ function initTeamSquadData() {
     } else {
       teamSquadData.management = [];
     }
+
+    // Auto-detect any extra registered players in allPlayersCache belonging to this team not currently in XI, bench, or outOfSquad
+    const pool = (allPlayersCache && allPlayersCache.length) ? allPlayersCache.filter(p => curTeam && p.teamId === curTeam.id) : [];
+    pool.forEach(p => {
+      const alreadyIncluded = [...teamSquadData.playingXi, ...teamSquadData.bench, ...teamSquadData.outOfSquad].some(x => {
+        const sameId = x.id && p.id && x.id === p.id;
+        const sameName = normalizePlayerIdentityName(x.name) === normalizePlayerIdentityName(p.name);
+        const sameJersey = (x.jersey && p.jersey && String(x.jersey).trim() === String(p.jersey).trim());
+        return sameId || sameName || sameJersey;
+      });
+      if (!alreadyIncluded) {
+        teamSquadData.outOfSquad.push({
+          id: p.id,
+          name: p.name,
+          displayName: p.displayName || p.shortName || '',
+          shortName: p.shortName || p.displayName || '',
+          jersey: p.jersey || p.playernum || '',
+          position: p.position || 'ST',
+          photo: p.photo || null
+        });
+      }
+    });
+
   } else {
     const fallbackPlayers = (players && players.length) ? players : allPlayersCache.filter(p => curTeam && p.teamId === curTeam.id);
     if (fallbackPlayers && fallbackPlayers.length) {
@@ -3219,7 +3254,16 @@ function initTeamSquadData() {
         position: p.position || 'ST',
         photo: p.photo || null
       }));
-      teamSquadData.bench = fallbackPlayers.slice(11).map(p => ({
+      teamSquadData.bench = fallbackPlayers.slice(11, 20).map(p => ({
+        id: p.id,
+        name: p.name,
+        displayName: p.displayName || p.shortName || '',
+        shortName: p.shortName || p.displayName || '',
+        jersey: p.jersey || p.playernum || '',
+        position: p.position || 'ST',
+        photo: p.photo || null
+      }));
+      teamSquadData.outOfSquad = fallbackPlayers.slice(20).map(p => ({
         id: p.id,
         name: p.name,
         displayName: p.displayName || p.shortName || '',
@@ -3235,7 +3279,7 @@ function initTeamSquadData() {
         photo: s.photo || null
       }));
     } else {
-      teamSquadData = { playingXi: [], bench: [], management: [] };
+      teamSquadData = { playingXi: [], bench: [], management: [], outOfSquad: [] };
     }
   }
 }
@@ -3244,15 +3288,32 @@ function renderSquadPlayingList() {
   const el = $('squad-content'); if (!el) return;
   if (!curTeam) return;
 
-  if (!teamSquadData.playingXi.length && !teamSquadData.bench.length) {
+  if (!teamSquadData.playingXi.length && !teamSquadData.bench.length && !teamSquadData.outOfSquad?.length) {
     initTeamSquadData();
   }
+  if (!teamSquadData.outOfSquad) teamSquadData.outOfSquad = [];
 
   // Categorize Playing XI into GK, DEF, MID, FWD
-  const gkList = teamSquadData.playingXi.filter(p => classifyPos(p.position) === 'GK');
-  const defList = teamSquadData.playingXi.filter(p => classifyPos(p.position) === 'DEF');
-  const midList = teamSquadData.playingXi.filter(p => classifyPos(p.position) === 'MID');
-  const fwdList = teamSquadData.playingXi.filter(p => classifyPos(p.position) === 'FWD');
+  const xiGkList = [], xiDefList = [], xiMidList = [], xiFwdList = [];
+  const xiGkIndices = [], xiDefIndices = [], xiMidIndices = [], xiFwdIndices = [];
+  teamSquadData.playingXi.forEach((p, idx) => {
+    const c = classifyPos(p.position);
+    if (c === 'GK') { xiGkList.push(p); xiGkIndices.push(idx); }
+    else if (c === 'DEF') { xiDefList.push(p); xiDefIndices.push(idx); }
+    else if (c === 'MID') { xiMidList.push(p); xiMidIndices.push(idx); }
+    else { xiFwdList.push(p); xiFwdIndices.push(idx); }
+  });
+
+  // Categorize Bench into GK, DEF, MID, FWD (Exact matching symmetrical structure)
+  const benchGkList = [], benchDefList = [], benchMidList = [], benchFwdList = [];
+  const benchGkIndices = [], benchDefIndices = [], benchMidIndices = [], benchFwdIndices = [];
+  teamSquadData.bench.forEach((p, idx) => {
+    const c = classifyPos(p.position);
+    if (c === 'GK') { benchGkList.push(p); benchGkIndices.push(idx); }
+    else if (c === 'DEF') { benchDefList.push(p); benchDefIndices.push(idx); }
+    else if (c === 'MID') { benchMidList.push(p); benchMidIndices.push(idx); }
+    else { benchFwdList.push(p); benchFwdIndices.push(idx); }
+  });
 
   const renderPlayerRow = (p, listType, idx) => {
     const photoImg = p.photo ? `<img src="${esc(p.photo)}" class="squad-avatar-img" alt="">` : '👤';
@@ -3265,10 +3326,12 @@ function renderSquadPlayingList() {
     if (listType === 'playingXi') {
       moveButtons = `
         <button type="button" class="squad-act-chip" onclick="moveSquadMember('playingXi','bench',${idx})" title="Move to Bench">⬇️ Bench</button>
+        <button type="button" class="squad-act-chip" onclick="moveSquadMember('playingXi','outOfSquad',${idx})" title="Move Out of Squad">📦 Out</button>
       `;
     } else {
       moveButtons = `
-        <button type="button" class="squad-act-chip" onclick="moveSquadMember('bench','playingXi',${idx})" title="Move to Playing XI">⬆️ Playing XI</button>
+        <button type="button" class="squad-act-chip" onclick="moveSquadMember('bench','playingXi',${idx})" title="Move to Starting XI">⬆️ XI</button>
+        <button type="button" class="squad-act-chip" onclick="moveSquadMember('bench','outOfSquad',${idx})" title="Move Out of Squad">📦 Out</button>
       `;
     }
 
@@ -3280,20 +3343,20 @@ function renderSquadPlayingList() {
             <div class="squad-avatar-btn">📷 PHOTO</div>
           </div>
           ${jerseyDisplay}
-          <div>
-            <div class="squad-name">
+          <div style="min-width:0;flex:1;">
+            <div class="squad-name" title="${esc(p.name)}">
               ${esc(p.name)}
               ${hasDiffDisp ? `<span style="font-size:12px;color:var(--mt);font-weight:normal;margin-left:4px;">(${esc(dispName)})</span>` : ''}
             </div>
-            <div style="display:flex;align-items:center;gap:6px;margin-top:2px;">
+            <div style="display:flex;align-items:center;gap:6px;margin-top:2px;flex-wrap:wrap;">
               ${posBadge}
               ${p.role ? `<span class="squad-pos-pill" style="background:#e2e8f0;color:#2d3748;">${esc(p.role)}</span>` : ''}
             </div>
           </div>
         </div>
         <div class="squad-actions">
-          <button type="button" class="squad-act-chip" onclick="triggerRowPhotoUpload('${listType}',${idx})" title="Upload photograph">📷 Photo</button>
-          <button type="button" class="squad-act-chip" onclick="openEditSquadMemberModal('${listType}',${idx})" title="Edit details">✏️ Edit</button>
+          <button type="button" class="squad-act-chip" onclick="triggerRowPhotoUpload('${listType}',${idx})" title="Upload photograph">📷</button>
+          <button type="button" class="squad-act-chip" onclick="openEditSquadMemberModal('${listType}',${idx})" title="Edit details">✏️</button>
           ${moveButtons}
           <button type="button" class="squad-act-chip remove" onclick="removeSquadMember('${listType}',${idx})" title="Remove">✕</button>
         </div>
@@ -3301,25 +3364,16 @@ function renderSquadPlayingList() {
     `;
   };
 
-  const renderSubCategory = (title, icon, list, origIndices) => {
+  const renderSubCategory = (title, icon, list, listType, origIndices) => {
     return `
       <div class="squad-subcat-box">
         <div class="squad-subcat-title">${icon} ${title} (${list.length})</div>
         <div class="squad-list-grid">
-          ${list.length ? list.map((p, i) => renderPlayerRow(p, 'playingXi', origIndices[i])).join('') : '<div class="squad-empty-box">No players in this position yet.</div>'}
+          ${list.length ? list.map((p, i) => renderPlayerRow(p, listType, origIndices[i])).join('') : `<div class="squad-empty-box" style="padding:10px;font-size:12px;">No ${title.toLowerCase()} assigned.</div>`}
         </div>
       </div>
     `;
   };
-
-  const gkIndices = [], defIndices = [], midIndices = [], fwdIndices = [];
-  teamSquadData.playingXi.forEach((p, idx) => {
-    const c = classifyPos(p.position);
-    if (c === 'GK') gkIndices.push(idx);
-    else if (c === 'DEF') defIndices.push(idx);
-    else if (c === 'MID') midIndices.push(idx);
-    else fwdIndices.push(idx);
-  });
 
   const curFormation = curTeam?.squad?.formation || '4-4-2';
   const formationList = ['4-3-3', '4-4-2', '4-2-3-1', '3-5-2', '3-4-3', '5-3-2', '4-1-4-1', '4-5-1', '5-4-1', '3-5-1-1'];
@@ -3327,82 +3381,137 @@ function renderSquadPlayingList() {
   const formationOptionsHtml = formationList.map(f => `<option value="${f}" ${f === curFormation ? 'selected' : ''}>${f}</option>`).join('');
 
   let html = `
-    <!-- SECTION 1: PLAYING XI -->
-    <div class="squad-section-card squad-xi-card">
-      <div class="squad-section-head">
-        <div class="squad-section-title">
-          <span>⚽ PLAYING XI (STARTING XI)</span>
-          <span class="squad-badge">${teamSquadData.playingXi.length} / 11 Playing</span>
-        </div>
-        <div class="squad-head-actions">
-          <div class="squad-formation-selector">
-            <span class="squad-formation-label">Formation:</span>
-            <select id="squad-formation-sel" onchange="changeTeamSquadFormation(this.value)">
-              ${formationOptionsHtml}
-            </select>
+    <!-- TOP SECTION: BALANCED 2-COLUMN GRID (PLAYING XI LEFT & BENCH RIGHT) -->
+    <div class="squad-columns-layout">
+      <!-- 1. LEFT COLUMN: PLAYING XI -->
+      <div class="squad-section-card squad-xi-card">
+        <div class="squad-section-head">
+          <div class="squad-section-title">
+            <span>⚽ PLAYING XI (STARTING XI)</span>
+            <span class="squad-badge">${teamSquadData.playingXi.length} / 11 Playing</span>
           </div>
-          <button type="button" class="squad-pitch-btn" onclick="openTeamFormationVisualizer()" title="Open Tactical Pitch Formation Visualizer">
-            <span>♟️ Pitch</span>
-          </button>
-          <button type="button" class="squad-btn-secondary" onclick="openAddSquadMemberModal('playingXi')">＋ Add Starter</button>
+          <div class="squad-head-actions">
+            <div class="squad-formation-selector">
+              <span class="squad-formation-label">Formation:</span>
+              <select id="squad-formation-sel" onchange="changeTeamSquadFormation(this.value)">
+                ${formationOptionsHtml}
+              </select>
+            </div>
+            <button type="button" class="squad-pitch-btn" onclick="openTeamFormationVisualizer()" title="Open Tactical Pitch Formation Visualizer">
+              <span>♟️ Pitch</span>
+            </button>
+            <button type="button" class="squad-btn-secondary" onclick="openAddSquadMemberModal('playingXi')">＋ Add Starter</button>
+          </div>
         </div>
+
+        ${renderSubCategory('Goalkeepers (GK)', '🧤', xiGkList, 'playingXi', xiGkIndices)}
+        ${renderSubCategory('Defenders (DF)', '🛡️', xiDefList, 'playingXi', xiDefIndices)}
+        ${renderSubCategory('Midfielders (MF)', '⚙️', xiMidList, 'playingXi', xiMidIndices)}
+        ${renderSubCategory('Forwards (FW)', '⚡', xiFwdList, 'playingXi', xiFwdIndices)}
       </div>
 
-      ${renderSubCategory('Goalkeepers (GK)', '🧤', gkList, gkIndices)}
-      ${renderSubCategory('Defenders (DF)', '🛡️', defList, defIndices)}
-      ${renderSubCategory('Midfielders (MF)', '⚙️', midList, midIndices)}
-      ${renderSubCategory('Forwards (FW)', '⚡', fwdList, fwdIndices)}
+      <!-- 2. RIGHT COLUMN: BENCH PLAYERS (EXACT MATCHING CATEGORIES) -->
+      <div class="squad-section-card squad-bench-card">
+        <div class="squad-section-head">
+          <div class="squad-section-title">
+            <span>💺 BENCH PLAYERS (SUBSTITUTES)</span>
+            <span class="squad-badge bench">${teamSquadData.bench.length} Substitutes</span>
+          </div>
+          <div class="squad-head-actions">
+            <button type="button" class="squad-btn-secondary" onclick="openAddSquadMemberModal('bench')">＋ Add Bench Player</button>
+          </div>
+        </div>
+
+        ${renderSubCategory('Goalkeepers (GK)', '🧤', benchGkList, 'bench', benchGkIndices)}
+        ${renderSubCategory('Defenders (DF)', '🛡️', benchDefList, 'bench', benchDefIndices)}
+        ${renderSubCategory('Midfielders (MF)', '⚙️', benchMidList, 'bench', benchMidIndices)}
+        ${renderSubCategory('Forwards (FW)', '⚡', benchFwdList, 'bench', benchFwdIndices)}
+      </div>
     </div>
 
-    <!-- SECTION 2: BENCH PLAYERS -->
-    <div class="squad-section-card">
-      <div class="squad-section-head">
-        <div class="squad-section-title">
-          <span>💺 BENCH PLAYERS (SUBSTITUTES)</span>
-          <span class="squad-badge bench">${teamSquadData.bench.length} Bench Players</span>
-        </div>
-        <div class="squad-head-actions">
-          <button type="button" class="squad-btn-secondary" onclick="openAddSquadMemberModal('bench')">＋ Add Bench Player</button>
-        </div>
-      </div>
-      <div class="squad-list-grid">
-        ${teamSquadData.bench.length ? teamSquadData.bench.map((p, idx) => renderPlayerRow(p, 'bench', idx)).join('') : '<div class="squad-empty-box">No bench players assigned yet. Use "+ Add Bench Player" or upload a squad list.</div>'}
-      </div>
-    </div>
-
-    <!-- SECTION 3: MANAGEMENT & STAFF -->
-    <div class="squad-section-card">
+    <!-- MIDDLE SECTION: MANAGEMENT & STAFF (UNIFORM TILES IN ROWS) -->
+    <div class="squad-section-card squad-mgmt-card">
       <div class="squad-section-head">
         <div class="squad-section-title">
           <span>🧑‍💼 MANAGEMENT &amp; STAFF</span>
-          <span class="squad-badge" style="background:#4a5568;">${(teamSquadData.management || []).length} Officials</span>
+          <span class="squad-badge mgmt">${(teamSquadData.management || []).length} Officials</span>
         </div>
         <div class="squad-head-actions">
           <button type="button" class="squad-btn-secondary" onclick="openAddManagementModal()">＋ Add Staff Member</button>
         </div>
       </div>
-      <div class="squad-list-grid">
-        ${(teamSquadData.management || []).length ? teamSquadData.management.map((s, idx) => `
-          <div class="squad-row">
-            <div class="squad-row-left">
-              <div class="squad-avatar-wrap" onclick="triggerStaffPhotoUpload(${idx})" title="Click to upload/change photo">
-                ${s.photo ? `<img src="${esc(s.photo)}" class="squad-avatar-img" alt="">` : '<div style="font-size:24px;">🧑‍💼</div>'}
-                <div class="squad-avatar-btn">📷 PHOTO</div>
-              </div>
-              <div>
-                <div class="squad-name">${esc(s.name)}</div>
-                <div style="margin-top:2px;">
+      ${(teamSquadData.management || []).length ? `
+        <div class="squad-tile-grid">
+          ${teamSquadData.management.map((s, idx) => `
+            <div class="squad-tile squad-mgmt-tile">
+              <div class="squad-tile-header">
+                <div class="squad-avatar-wrap" onclick="triggerStaffPhotoUpload(${idx})" title="Click to upload/change photo">
+                  ${s.photo ? `<img src="${esc(s.photo)}" class="squad-avatar-img" alt="">` : '<div style="font-size:24px;">🧑‍💼</div>'}
+                  <div class="squad-avatar-btn">📷 PHOTO</div>
+                </div>
+                <div class="squad-tile-info">
+                  <div class="squad-tile-name" title="${esc(s.name)}">${esc(s.name)}</div>
                   <span class="squad-pos-pill" style="background:#edf2f7;color:#2d3748;font-weight:700;">${esc(s.role || 'Staff')}</span>
                 </div>
               </div>
+              <div class="squad-tile-actions">
+                <button type="button" class="squad-act-chip" onclick="triggerStaffPhotoUpload(${idx})" title="Upload photograph">📷 Photo</button>
+                <button type="button" class="squad-act-chip" onclick="openEditStaffMemberModal(${idx})" title="Edit details">✏️ Edit</button>
+                <button type="button" class="squad-act-chip remove" onclick="removeManagementMember(${idx})" title="Remove">✕</button>
+              </div>
             </div>
-            <div class="squad-actions">
-              <button type="button" class="squad-act-chip" onclick="openEditStaffMemberModal(${idx})" title="Edit details">✏️ Edit</button>
-              <button type="button" class="squad-act-chip remove" onclick="removeManagementMember(${idx})" title="Remove">✕</button>
-            </div>
-          </div>
-        `).join('') : '<div class="squad-empty-box">No management or coaching staff added yet. Use "+ Add Staff Member" or upload a squad list.</div>'}
+          `).join('')}
+        </div>
+      ` : '<div class="squad-empty-box">No management or coaching staff added yet. Use "+ Add Staff Member" or upload a squad list.</div>'}
+    </div>
+
+    <!-- BOTTOM SECTION: OUT OF SQUAD PLAYERS (UNIFORM TILES IN ROWS) -->
+    <div class="squad-section-card squad-out-card">
+      <div class="squad-section-head">
+        <div class="squad-section-title">
+          <span>📦 OUT OF SQUAD PLAYERS</span>
+          <span class="squad-badge out">${(teamSquadData.outOfSquad || []).length} Reserves / Inactive</span>
+        </div>
+        <div class="squad-head-actions">
+          <button type="button" class="squad-btn-secondary" onclick="openAddSquadMemberModal('outOfSquad')">＋ Add Out of Squad Player</button>
+        </div>
       </div>
+      ${(teamSquadData.outOfSquad || []).length ? `
+        <div class="squad-tile-grid">
+          ${teamSquadData.outOfSquad.map((p, idx) => {
+            const photoImg = p.photo ? `<img src="${esc(p.photo)}" class="squad-avatar-img" alt="">` : '👤';
+            const jerseyDisplay = p.jersey != null && p.jersey !== '' ? `<div class="squad-jersey">#${esc(p.jersey)}</div>` : '';
+            const posBadge = p.position ? `<span class="squad-pos-pill">${esc(p.position)}</span>` : '';
+            const dispName = getPlayerDisplayName(p);
+            const hasDiffDisp = dispName && dispName.toLowerCase() !== String(p.name || '').toLowerCase();
+            return `
+              <div class="squad-tile squad-player-tile">
+                <div class="squad-tile-header">
+                  <div class="squad-avatar-wrap" onclick="triggerRowPhotoUpload('outOfSquad',${idx})" title="Click to upload/change photo">
+                    ${photoImg}
+                    <div class="squad-avatar-btn">📷 PHOTO</div>
+                  </div>
+                  ${jerseyDisplay}
+                  <div class="squad-tile-info">
+                    <div class="squad-tile-name" title="${esc(p.name)}">${esc(p.name)}</div>
+                    <div style="display:flex;align-items:center;gap:6px;margin-top:2px;flex-wrap:wrap;">
+                      ${posBadge}
+                      ${hasDiffDisp ? `<span style="font-size:11.5px;color:var(--mt);">(${esc(dispName)})</span>` : ''}
+                    </div>
+                  </div>
+                </div>
+                <div class="squad-tile-actions">
+                  <button type="button" class="squad-act-chip" onclick="moveSquadMember('outOfSquad','playingXi',${idx})" title="Promote to Starting XI">⚽ XI</button>
+                  <button type="button" class="squad-act-chip" onclick="moveSquadMember('outOfSquad','bench',${idx})" title="Promote to Bench">💺 Bench</button>
+                  <button type="button" class="squad-act-chip" onclick="triggerRowPhotoUpload('outOfSquad',${idx})" title="Upload photo">📷</button>
+                  <button type="button" class="squad-act-chip" onclick="openEditSquadMemberModal('outOfSquad',${idx})" title="Edit details">✏️</button>
+                  <button type="button" class="squad-act-chip remove" onclick="removeSquadMember('outOfSquad',${idx})" title="Remove">✕</button>
+                </div>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      ` : '<div class="squad-empty-box">No out-of-squad players. All registered players are currently assigned to Playing XI or Bench.</div>'}
     </div>
   `;
 
@@ -3543,7 +3652,7 @@ let squadModalTargetType = 'playingXi';
 let squadModalEditIndex = -1;
 
 function openAddSquadMemberModal(targetType) {
-  squadModalTargetType = (targetType === 'bench') ? 'bench' : 'playingXi';
+  squadModalTargetType = (targetType === 'bench') ? 'bench' : ((targetType === 'outOfSquad') ? 'outOfSquad' : 'playingXi');
   squadModalEditIndex = -1;
   modalPhotoData = null;
 
@@ -3574,6 +3683,11 @@ function openAddSquadMemberModal(targetType) {
     if (descEl) descEl.textContent = 'Add a substitute player to the bench.';
     if (roleLabel) roleLabel.textContent = 'Position (e.g. ST, CB, GK)';
     if (jerseyField) jerseyField.style.display = 'block';
+  } else if (squadModalTargetType === 'outOfSquad') {
+    if (titEl) titEl.textContent = 'ADD OUT OF SQUAD PLAYER';
+    if (descEl) descEl.textContent = 'Add a player to reserves / out of matchday squad.';
+    if (roleLabel) roleLabel.textContent = 'Position (e.g. ST, CB, GK)';
+    if (jerseyField) jerseyField.style.display = 'block';
   } else {
     if (titEl) titEl.textContent = 'ADD TO PLAYING XI';
     if (descEl) descEl.textContent = 'Add a starting player to Playing XI.';
@@ -3590,7 +3704,7 @@ function openAddSquadMemberModal(targetType) {
 }
 
 function openEditSquadMemberModal(listType, index) {
-  squadModalTargetType = (listType === 'bench') ? 'bench' : 'playingXi';
+  squadModalTargetType = (listType === 'bench') ? 'bench' : ((listType === 'outOfSquad') ? 'outOfSquad' : 'playingXi');
   squadModalEditIndex = index;
 
   const item = teamSquadData[squadModalTargetType] && teamSquadData[squadModalTargetType][index];
@@ -3646,7 +3760,7 @@ async function persistTeamSquadNow(showToast = true) {
   if (!curTeam || !curTeam.id) return false;
 
   // Safety guard: if teamSquadData has 0 players but curTeam.squad already has players, re-initialize to prevent accidental wipe
-  if ((!teamSquadData.playingXi || !teamSquadData.playingXi.length) && (!teamSquadData.bench || !teamSquadData.bench.length)) {
+  if ((!teamSquadData.playingXi || !teamSquadData.playingXi.length) && (!teamSquadData.bench || !teamSquadData.bench.length) && (!teamSquadData.outOfSquad || !teamSquadData.outOfSquad.length)) {
     if (curTeam && curTeam.squad && ((curTeam.squad.playingXi && curTeam.squad.playingXi.length) || (curTeam.squad.bench && curTeam.squad.bench.length) || (curTeam.squad.slots && curTeam.squad.slots.some(s => s && s.player)))) {
       console.warn('persistTeamSquadNow prevented accidental squad wipe. Re-initializing from curTeam.squad.');
       initTeamSquadData();
@@ -3685,6 +3799,16 @@ async function persistTeamSquadNow(showToast = true) {
     photo: p.photo || null
   }));
 
+  const outOfSquadList = (teamSquadData.outOfSquad || []).map(p => ({
+    id: p.id,
+    name: p.name,
+    displayName: p.displayName || p.shortName || '',
+    shortName: p.shortName || p.displayName || '',
+    position: p.position,
+    jersey: p.jersey || '',
+    photo: p.photo || null
+  }));
+
   const staff = (teamSquadData.management || []).map(s => ({
     id: s.id,
     name: s.name,
@@ -3707,6 +3831,7 @@ async function persistTeamSquadNow(showToast = true) {
     name: curTeam.squad?.name || '',
     playingXi,
     bench: subs,
+    outOfSquad: outOfSquadList,
     management: staff,
     slots,
     subs,
@@ -3721,7 +3846,7 @@ async function persistTeamSquadNow(showToast = true) {
     if (teamInArr) teamInArr.squad = squad;
 
     // Sync squad players to Firestore players collection for live match & players tab
-    const allSquadPlayers = [...playingXi, ...subs];
+    const allSquadPlayers = [...playingXi, ...subs, ...outOfSquadList];
     try {
       const batch = writeBatch(db);
       const savedIds = new Set();
@@ -3797,7 +3922,7 @@ async function confirmAddPlayerToSection() {
   if (!curTeam && activeAdminPlayerTeamId) {
     curTeam = teams.find(t => t.id === activeAdminPlayerTeamId);
   }
-  if (curTeam && !teamSquadData.playingXi.length && !teamSquadData.bench.length) {
+  if (curTeam && !teamSquadData.playingXi.length && !teamSquadData.bench.length && !teamSquadData.outOfSquad?.length) {
     initTeamSquadData();
   }
 
@@ -3843,7 +3968,7 @@ async function confirmAddPlayerToSection() {
       displayName,
       position: role || 'ST',
       jersey: jersey || '',
-      extraPool: [...teamSquadData.playingXi, ...teamSquadData.bench]
+      extraPool: [...teamSquadData.playingXi, ...teamSquadData.bench, ...(teamSquadData.outOfSquad || [])]
     });
     const newEntry = {
       ...existingPlayer,
@@ -3851,6 +3976,9 @@ async function confirmAddPlayerToSection() {
     };
     if (squadModalTargetType === 'bench') {
       teamSquadData.bench.push(newEntry);
+    } else if (squadModalTargetType === 'outOfSquad') {
+      if (!teamSquadData.outOfSquad) teamSquadData.outOfSquad = [];
+      teamSquadData.outOfSquad.push(newEntry);
     } else {
       teamSquadData.playingXi.push(newEntry);
     }
@@ -3866,8 +3994,9 @@ async function moveSquadMember(fromType, toType, index) {
   if (!teamSquadData[fromType] || !teamSquadData[fromType][index]) return;
   const item = teamSquadData[fromType].splice(index, 1)[0];
 
-  const targetType = (toType === 'bench') ? 'bench' : 'playingXi';
+  const targetType = (toType === 'bench') ? 'bench' : ((toType === 'outOfSquad') ? 'outOfSquad' : 'playingXi');
   item.position = item.position || 'ST';
+  if (!teamSquadData[targetType]) teamSquadData[targetType] = [];
 
   teamSquadData[targetType].push(item);
   renderSquadPlayingList();
@@ -3978,6 +4107,7 @@ async function handleSquadCSVUpload(input) {
     const newXi = [];
     const newBench = [];
     const newManagement = [];
+    const newOutOfSquad = [];
 
     const getVal = (r, idx) => (idx >= 0 && idx < r.length) ? String(r[idx] || '').trim() : '';
 
@@ -4012,50 +4142,57 @@ async function handleSquadCSVUpload(input) {
         displayName: rawDisp,
         position: roleVal || 'ST',
         jersey: jerseyVal || '',
-        extraPool: [...newXi, ...newBench]
+        extraPool: [...newXi, ...newBench, ...newOutOfSquad]
       });
 
       if (secVal.includes('11') || secVal.includes('eleven') || secVal.includes('start') || secVal.includes('first') || secVal.includes('playing') || secVal === '1') {
         newXi.push(playerItem);
-      } else if (secVal.includes('bench') || secVal.includes('sub') || secVal.includes('reserve') || secVal === '0') {
+      } else if (secVal.includes('bench') || secVal.includes('sub') || secVal === '0') {
         newBench.push(playerItem);
+      } else if (secVal.includes('out') || secVal.includes('reserve') || secVal.includes('inactive') || secVal.includes('extra')) {
+        newOutOfSquad.push(playerItem);
       } else {
         if (newXi.length < 11) {
           newXi.push(playerItem);
-        } else {
+        } else if (newBench.length < 9) {
           newBench.push(playerItem);
+        } else {
+          newOutOfSquad.push(playerItem);
         }
       }
     }
 
-    // Retain existing players from curTeam.squad who were not in the CSV (so previous match squad members remain on bench without duplicating)
+    // Retain existing players from curTeam.squad who were not in the CSV (so previous match squad members remain in out-of-squad without duplicating)
     const existingSquad = [
       ...(Array.isArray(curTeam?.squad?.playingXi) ? curTeam.squad.playingXi : []),
       ...(Array.isArray(curTeam?.squad?.bench) ? curTeam.squad.bench : []),
+      ...(Array.isArray(curTeam?.squad?.outOfSquad) ? curTeam.squad.outOfSquad : []),
       ...(Array.isArray(teamSquadData?.playingXi) ? teamSquadData.playingXi : []),
-      ...(Array.isArray(teamSquadData?.bench) ? teamSquadData.bench : [])
+      ...(Array.isArray(teamSquadData?.bench) ? teamSquadData.bench : []),
+      ...(Array.isArray(teamSquadData?.outOfSquad) ? teamSquadData.outOfSquad : [])
     ];
     existingSquad.forEach(prevP => {
       if (!prevP || !prevP.name) return;
-      const alreadyInNew = [...newXi, ...newBench].some(p => {
+      const alreadyInNew = [...newXi, ...newBench, ...newOutOfSquad].some(p => {
         const sameName = normalizePlayerIdentityName(p.name) === normalizePlayerIdentityName(prevP.name);
         const sameJersey = (p.jersey && prevP.jersey && String(p.jersey).trim() === String(prevP.jersey).trim());
         const sameId = p.id && prevP.id && p.id === prevP.id;
         return sameId || sameName || sameJersey;
       });
       if (!alreadyInNew) {
-        newBench.push(prevP);
+        newOutOfSquad.push(prevP);
       }
     });
 
     teamSquadData = {
       playingXi: newXi,
       bench: newBench,
-      management: newManagement.length ? newManagement : (teamSquadData.management || [])
+      management: newManagement.length ? newManagement : (teamSquadData.management || []),
+      outOfSquad: newOutOfSquad
     };
 
     renderSquadPlayingList();
-    alert(`🎉 Successfully uploaded squad from CSV!\n\n⚽ Playing XI: ${newXi.length} players\n💺 Bench: ${newBench.length} players\n🧑‍💼 Management: ${teamSquadData.management.length} staff\n\nClick "SAVE SQUAD" to persist changes.`);
+    alert(`🎉 Successfully uploaded squad from CSV!\n\n⚽ Playing XI: ${newXi.length} players\n💺 Bench: ${newBench.length} players\n📦 Out of Squad: ${newOutOfSquad.length} players\n🧑‍💼 Management: ${teamSquadData.management.length} staff\n\nClick "SAVE SQUAD" to persist changes.`);
   } catch (e) {
     console.error('Squad CSV error:', e);
     alert('Failed to parse CSV file: ' + (e.message || e));
@@ -4367,6 +4504,15 @@ async function saveSquadPlayingList() {
       photo: p.photo || null
     })),
     bench: subs,
+    outOfSquad: (teamSquadData.outOfSquad || []).map(p => ({
+      id: p.id,
+      name: p.name,
+      displayName: p.displayName || p.shortName || '',
+      shortName: p.shortName || p.displayName || '',
+      position: p.position,
+      jersey: p.jersey || '',
+      photo: p.photo || null
+    })),
     management: staff,
     slots,
     subs,
@@ -4381,7 +4527,7 @@ async function saveSquadPlayingList() {
     if (teamInArr) teamInArr.squad = squad;
 
     // Batch sync all players to the Firestore players collection for live match & players tab sync
-    const allSquadPlayers = [...squad.playingXi, ...squad.bench];
+    const allSquadPlayers = [...squad.playingXi, ...squad.bench, ...(squad.outOfSquad || [])];
     try {
       const batch = writeBatch(db);
       const savedIds = new Set();
@@ -4435,8 +4581,8 @@ async function saveSquadPlayingList() {
 }
 
 async function clearSquadPlayingList() {
-  if (!confirm('Are you sure you want to clear all Playing XI, Bench, and Management members?')) return;
-  teamSquadData = { playingXi: [], bench: [], management: [] };
+  if (!confirm('Are you sure you want to clear all Playing XI, Bench, Management, and Out of Squad members?')) return;
+  teamSquadData = { playingXi: [], bench: [], management: [], outOfSquad: [] };
   if (curTeam && curTeam.id) {
     try {
       await updateDoc(doc(db, 'teams', curTeam.id), { squad: null });
