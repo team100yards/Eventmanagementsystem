@@ -455,7 +455,6 @@ function isSettingsPinValid(enteredPin) {
 function ensurePinAuthenticated(actionFn) {
   if (isPinAuthenticated || sessionStorage.getItem('ems_pin_auth') === '1') {
     isPinAuthenticated = true;
-    if (typeof actionFn === 'function') actionFn();
     return true;
   }
   pendingPinSuccessAction = actionFn;
@@ -1268,7 +1267,7 @@ function openLiveMatchDeskDirect() {
 window.openLiveMatchDeskDirect = openLiveMatchDeskDirect;
 
 function openFormationBuilderDirect() {
-  window.open('formation-builder.html?v=68.0', '_blank');
+  window.open('formation-builder.html?v=69.0', '_blank');
 }
 window.openFormationBuilderDirect = openFormationBuilderDirect;
 
@@ -1479,7 +1478,7 @@ async function loadAdmin() {
       } else if (['teams', 'players', 'tournaments', 'matches', 'formation'].includes(targetTab)) {
         showAdminTab(targetTab);
       }
-    } catch(urlErr) {}
+    } catch (urlErr) { }
   } catch (e) {
     console.error('loadAdmin error:', e);
     $('tgrid').innerHTML = `<div style="padding:20px;color:#e53935;background:rgba(229,57,53,.08);border:1px solid rgba(229,57,53,.3);border-radius:12px;">Failed to load teams: ${esc(e.message || e)}</div>`;
@@ -1494,14 +1493,14 @@ function showAdminTab(tab, keepTeam = false) {
   currentAdminTab = tab;
   try {
     sessionStorage.setItem('ems_active_admin_tab', tab);
-  } catch (e) {}
+  } catch (e) { }
   try {
     const currentUrl = new URL(window.location.href);
     if (!currentUrl.searchParams.get('match') && !currentUrl.searchParams.get('live') && !currentUrl.searchParams.get('createMatch')) {
       currentUrl.searchParams.set('tab', tab);
       window.history.replaceState(null, '', currentUrl.toString());
     }
-  } catch (e) {}
+  } catch (e) { }
 
   validTabs.forEach(name => {
     const selected = name === tab;
@@ -1545,7 +1544,7 @@ function showAdminTab(tab, keepTeam = false) {
     populateAdminFormationTeamSelect();
     const f = $('adm-formation-frame');
     if (f && (!f.src || f.src === 'about:blank' || !f.src.includes('formation-builder.html'))) {
-      f.src = 'formation-builder.html?v=68.0';
+      f.src = 'formation-builder.html?v=69.0';
     } else {
       setTimeout(() => sendAdmFormationSync(), 150);
       setTimeout(() => sendAdmFormationSync(), 450);
@@ -1649,8 +1648,8 @@ function renderAdmin() {
   el.innerHTML = `
     <div class="admin-player-team-selector-cards" style="margin-bottom:0;">
       ${teams.map(t => {
-        const logoHtml = t.logo ? `<img src="${esc(t.logo)}" alt="" style="width:40px;height:40px;border-radius:50%;object-fit:cover;border:1.5px solid var(--bd);">` : `<span style="font-size:28px;">${t.emoji || '⚽'}</span>`;
-        return `
+    const logoHtml = t.logo ? `<img src="${esc(t.logo)}" alt="" style="width:40px;height:40px;border-radius:50%;object-fit:cover;border:1.5px solid var(--bd);">` : `<span style="font-size:28px;">${t.emoji || '⚽'}</span>`;
+    return `
           <div class="admin-player-team-card" onclick="promptPw('${t.id}')" style="justify-content:space-between;cursor:pointer;">
             <div style="display:flex;align-items:center;gap:14px;min-width:0;flex:1;">
               <div style="flex-shrink:0;">${logoHtml}</div>
@@ -1662,7 +1661,7 @@ function renderAdmin() {
             </div>
           </div>
         `;
-      }).join('')}
+  }).join('')}
     </div>
   `;
 }
@@ -1731,9 +1730,9 @@ function renderAdminPlayers() {
     el.innerHTML = `
       <div class="admin-player-team-selector-cards" style="margin-bottom:0;">
         ${filteredTeams.map(t => {
-          const logoHtml = t.logo ? `<img src="${esc(t.logo)}" alt="" style="width:40px;height:40px;border-radius:50%;object-fit:cover;border:1.5px solid var(--bd);">` : `<span style="font-size:28px;">${t.emoji || '⚽'}</span>`;
-          const tCount = t.pc != null ? t.pc : allPlayersCache.filter(p => p.teamId === t.id).length;
-          return `
+      const logoHtml = t.logo ? `<img src="${esc(t.logo)}" alt="" style="width:40px;height:40px;border-radius:50%;object-fit:cover;border:1.5px solid var(--bd);">` : `<span style="font-size:28px;">${t.emoji || '⚽'}</span>`;
+      const tCount = t.pc != null ? t.pc : allPlayersCache.filter(p => p.teamId === t.id).length;
+      return `
             <div class="admin-player-team-card" onclick="openTeamRosterView('${t.id}')" style="justify-content:space-between;cursor:pointer;">
               <div style="display:flex;align-items:center;gap:14px;min-width:0;flex:1;">
                 <div style="flex-shrink:0;">${logoHtml}</div>
@@ -1744,7 +1743,7 @@ function renderAdminPlayers() {
               </div>
             </div>
           `;
-        }).join('')}
+    }).join('')}
       </div>
     `;
     return;
@@ -3076,7 +3075,7 @@ function showTab(n) {
   if (n === 'formation') {
     const frame = $('formation-builder-frame');
     if (frame && (!frame.src || frame.src === 'about:blank' || !frame.src.includes('formation-builder.html'))) {
-      frame.src = 'formation-builder.html?v=68.0';
+      frame.src = 'formation-builder.html?v=69.0';
     } else {
       setTimeout(() => sendFormationSync(), 150);
       setTimeout(() => sendFormationSync(), 450);
@@ -3605,12 +3604,12 @@ function renderSquadPlayingList() {
       ${(teamSquadData.outOfSquad || []).length ? `
         <div class="squad-tile-grid">
           ${teamSquadData.outOfSquad.map((p, idx) => {
-            const photoImg = p.photo ? `<img src="${esc(p.photo)}" class="squad-avatar-img" alt="">` : '👤';
-            const jerseyDisplay = p.jersey != null && p.jersey !== '' ? `<div class="squad-jersey">#${esc(p.jersey)}</div>` : '';
-            const posBadge = p.position ? `<span class="squad-pos-pill">${esc(p.position)}</span>` : '';
-            const dispName = getPlayerDisplayName(p);
-            const hasDiffDisp = dispName && dispName.toLowerCase() !== String(p.name || '').toLowerCase();
-            return `
+    const photoImg = p.photo ? `<img src="${esc(p.photo)}" class="squad-avatar-img" alt="">` : '👤';
+    const jerseyDisplay = p.jersey != null && p.jersey !== '' ? `<div class="squad-jersey">#${esc(p.jersey)}</div>` : '';
+    const posBadge = p.position ? `<span class="squad-pos-pill">${esc(p.position)}</span>` : '';
+    const dispName = getPlayerDisplayName(p);
+    const hasDiffDisp = dispName && dispName.toLowerCase() !== String(p.name || '').toLowerCase();
+    return `
               <div class="squad-tile squad-player-tile">
                 <div class="squad-tile-header">
                   <div class="squad-avatar-wrap" onclick="triggerRowPhotoUpload('outOfSquad',${idx})" title="Click to upload/change photo">
@@ -3635,7 +3634,7 @@ function renderSquadPlayingList() {
                 </div>
               </div>
             `;
-          }).join('')}
+  }).join('')}
         </div>
       ` : '<div class="squad-empty-box">No out-of-squad players. All registered players are currently assigned to Playing XI or Bench.</div>'}
     </div>
@@ -3701,7 +3700,7 @@ function triggerStaffPhotoUpload(index) {
   staffPhotoTargetIndex = index;
   const inp = $('squad-photo-inp');
   if (inp) {
-    inp.onchange = function() {
+    inp.onchange = function () {
       handleStaffPhotoUpload(this);
     };
     inp.click();
@@ -4033,7 +4032,9 @@ async function persistTeamSquadNow(showToast = true) {
 }
 window.persistTeamSquadNow = persistTeamSquadNow;
 
+let isSavingSquadMember = false;
 async function confirmAddPlayerToSection() {
+  if (isSavingSquadMember) return;
   const name = String($('pl-add-name')?.value || '').trim();
   const rawDisp = String($('pl-add-display-name')?.value || '').trim();
   const displayName = rawDisp || getPlayerDisplayName({ name });
@@ -4048,81 +4049,86 @@ async function confirmAddPlayerToSection() {
 
   if (!ensurePinAuthenticated(() => confirmAddPlayerToSection())) return;
 
-  if (typeof plAddTargetSection !== 'undefined' && plAddTargetSection && (typeof luSlots !== 'undefined') && $('page-lineup')?.classList.contains('active')) {
-    if (typeof confirmAddLineupPlayerToSection === 'function') {
-      return confirmAddLineupPlayerToSection();
-    }
-  }
-
-  if (!curTeam && activeAdminPlayerTeamId) {
-    curTeam = teams.find(t => t.id === activeAdminPlayerTeamId);
-  }
-  if (curTeam && !teamSquadData.playingXi.length && !teamSquadData.bench.length && !teamSquadData.outOfSquad?.length) {
-    initTeamSquadData();
-  }
-
-  const pId = 'sq_' + Date.now() + Math.random().toString(36).substr(2, 4);
-
-  if (squadModalEditIndex >= 0) {
-    const item = teamSquadData[squadModalTargetType] && teamSquadData[squadModalTargetType][squadModalEditIndex];
-    if (item) {
-      item.name = name;
-      item.displayName = displayName;
-      item.shortName = displayName;
-      item.position = role || 'ST';
-      item.jersey = jersey || '';
-      if (modalPhotoData !== undefined) {
-        item.photo = modalPhotoData;
+  isSavingSquadMember = true;
+  try {
+    if (typeof plAddTargetSection !== 'undefined' && plAddTargetSection && (typeof luSlots !== 'undefined') && $('page-lineup')?.classList.contains('active')) {
+      if (typeof confirmAddLineupPlayerToSection === 'function') {
+        return confirmAddLineupPlayerToSection();
       }
-      if (item.id) {
-        const inCache = allPlayersCache.find(x => x.id === item.id);
-        if (inCache) {
-          inCache.name = name;
-          inCache.displayName = displayName;
-          inCache.shortName = displayName;
-          inCache.position = role || 'ST';
-          inCache.jersey = jersey || '';
-          if (modalPhotoData !== undefined) inCache.photo = modalPhotoData;
+    }
+
+    if (!curTeam && activeAdminPlayerTeamId) {
+      curTeam = teams.find(t => t.id === activeAdminPlayerTeamId);
+    }
+    if (curTeam && !teamSquadData.playingXi.length && !teamSquadData.bench.length && !teamSquadData.outOfSquad?.length) {
+      initTeamSquadData();
+    }
+
+    const pId = 'sq_' + Date.now() + Math.random().toString(36).substr(2, 4);
+
+    if (squadModalEditIndex >= 0) {
+      const item = teamSquadData[squadModalTargetType] && teamSquadData[squadModalTargetType][squadModalEditIndex];
+      if (item) {
+        item.name = name;
+        item.displayName = displayName;
+        item.shortName = displayName;
+        item.position = role || 'ST';
+        item.jersey = jersey || '';
+        if (modalPhotoData !== undefined) {
+          item.photo = modalPhotoData;
         }
-        try {
-          updateDoc(doc(db, 'players', item.id), {
-            name,
-            displayName,
-            shortName: displayName,
-            position: role || 'ST',
-            jersey: jersey || '',
-            ...(modalPhotoData !== undefined ? { photo: modalPhotoData } : {})
-          }).catch(() => {});
-        } catch (e) {}
+        if (item.id) {
+          const inCache = allPlayersCache.find(x => x.id === item.id);
+          if (inCache) {
+            inCache.name = name;
+            inCache.displayName = displayName;
+            inCache.shortName = displayName;
+            inCache.position = role || 'ST';
+            inCache.jersey = jersey || '';
+            if (modalPhotoData !== undefined) inCache.photo = modalPhotoData;
+          }
+          try {
+            updateDoc(doc(db, 'players', item.id), {
+              name,
+              displayName,
+              shortName: displayName,
+              position: role || 'ST',
+              jersey: jersey || '',
+              ...(modalPhotoData !== undefined ? { photo: modalPhotoData } : {})
+            }).catch(() => { });
+          } catch (e) { }
+        }
+      }
+    } else {
+      const existingPlayer = matchOrCreateSquadPlayer({
+        teamId: curTeam?.id,
+        name,
+        displayName,
+        position: role || 'ST',
+        jersey: jersey || '',
+        extraPool: [...teamSquadData.playingXi, ...teamSquadData.bench, ...(teamSquadData.outOfSquad || [])]
+      });
+      const newEntry = {
+        ...existingPlayer,
+        photo: modalPhotoData || existingPlayer.photo || null
+      };
+      if (squadModalTargetType === 'bench') {
+        teamSquadData.bench.push(newEntry);
+      } else if (squadModalTargetType === 'outOfSquad') {
+        if (!teamSquadData.outOfSquad) teamSquadData.outOfSquad = [];
+        teamSquadData.outOfSquad.push(newEntry);
+      } else {
+        teamSquadData.playingXi.push(newEntry);
       }
     }
-  } else {
-    const existingPlayer = matchOrCreateSquadPlayer({
-      teamId: curTeam?.id,
-      name,
-      displayName,
-      position: role || 'ST',
-      jersey: jersey || '',
-      extraPool: [...teamSquadData.playingXi, ...teamSquadData.bench, ...(teamSquadData.outOfSquad || [])]
-    });
-    const newEntry = {
-      ...existingPlayer,
-      photo: modalPhotoData || existingPlayer.photo || null
-    };
-    if (squadModalTargetType === 'bench') {
-      teamSquadData.bench.push(newEntry);
-    } else if (squadModalTargetType === 'outOfSquad') {
-      if (!teamSquadData.outOfSquad) teamSquadData.outOfSquad = [];
-      teamSquadData.outOfSquad.push(newEntry);
-    } else {
-      teamSquadData.playingXi.push(newEntry);
-    }
-  }
 
-  closeM('m-pl-add-player');
-  renderSquadPlayingList();
-  renderAdminPlayers();
-  await persistTeamSquadNow(true);
+    closeM('m-pl-add-player');
+    renderSquadPlayingList();
+    renderAdminPlayers();
+    await persistTeamSquadNow(true);
+  } finally {
+    isSavingSquadMember = false;
+  }
 }
 
 async function moveSquadMember(fromType, toType, index) {
@@ -4582,13 +4588,16 @@ async function handleSquadAIPhotoUpload(input) {
   }
 }
 
+let isSavingSquad = false;
 async function saveSquadPlayingList() {
+  if (isSavingSquad) return;
   if (!curTeam || !curTeam.id) {
     alert('No active team selected.');
     return;
   }
 
   if (!ensurePinAuthenticated(() => saveSquadPlayingList())) return;
+  isSavingSquad = true;
 
   const formationKey = curTeam.squad?.formation || '4-4-2';
   const flat = flattenFormation(formationKey);
@@ -4715,6 +4724,8 @@ async function saveSquadPlayingList() {
   } catch (e) {
     console.error('saveSquadPlayingList error:', e);
     alert('❌ Could not save squad: ' + (e.message || e));
+  } finally {
+    isSavingSquad = false;
   }
 }
 
@@ -4922,14 +4933,18 @@ function pk(k) {
   if (pinBuf.length === 4) setTimeout(checkPin, 150);
 }
 function updDots() { for (let i = 0; i < 4; i++)$('pd' + i).classList.toggle('filled', i < pinBuf.length); }
+let isCheckingPin = false;
 function checkPin() {
+  if (isCheckingPin) return;
   if (isSettingsPinValid(pinBuf)) {
+    isCheckingPin = true;
     isPinAuthenticated = true;
     sessionStorage.setItem('ems_pin_auth', '1');
     closeM('m-pin'); $('perrmsg').style.display = 'none';
-    if (typeof pendingPinSuccessAction === 'function') {
-      const fn = pendingPinSuccessAction;
-      pendingPinSuccessAction = null;
+    const fn = pendingPinSuccessAction;
+    pendingPinSuccessAction = null;
+    isCheckingPin = false;
+    if (typeof fn === 'function') {
       fn();
       return;
     }
@@ -5031,7 +5046,9 @@ function eAge() {
   if (t.getMonth() - b.getMonth() < 0 || (t.getMonth() === b.getMonth() && t.getDate() < b.getDate())) a--;
   $('e-age').value = a;
 }
+let isSavingEdit = false;
 async function saveEdit() {
+  if (isSavingEdit) return;
   const name = $('e-name').value.trim();
   const ph = $('e-ph').value.trim();
   const displayName = $('e-dispname') ? $('e-dispname').value.trim() : '';
@@ -5192,6 +5209,8 @@ async function saveEdit() {
   } catch (e) {
     console.error('saveEdit error:', e);
     alert('❌ Could not save: ' + (e.message || e));
+  } finally {
+    isSavingEdit = false;
   }
 }
 
@@ -5433,7 +5452,7 @@ function buildFormationSyncPayload(targetTeam) {
     if (teams && teams.length) {
       localStorage.setItem('ems_teams_list', JSON.stringify(teams.map(t => ({ id: t.id, name: t.name }))));
     }
-  } catch(e) {}
+  } catch (e) { }
 
   return payload;
 }
@@ -5457,7 +5476,7 @@ function openFormationBuilderFullscreen() {
   if (targetTeam) {
     buildFormationSyncPayload(targetTeam);
   }
-  window.open('formation-builder.html?v=68.0', '_blank');
+  window.open('formation-builder.html?v=69.0', '_blank');
 }
 window.openFormationBuilderFullscreen = openFormationBuilderFullscreen;
 
@@ -7410,14 +7429,18 @@ function apk(k) {
   if (adminPinBuf.length === 4) setTimeout(checkAdminPin, 150);
 }
 function updAdminDots() { for (let i = 0; i < 4; i++)$('apd' + i).classList.toggle('filled', i < adminPinBuf.length); }
+let isCheckingAdminPin = false;
 function checkAdminPin() {
+  if (isCheckingAdminPin) return;
   if (isSettingsPinValid(adminPinBuf)) {
+    isCheckingAdminPin = true;
     isPinAuthenticated = true;
     sessionStorage.setItem('ems_pin_auth', '1');
     closeM('m-admin-pin'); $('aperrmsg').style.display = 'none';
-    if (typeof pendingPinSuccessAction === 'function') {
-      const fn = pendingPinSuccessAction;
-      pendingPinSuccessAction = null;
+    const fn = pendingPinSuccessAction;
+    pendingPinSuccessAction = null;
+    isCheckingAdminPin = false;
+    if (typeof fn === 'function') {
       fn();
       return;
     }
@@ -10460,7 +10483,7 @@ async function openMatchSheet(matchId, returnScreen) {
   isStandaloneMatchMode = false;
   matchReturnScreen = returnScreen || (curTournament ? 's-tournament' : 's-admin');
   clearMatchStatsImage();
-  
+
   const found = matches.find(m => m.id === matchId);
   if (found) {
     curMatch = found;
@@ -12333,6 +12356,7 @@ function setEventTeam(team) {
         opts += `</optgroup>`;
       }
     }
+    opts += `<option value="__custom__">➕ Type Custom / Outside Opponent Player Name…</option>`;
     relSel.innerHTML = opts;
   }
 }
@@ -12508,252 +12532,252 @@ async function deleteMatchEvent(eventId) {
   }
 }
 
-function openEditMatchDetails() {
-  if (!curMatch) return;
-  const dateEl = $('emd-date'); if (dateEl) dateEl.value = curMatch.date || '';
-  const timeEl = $('emd-time'); if (timeEl) timeEl.value = curMatch.time || '';
-  const statusEl = $('emd-status'); if (statusEl) statusEl.value = curMatch.status || 'scheduled';
+  function openEditMatchDetails() {
+    if (!curMatch) return;
+    const dateEl = $('emd-date'); if (dateEl) dateEl.value = curMatch.date || '';
+    const timeEl = $('emd-time'); if (timeEl) timeEl.value = curMatch.time || '';
+    const statusEl = $('emd-status'); if (statusEl) statusEl.value = curMatch.status || 'scheduled';
 
-  const hLbl = $('emd-home-lbl'); if (hLbl) hLbl.textContent = `${curMatch.home?.name || 'Home'} Score`;
-  const aLbl = $('emd-away-lbl'); if (aLbl) aLbl.textContent = `${curMatch.away?.name || 'Away'} Score`;
+    const hLbl = $('emd-home-lbl'); if (hLbl) hLbl.textContent = `${curMatch.home?.name || 'Home'} Score`;
+    const aLbl = $('emd-away-lbl'); if (aLbl) aLbl.textContent = `${curMatch.away?.name || 'Away'} Score`;
 
-  const hScoreEl = $('emd-home-score'); if (hScoreEl) hScoreEl.value = curMatch.home?.score != null ? curMatch.home.score : 0;
-  const aScoreEl = $('emd-away-score'); if (aScoreEl) aScoreEl.value = curMatch.away?.score != null ? curMatch.away.score : 0;
+    const hScoreEl = $('emd-home-score'); if (hScoreEl) hScoreEl.value = curMatch.home?.score != null ? curMatch.home.score : 0;
+    const aScoreEl = $('emd-away-score'); if (aScoreEl) aScoreEl.value = curMatch.away?.score != null ? curMatch.away.score : 0;
 
-  const errEl = $('emd-err'); if (errEl) { errEl.textContent = ''; errEl.style.display = 'none'; }
-  openM('m-edit-match-details');
-}
-
-async function saveMatchDetailsEdit() {
-  if (!curMatch) return;
-  if (!ensurePinAuthenticated(() => saveMatchDetailsEdit())) return;
-  const date = $('emd-date')?.value || curMatch.date;
-  const time = $('emd-time')?.value || '';
-  const status = $('emd-status')?.value || curMatch.status;
-  const hScore = parseInt($('emd-home-score')?.value) || 0;
-  const aScore = parseInt($('emd-away-score')?.value) || 0;
-
-  const updates = {
-    date: date,
-    time: time,
-    status: status,
-    'home.score': hScore,
-    'away.score': aScore,
-    updatedAt: new Date().toISOString()
-  };
-
-  try {
-    await updateDoc(doc(db, 'matches', curMatch.id), updates);
-    curMatch.date = date;
-    curMatch.time = time;
-    curMatch.status = status;
-    curMatch.home.score = hScore;
-    curMatch.away.score = aScore;
-    closeM('m-edit-match-details');
-    renderMatchSheet();
-    renderAdminMatches();
-  } catch (e) {
-    const errEl = $('emd-err');
-    if (errEl) { errEl.textContent = 'Failed to save changes: ' + (e.message || e); errEl.style.display = 'block'; }
-  }
-}
-
-function deleteCurrentMatch() {
-  if (!curMatch) return;
-  adminRequestPin('delmatch', curMatch.id);
-}
-
-
-// ══════════════════════════════════════════════════════════════
-// ⚙️ MATCH LINEUP ADJUSTMENTS
-// ══════════════════════════════════════════════════════════════
-
-let amlTeamPlayers = [];
-
-function openAdjustLineup(side) {
-  if (!curMatch) return;
-  amlSide = side;
-  const sideData = side === 'home' ? curMatch.home : curMatch.away;
-  const teamId = sideData?.teamId;
-  const teamObj = teams.find(t => t.id === teamId);
-
-  const titleEl = $('aml-title');
-  const descEl = $('aml-desc');
-  if (titleEl) titleEl.textContent = `⚙️ ADJUST LINEUP: ${sideData?.name || (side === 'home' ? 'Home' : 'Away')}`;
-  if (descEl) descEl.textContent = `Configure starting formation, pitch positions, and bench for this match.`;
-
-  // Determine available players
-  if (teamId) {
-    amlTeamPlayers = allPlayersCache.filter(p => p.teamId === teamId);
-    if (!amlTeamPlayers.length && players.length && curTeam?.id === teamId) {
-      amlTeamPlayers = players;
-    }
-  } else {
-    // Outside opponent: synthesize from current lineup if any
-    const existing = [...(sideData?.lineup?.starters || []), ...(sideData?.lineup?.subs || [])].filter(Boolean);
-    amlTeamPlayers = existing.map((p, i) => ({
-      id: p.playerId || p.id || `ext_${i}`,
-      name: p.name,
-      position: p.position || 'ST',
-      jersey: p.jersey || ''
-    }));
+    const errEl = $('emd-err'); if (errEl) { errEl.textContent = ''; errEl.style.display = 'none'; }
+    openM('m-edit-match-details');
   }
 
-  const existingLineup = sideData?.lineup;
-  amlFormation = (existingLineup && existingLineup.formation && FORMATIONS[existingLineup.formation]) ? existingLineup.formation : '4-4-2';
-  amlAside = formationTotal(amlFormation) || 11;
-  const flat = flattenFormation(amlFormation);
+  async function saveMatchDetailsEdit() {
+    if (!curMatch) return;
+    if (!ensurePinAuthenticated(() => saveMatchDetailsEdit())) return;
+    const date = $('emd-date')?.value || curMatch.date;
+    const time = $('emd-time')?.value || '';
+    const status = $('emd-status')?.value || curMatch.status;
+    const hScore = parseInt($('emd-home-score')?.value) || 0;
+    const aScore = parseInt($('emd-away-score')?.value) || 0;
 
-  amlSlots = flat.map((_, i) => {
-    if (existingLineup && existingLineup.starters && existingLineup.starters[i]) {
-      const sp = existingLineup.starters[i].player || existingLineup.starters[i];
-      const found = amlTeamPlayers.find(pl => pl.id === (sp.playerId || sp.id));
-      return {
-        id: sp.playerId || sp.id,
-        name: found ? found.name : sp.name,
-        position: found ? found.position : sp.position,
-        jersey: (found && found.jersey != null && found.jersey !== '') ? found.jersey : (sp.jersey || ''),
-        photo: (found && found.photo) ? found.photo : (sp.photo || null),
-        matchPosition: posCode(sp.matchPosition || (found && found.position) || sp.position)
-      };
-    }
-    return null;
-  });
-
-  amlSubs = (existingLineup?.subs || []).map(sb => {
-    const found = amlTeamPlayers.find(pl => pl.id === (sb.playerId || sb.id));
-    return {
-      id: sb.playerId || sb.id,
-      name: found ? found.name : sb.name,
-      position: found ? found.position : sb.position,
-      jersey: (found && found.jersey != null && found.jersey !== '') ? found.jersey : (sb.jersey || ''),
-      photo: (found && found.photo) ? found.photo : (sb.photo || null)
+    const updates = {
+      date: date,
+      time: time,
+      status: status,
+      'home.score': hScore,
+      'away.score': aScore,
+      updatedAt: new Date().toISOString()
     };
-  });
 
-  amlStaff = (existingLineup?.coaches || []).map(s => ({
-    id: s.staffId || s.id,
-    name: s.name,
-    role: s.role
-  }));
+    try {
+      await updateDoc(doc(db, 'matches', curMatch.id), updates);
+      curMatch.date = date;
+      curMatch.time = time;
+      curMatch.status = status;
+      curMatch.home.score = hScore;
+      curMatch.away.score = aScore;
+      closeM('m-edit-match-details');
+      renderMatchSheet();
+      renderAdminMatches();
+    } catch (e) {
+      const errEl = $('emd-err');
+      if (errEl) { errEl.textContent = 'Failed to save changes: ' + (e.message || e); errEl.style.display = 'block'; }
+    }
+  }
 
-  amlActive = amlSlots.findIndex(s => !s);
-  if (amlActive < 0) amlActive = 0;
-  amlBenchActive = amlSubs.findIndex(s => !s);
-  if (amlBenchActive < 0) amlBenchActive = 0;
+  function deleteCurrentMatch() {
+    if (!curMatch) return;
+    adminRequestPin('delmatch', curMatch.id);
+  }
 
-  renderAdjustLineupModal();
-  openM('m-adjust-lineup');
-}
 
-function renderAdjustLineupModal() {
-  const asideSel = $('aml-aside'); if (asideSel) asideSel.value = String(amlAside);
-  renderAmlFormationRow();
-  renderAmlPitch();
-  renderAmlPicker();
-  renderAmlBench();
-  renderAmlStaffPicker();
-}
+  // ══════════════════════════════════════════════════════════════
+  // ⚙️ MATCH LINEUP ADJUSTMENTS
+  // ══════════════════════════════════════════════════════════════
 
-function renderAmlFormationRow() {
-  const el = $('aml-formation-row'); if (!el) return;
-  const options = ASIDE_FORMATIONS[amlAside] || ['4-4-2'];
-  el.innerHTML = `
+  let amlTeamPlayers = [];
+
+  function openAdjustLineup(side) {
+    if (!curMatch) return;
+    amlSide = side;
+    const sideData = side === 'home' ? curMatch.home : curMatch.away;
+    const teamId = sideData?.teamId;
+    const teamObj = teams.find(t => t.id === teamId);
+
+    const titleEl = $('aml-title');
+    const descEl = $('aml-desc');
+    if (titleEl) titleEl.textContent = `⚙️ ADJUST LINEUP: ${sideData?.name || (side === 'home' ? 'Home' : 'Away')}`;
+    if (descEl) descEl.textContent = `Configure starting formation, pitch positions, and bench for this match.`;
+
+    // Determine available players
+    if (teamId) {
+      amlTeamPlayers = allPlayersCache.filter(p => p.teamId === teamId);
+      if (!amlTeamPlayers.length && players.length && curTeam?.id === teamId) {
+        amlTeamPlayers = players;
+      }
+    } else {
+      // Outside opponent: synthesize from current lineup if any
+      const existing = [...(sideData?.lineup?.starters || []), ...(sideData?.lineup?.subs || [])].filter(Boolean);
+      amlTeamPlayers = existing.map((p, i) => ({
+        id: p.playerId || p.id || `ext_${i}`,
+        name: p.name,
+        position: p.position || 'ST',
+        jersey: p.jersey || ''
+      }));
+    }
+
+    const existingLineup = sideData?.lineup;
+    amlFormation = (existingLineup && existingLineup.formation && FORMATIONS[existingLineup.formation]) ? existingLineup.formation : '4-4-2';
+    amlAside = formationTotal(amlFormation) || 11;
+    const flat = flattenFormation(amlFormation);
+
+    amlSlots = flat.map((_, i) => {
+      if (existingLineup && existingLineup.starters && existingLineup.starters[i]) {
+        const sp = existingLineup.starters[i].player || existingLineup.starters[i];
+        const found = amlTeamPlayers.find(pl => pl.id === (sp.playerId || sp.id));
+        return {
+          id: sp.playerId || sp.id,
+          name: found ? found.name : sp.name,
+          position: found ? found.position : sp.position,
+          jersey: (found && found.jersey != null && found.jersey !== '') ? found.jersey : (sp.jersey || ''),
+          photo: (found && found.photo) ? found.photo : (sp.photo || null),
+          matchPosition: posCode(sp.matchPosition || (found && found.position) || sp.position)
+        };
+      }
+      return null;
+    });
+
+    amlSubs = (existingLineup?.subs || []).map(sb => {
+      const found = amlTeamPlayers.find(pl => pl.id === (sb.playerId || sb.id));
+      return {
+        id: sb.playerId || sb.id,
+        name: found ? found.name : sb.name,
+        position: found ? found.position : sb.position,
+        jersey: (found && found.jersey != null && found.jersey !== '') ? found.jersey : (sb.jersey || ''),
+        photo: (found && found.photo) ? found.photo : (sb.photo || null)
+      };
+    });
+
+    amlStaff = (existingLineup?.coaches || []).map(s => ({
+      id: s.staffId || s.id,
+      name: s.name,
+      role: s.role
+    }));
+
+    amlActive = amlSlots.findIndex(s => !s);
+    if (amlActive < 0) amlActive = 0;
+    amlBenchActive = amlSubs.findIndex(s => !s);
+    if (amlBenchActive < 0) amlBenchActive = 0;
+
+    renderAdjustLineupModal();
+    openM('m-adjust-lineup');
+  }
+
+  function renderAdjustLineupModal() {
+    const asideSel = $('aml-aside'); if (asideSel) asideSel.value = String(amlAside);
+    renderAmlFormationRow();
+    renderAmlPitch();
+    renderAmlPicker();
+    renderAmlBench();
+    renderAmlStaffPicker();
+  }
+
+  function renderAmlFormationRow() {
+    const el = $('aml-formation-row'); if (!el) return;
+    const options = ASIDE_FORMATIONS[amlAside] || ['4-4-2'];
+    el.innerHTML = `
     <select id="aml-formation-select" class="matchset-select" onchange="changeMatchFormation(this.value)">
       ${options.map(k => `<option value="${k}" ${k === amlFormation ? 'selected' : ''}>${k}</option>`).join('')}
     </select>
   `;
-}
-
-function changeMatchAside(n) {
-  if (n === amlAside) return;
-  amlAside = n;
-  const options = ASIDE_FORMATIONS[amlAside] || ['4-4-2'];
-  const next = options.includes(amlFormation) ? amlFormation : options[0];
-  changeMatchFormation(next);
-}
-
-function changeMatchFormation(key) {
-  const assigned = amlSlots.filter(Boolean);
-  const newFlat = flattenFormation(key);
-  amlFormation = key;
-  amlSlots = newFlat.map((_, i) => assigned[i] ? { ...assigned[i] } : null);
-  if (assigned.length > newFlat.length) {
-    assigned.slice(newFlat.length).forEach(pl => {
-      if (!amlSubs.some(s => s.id === pl.id)) amlSubs.push({ ...pl });
-    });
   }
-  amlActive = 0;
-  renderAdjustLineupModal();
-}
 
-function renderAmlPitch() {
-  const el = $('aml-pitch'); if (!el) return;
-  const lines = FORMATIONS[amlFormation] || FORMATIONS['4-4-2'];
-  const flat = flattenFormation(amlFormation);
-  let idx = 0;
-  let html = '';
+  function changeMatchAside(n) {
+    if (n === amlAside) return;
+    amlAside = n;
+    const options = ASIDE_FORMATIONS[amlAside] || ['4-4-2'];
+    const next = options.includes(amlFormation) ? amlFormation : options[0];
+    changeMatchFormation(next);
+  }
 
-  lines.forEach(line => {
-    const label = line.lbl || roleLabel(line.r);
-    const header = line.n > 1 ? `${label}s (${line.n})` : label;
-    html += `<div class="lc-title" style="margin:12px 0 6px;">${esc(header.toUpperCase())}</div>`;
-    for (let k = 0; k < line.n; k++) {
-      const i = idx; idx++;
-      const p = amlSlots[i];
-      const sideLabel = slotSideLabel(line.r, flat[i] ? flat[i].x : 50, line.lbl);
-      const cls = `lu-item ${p ? 'filled' : 'empty-slot'} ${i === amlActive ? 'active-slot' : ''}`;
-      const av = p ? playerLineupAv(p) : '<div class="lu-av">+</div>';
-      const name = p ? esc(getPlayerDisplayName(p) || p.name) : esc(label);
-      const meta = p ? `${esc(posCode(p.position) || '—')} <span class="lu-slotside">· ${esc(sideLabel)}</span>` : `Tap to assign <span class="lu-slotside">· ${esc(sideLabel)}</span>`;
+  function changeMatchFormation(key) {
+    const assigned = amlSlots.filter(Boolean);
+    const newFlat = flattenFormation(key);
+    amlFormation = key;
+    amlSlots = newFlat.map((_, i) => assigned[i] ? { ...assigned[i] } : null);
+    if (assigned.length > newFlat.length) {
+      assigned.slice(newFlat.length).forEach(pl => {
+        if (!amlSubs.some(s => s.id === pl.id)) amlSubs.push({ ...pl });
+      });
+    }
+    amlActive = 0;
+    renderAdjustLineupModal();
+  }
 
-      const actions = p ? `
+  function renderAmlPitch() {
+    const el = $('aml-pitch'); if (!el) return;
+    const lines = FORMATIONS[amlFormation] || FORMATIONS['4-4-2'];
+    const flat = flattenFormation(amlFormation);
+    let idx = 0;
+    let html = '';
+
+    lines.forEach(line => {
+      const label = line.lbl || roleLabel(line.r);
+      const header = line.n > 1 ? `${label}s (${line.n})` : label;
+      html += `<div class="lc-title" style="margin:12px 0 6px;">${esc(header.toUpperCase())}</div>`;
+      for (let k = 0; k < line.n; k++) {
+        const i = idx; idx++;
+        const p = amlSlots[i];
+        const sideLabel = slotSideLabel(line.r, flat[i] ? flat[i].x : 50, line.lbl);
+        const cls = `lu-item ${p ? 'filled' : 'empty-slot'} ${i === amlActive ? 'active-slot' : ''}`;
+        const av = p ? playerLineupAv(p) : '<div class="lu-av">+</div>';
+        const name = p ? esc(getPlayerDisplayName(p) || p.name) : esc(label);
+        const meta = p ? `${esc(posCode(p.position) || '—')} <span class="lu-slotside">· ${esc(sideLabel)}</span>` : `Tap to assign <span class="lu-slotside">· ${esc(sideLabel)}</span>`;
+
+        const actions = p ? `
         <div class="lu-slot-actions" onclick="event.stopPropagation();">
           <div class="lu-tag lu-remove-tag" onclick="removeAmlSlot(${i})">Remove</div>
         </div>` : `<div class="lu-tag">Assign</div>`;
 
-      html += `
+        html += `
         <div class="${cls}" onclick="selectAmlSlot(${i})">
           ${av}
           <div class="lu-info"><div class="lu-name">${name}</div><div class="lu-meta">${meta}</div></div>
           ${actions}
         </div>`;
-    }
-  });
-  el.innerHTML = html;
-}
-
-function selectAmlSlot(i) {
-  amlActive = (amlActive === i) ? -1 : i;
-  renderAmlPitch();
-  renderAmlPicker();
-}
-
-function removeAmlSlot(i) {
-  amlSlots[i] = null;
-  amlActive = i;
-  renderAmlPitch();
-  renderAmlPicker();
-  renderAmlBench();
-}
-
-function renderAmlPicker() {
-  const el = $('aml-picker'); if (!el) return;
-  if (amlActive < 0) {
-    el.innerHTML = '<p class="lu-hint">Tap a position on the left to assign a player.</p>';
-    return;
+      }
+    });
+    el.innerHTML = html;
   }
-  const flat = flattenFormation(amlFormation);
-  const slotDef = flat[amlActive];
-  const current = amlSlots[amlActive];
 
-  const used = new Set();
-  amlSlots.forEach((p, i) => { if (p && p.id && i !== amlActive) used.add(p.id); });
-  amlSubs.forEach(p => { if (p && p.id) used.add(p.id); });
+  function selectAmlSlot(i) {
+    amlActive = (amlActive === i) ? -1 : i;
+    renderAmlPitch();
+    renderAmlPicker();
+  }
 
-  const avail = amlTeamPlayers.filter(p => !used.has(p.id));
+  function removeAmlSlot(i) {
+    amlSlots[i] = null;
+    amlActive = i;
+    renderAmlPitch();
+    renderAmlPicker();
+    renderAmlBench();
+  }
 
-  const row = list => list.map(p => `
+  function renderAmlPicker() {
+    const el = $('aml-picker'); if (!el) return;
+    if (amlActive < 0) {
+      el.innerHTML = '<p class="lu-hint">Tap a position on the left to assign a player.</p>';
+      return;
+    }
+    const flat = flattenFormation(amlFormation);
+    const slotDef = flat[amlActive];
+    const current = amlSlots[amlActive];
+
+    const used = new Set();
+    amlSlots.forEach((p, i) => { if (p && p.id && i !== amlActive) used.add(p.id); });
+    amlSubs.forEach(p => { if (p && p.id) used.add(p.id); });
+
+    const avail = amlTeamPlayers.filter(p => !used.has(p.id));
+
+    const row = list => list.map(p => `
     <div class="lu-item" onclick="assignAmlSlot(${amlActive},'${p.id}')">
       ${playerLineupAv(p)}
       <div class="lu-info"><div class="lu-name">${esc(p.name)}</div><div class="lu-meta">${esc(posCode(p.position) || '—')}</div></div>
@@ -12761,47 +12785,47 @@ function renderAmlPicker() {
     </div>
   `).join('');
 
-  el.innerHTML = `
+    el.innerHTML = `
     <div class="lu-picker-head">Assigning: <strong style="color:var(--tx);">${esc(slotSideLabel(slotDef.role, slotDef.x, slotDef.label))}</strong></div>
     ${avail.length ? `<div class="lu-list" style="margin-top:8px;">${row(avail)}</div>` : '<p class="lu-hint">No more unassigned players in roster.</p>'}
   `;
-}
-
-function assignAmlSlot(i, pid) {
-  const p = amlTeamPlayers.find(pl => pl.id === pid);
-  if (!p) return;
-
-  amlSubs = amlSubs.filter(s => s && s.id !== pid);
-  amlSlots = amlSlots.map((s, idx) => (s && s.id === pid && idx !== i) ? null : s);
-
-  amlSlots[i] = {
-    id: p.id,
-    name: p.name,
-    position: p.position,
-    jersey: p.jersey || '',
-    photo: p.photo || null,
-    matchPosition: posCode(p.position)
-  };
-
-  let next = -1;
-  for (let k = 1; k <= amlSlots.length; k++) {
-    const idx = (i + k) % amlSlots.length;
-    if (!amlSlots[idx]) { next = idx; break; }
   }
-  amlActive = next;
-  renderAmlPitch();
-  renderAmlPicker();
-  renderAmlBench();
-}
 
-function renderAmlBench() {
-  const benchEl = $('aml-bench'); if (!benchEl) return;
-  const countEl = $('aml-benchcount'); if (countEl) countEl.textContent = amlSubs.length;
+  function assignAmlSlot(i, pid) {
+    const p = amlTeamPlayers.find(pl => pl.id === pid);
+    if (!p) return;
 
-  if (!amlSubs.length) {
-    benchEl.innerHTML = '<p class="lu-hint">No players on the bench. Tap available players on the right to add them.</p>';
-  } else {
-    benchEl.innerHTML = amlSubs.map((p, i) => `
+    amlSubs = amlSubs.filter(s => s && s.id !== pid);
+    amlSlots = amlSlots.map((s, idx) => (s && s.id === pid && idx !== i) ? null : s);
+
+    amlSlots[i] = {
+      id: p.id,
+      name: p.name,
+      position: p.position,
+      jersey: p.jersey || '',
+      photo: p.photo || null,
+      matchPosition: posCode(p.position)
+    };
+
+    let next = -1;
+    for (let k = 1; k <= amlSlots.length; k++) {
+      const idx = (i + k) % amlSlots.length;
+      if (!amlSlots[idx]) { next = idx; break; }
+    }
+    amlActive = next;
+    renderAmlPitch();
+    renderAmlPicker();
+    renderAmlBench();
+  }
+
+  function renderAmlBench() {
+    const benchEl = $('aml-bench'); if (!benchEl) return;
+    const countEl = $('aml-benchcount'); if (countEl) countEl.textContent = amlSubs.length;
+
+    if (!amlSubs.length) {
+      benchEl.innerHTML = '<p class="lu-hint">No players on the bench. Tap available players on the right to add them.</p>';
+    } else {
+      benchEl.innerHTML = amlSubs.map((p, i) => `
       <div class="lu-item filled">
         ${playerLineupAv(p)}
         <div class="lu-info">
@@ -12813,30 +12837,30 @@ function renderAmlBench() {
         </div>
       </div>
     `).join('');
-  }
-  renderAmlBenchPicker();
-}
-
-function removeAmlBenchSlot(i) {
-  amlSubs.splice(i, 1);
-  renderAmlBench();
-  renderAmlPicker();
-}
-
-function renderAmlBenchPicker() {
-  const el = $('aml-bench-picker'); if (!el) return;
-  const used = new Set();
-  amlSlots.forEach(p => { if (p && p.id) used.add(p.id); });
-  amlSubs.forEach(p => { if (p && p.id) used.add(p.id); });
-
-  const avail = amlTeamPlayers.filter(p => !used.has(p.id));
-
-  if (!avail.length) {
-    el.innerHTML = '<p class="lu-hint">All roster players assigned to starting XI or bench.</p>';
-    return;
+    }
+    renderAmlBenchPicker();
   }
 
-  el.innerHTML = `
+  function removeAmlBenchSlot(i) {
+    amlSubs.splice(i, 1);
+    renderAmlBench();
+    renderAmlPicker();
+  }
+
+  function renderAmlBenchPicker() {
+    const el = $('aml-bench-picker'); if (!el) return;
+    const used = new Set();
+    amlSlots.forEach(p => { if (p && p.id) used.add(p.id); });
+    amlSubs.forEach(p => { if (p && p.id) used.add(p.id); });
+
+    const avail = amlTeamPlayers.filter(p => !used.has(p.id));
+
+    if (!avail.length) {
+      el.innerHTML = '<p class="lu-hint">All roster players assigned to starting XI or bench.</p>';
+      return;
+    }
+
+    el.innerHTML = `
     <div class="lu-picker-head">Add to Bench:</div>
     <div class="lu-list" style="margin-top:8px;">
       ${avail.map(p => `
@@ -12848,617 +12872,617 @@ function renderAmlBenchPicker() {
       `).join('')}
     </div>
   `;
-}
-
-function assignAmlBenchSlot(pid) {
-  const p = amlTeamPlayers.find(pl => pl.id === pid);
-  if (!p) return;
-  if (amlSubs.some(s => s.id === pid)) return;
-
-  amlSlots = amlSlots.map(s => (s && s.id === pid) ? null : s);
-  amlSubs.push({
-    id: p.id,
-    name: p.name,
-    position: p.position,
-    jersey: p.jersey || '',
-    photo: p.photo || null
-  });
-
-  renderAmlPitch();
-  renderAmlPicker();
-  renderAmlBench();
-}
-
-function renderAmlStaffPicker() {
-  const el = $('aml-staff'); if (!el) return;
-  const sideData = amlSide === 'home' ? curMatch?.home : curMatch?.away;
-  const teamObj = teams.find(t => t.id === sideData?.teamId);
-  const teamStaff = teamObj?.staff || [];
-
-  const cntEl = $('aml-staffcount'); if (cntEl) cntEl.textContent = amlStaff.length;
-
-  if (!teamStaff.length) {
-    el.innerHTML = '<p class="lu-hint">No management staff available in this team profile.</p>';
-    return;
   }
 
-  el.innerHTML = teamStaff.map(st => {
-    const isAdded = amlStaff.some(s => s.id === st.id);
-    return `
+  function assignAmlBenchSlot(pid) {
+    const p = amlTeamPlayers.find(pl => pl.id === pid);
+    if (!p) return;
+    if (amlSubs.some(s => s.id === pid)) return;
+
+    amlSlots = amlSlots.map(s => (s && s.id === pid) ? null : s);
+    amlSubs.push({
+      id: p.id,
+      name: p.name,
+      position: p.position,
+      jersey: p.jersey || '',
+      photo: p.photo || null
+    });
+
+    renderAmlPitch();
+    renderAmlPicker();
+    renderAmlBench();
+  }
+
+  function renderAmlStaffPicker() {
+    const el = $('aml-staff'); if (!el) return;
+    const sideData = amlSide === 'home' ? curMatch?.home : curMatch?.away;
+    const teamObj = teams.find(t => t.id === sideData?.teamId);
+    const teamStaff = teamObj?.staff || [];
+
+    const cntEl = $('aml-staffcount'); if (cntEl) cntEl.textContent = amlStaff.length;
+
+    if (!teamStaff.length) {
+      el.innerHTML = '<p class="lu-hint">No management staff available in this team profile.</p>';
+      return;
+    }
+
+    el.innerHTML = teamStaff.map(st => {
+      const isAdded = amlStaff.some(s => s.id === st.id);
+      return `
       <div class="lu-item ${isAdded ? 'sub' : ''}" onclick="toggleAmlStaffPick('${st.id}')">
         <div class="lu-av">🧑‍💼</div>
         <div class="lu-info"><div class="lu-name">${esc(st.name)}</div><div class="lu-meta">${esc(st.role || 'Staff')}</div></div>
         <div class="lu-tag">${isAdded ? 'Added' : 'Add'}</div>
       </div>
     `;
-  }).join('');
-}
-
-function toggleAmlStaffPick(id) {
-  const sideData = amlSide === 'home' ? curMatch?.home : curMatch?.away;
-  const teamObj = teams.find(t => t.id === sideData?.teamId);
-  const st = teamObj?.staff?.find(s => s.id === id);
-  if (!st) return;
-
-  const idx = amlStaff.findIndex(s => s.id === id);
-  if (idx >= 0) amlStaff.splice(idx, 1);
-  else amlStaff.push({ id: st.id, name: st.name, role: st.role });
-
-  renderAmlStaffPicker();
-}
-
-async function saveAdjustedMatchLineup() {
-  if (!curMatch) return;
-  const flat = flattenFormation(amlFormation);
-
-  const starters = flat.map((s, i) => {
-    const p = amlSlots[i];
-    return p ? {
-      playerId: p.id,
-      name: p.name,
-      jersey: p.jersey || '',
-      position: p.matchPosition || p.position || s.role
-    } : null;
-  });
-
-  const subs = amlSubs.map(s => ({
-    playerId: s.id,
-    name: s.name,
-    jersey: s.jersey || '',
-    position: s.position
-  }));
-
-  const coaches = amlStaff.map(s => ({
-    staffId: s.id,
-    name: s.name,
-    role: s.role
-  }));
-
-  const lineup = {
-    formation: amlFormation,
-    starters: starters,
-    subs: subs,
-    coaches: coaches
-  };
-
-  const key = `${amlSide}.lineup`;
-  const updates = {
-    [key]: lineup,
-    updatedAt: new Date().toISOString()
-  };
-
-  try {
-    await updateDoc(doc(db, 'matches', curMatch.id), updates);
-    curMatch[amlSide].lineup = lineup;
-    closeM('m-adjust-lineup');
-    renderMatchSheet();
-  } catch (e) {
-    alert('❌ Could not save lineup: ' + (e.message || e));
+    }).join('');
   }
-}
 
+  function toggleAmlStaffPick(id) {
+    const sideData = amlSide === 'home' ? curMatch?.home : curMatch?.away;
+    const teamObj = teams.find(t => t.id === sideData?.teamId);
+    const st = teamObj?.staff?.find(s => s.id === id);
+    if (!st) return;
 
-// ══════════════════════════════════════════════════════════════
-// 🍏 APPLE SPORTS REAL-TIME LIVE SCORECARD & SHARING
-// ══════════════════════════════════════════════════════════════
+    const idx = amlStaff.findIndex(s => s.id === id);
+    if (idx >= 0) amlStaff.splice(idx, 1);
+    else amlStaff.push({ id: st.id, name: st.name, role: st.role });
 
-let liveMatchUnsub = null;
-let curLiveMatch = null;
-let livePitchSide = 'home';
-let currentLiveTab = 'timeline';
-let lastKnownLiveScore = { home: null, away: null };
-let liveGoalToastTimeout = null;
-
-function getLiveMatchShareUrl(matchId) {
-  const base = getBaseUrl();
-  return `${base}?live=${encodeURIComponent(matchId)}`;
-}
-
-function openShareMatchModal(matchId) {
-  const targetId = matchId || curMatch?.id || curLiveMatch?.id;
-  if (!targetId) {
-    alert('Please select a match to share.');
-    return;
+    renderAmlStaffPicker();
   }
-  const m = matches.find(x => x.id === targetId) || curMatch || curLiveMatch;
-  if (!m) return;
 
-  const liveUrl = getLiveMatchShareUrl(targetId);
-  const hName = m.home?.name || 'Home Team';
-  const aName = m.away?.name || 'Away Team';
-  const hScore = (m.home && m.home.score != null) ? m.home.score : 0;
-  const aScore = (m.away && m.away.score != null) ? m.away.score : 0;
-  const st = (m.status || 'scheduled').toUpperCase();
+  async function saveAdjustedMatchLineup() {
+    if (!curMatch) return;
+    const flat = flattenFormation(amlFormation);
 
-  const sec = getMatchElapsedSeconds(m);
-  const clockStr = formatMatchClockDisplay(sec);
-  const period = m.matchClock?.period || '1H';
+    const starters = flat.map((s, i) => {
+      const p = amlSlots[i];
+      return p ? {
+        playerId: p.id,
+        name: p.name,
+        jersey: p.jersey || '',
+        position: p.matchPosition || p.position || s.role
+      } : null;
+    });
 
-  // Preview box
-  const titleEl = $('sm-matchup-title');
-  if (titleEl) titleEl.textContent = `${hName} vs ${aName}`;
-  const scoreEl = $('sm-matchup-score');
-  if (scoreEl) {
-    if (m.status === 'live') {
-      scoreEl.textContent = `● LIVE (${period} · ${clockStr}) — Score: ${hScore} - ${aScore}`;
-      scoreEl.style.color = '#22c55e';
-    } else if (m.status === 'final') {
-      scoreEl.textContent = `FINAL SCORE: ${hScore} - ${aScore}`;
-      scoreEl.style.color = 'var(--tx)';
-    } else {
-      scoreEl.textContent = `SCHEDULED · ${formatMatchDateDisplay(m)}`;
-      scoreEl.style.color = '#38bdf8';
+    const subs = amlSubs.map(s => ({
+      playerId: s.id,
+      name: s.name,
+      jersey: s.jersey || '',
+      position: s.position
+    }));
+
+    const coaches = amlStaff.map(s => ({
+      staffId: s.id,
+      name: s.name,
+      role: s.role
+    }));
+
+    const lineup = {
+      formation: amlFormation,
+      starters: starters,
+      subs: subs,
+      coaches: coaches
+    };
+
+    const key = `${amlSide}.lineup`;
+    const updates = {
+      [key]: lineup,
+      updatedAt: new Date().toISOString()
+    };
+
+    try {
+      await updateDoc(doc(db, 'matches', curMatch.id), updates);
+      curMatch[amlSide].lineup = lineup;
+      closeM('m-adjust-lineup');
+      renderMatchSheet();
+    } catch (e) {
+      alert('❌ Could not save lineup: ' + (e.message || e));
     }
   }
 
-  // URL input
-  const urlInp = $('sm-url-inp');
-  if (urlInp) urlInp.value = liveUrl;
 
-  // Formatted post text for Facebook
-  const scoreStr = m.status === 'scheduled' ? 'vs' : `${hScore} - ${aScore}`;
-  const statusStr = m.status === 'live' ? `(${period} · ${clockStr})` : (m.status === 'final' ? '(Full Time)' : `(${formatMatchDateDisplay(m)})`);
-  const postText = `⚽ LIVE MATCH UPDATE: ${hName} ${scoreStr} ${aName} ${statusStr}\n\n👉 Follow live scores, pitch lineups & real-time highlights here:\n${liveUrl}`;
-  const postTextEl = $('sm-post-text');
-  if (postTextEl) postTextEl.value = postText;
+  // ══════════════════════════════════════════════════════════════
+  // 🍏 APPLE SPORTS REAL-TIME LIVE SCORECARD & SHARING
+  // ══════════════════════════════════════════════════════════════
 
-  // Pitchside QR Code
-  const qrImg = $('sm-qr-img');
-  if (qrImg) {
-    qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(liveUrl)}&bgcolor=ffffff&color=000000&margin=4`;
+  let liveMatchUnsub = null;
+  let curLiveMatch = null;
+  let livePitchSide = 'home';
+  let currentLiveTab = 'timeline';
+  let lastKnownLiveScore = { home: null, away: null };
+  let liveGoalToastTimeout = null;
+
+  function getLiveMatchShareUrl(matchId) {
+    const base = getBaseUrl();
+    return `${base}?live=${encodeURIComponent(matchId)}`;
   }
 
-  openM('m-share-match');
-}
+  function openShareMatchModal(matchId) {
+    const targetId = matchId || curMatch?.id || curLiveMatch?.id;
+    if (!targetId) {
+      alert('Please select a match to share.');
+      return;
+    }
+    const m = matches.find(x => x.id === targetId) || curMatch || curLiveMatch;
+    if (!m) return;
 
-function copyModalLiveLink(btn) {
-  const inp = $('sm-url-inp');
-  if (!inp || !inp.value) return;
-  copyToClipboard(inp.value).then(() => {
-    const orig = btn.textContent;
-    btn.textContent = '✅ Copied!';
-    setTimeout(() => { btn.textContent = orig; }, 2000);
-  });
-}
+    const liveUrl = getLiveMatchShareUrl(targetId);
+    const hName = m.home?.name || 'Home Team';
+    const aName = m.away?.name || 'Away Team';
+    const hScore = (m.home && m.home.score != null) ? m.home.score : 0;
+    const aScore = (m.away && m.away.score != null) ? m.away.score : 0;
+    const st = (m.status || 'scheduled').toUpperCase();
 
-function copyModalPostText(btn) {
-  const ta = $('sm-post-text');
-  if (!ta || !ta.value) return;
-  copyToClipboard(ta.value).then(() => {
-    const orig = btn.textContent;
-    btn.textContent = '✅ Post Text Copied!';
-    setTimeout(() => { btn.textContent = orig; }, 2000);
-  });
-}
+    const sec = getMatchElapsedSeconds(m);
+    const clockStr = formatMatchClockDisplay(sec);
+    const period = m.matchClock?.period || '1H';
 
-function shareLiveMatchDirect(platform) {
-  const inp = $('sm-url-inp');
-  const ta = $('sm-post-text');
-  const url = inp?.value || window.location.href;
-  const text = ta?.value || `Live match score & updates: ${url}`;
+    // Preview box
+    const titleEl = $('sm-matchup-title');
+    if (titleEl) titleEl.textContent = `${hName} vs ${aName}`;
+    const scoreEl = $('sm-matchup-score');
+    if (scoreEl) {
+      if (m.status === 'live') {
+        scoreEl.textContent = `● LIVE (${period} · ${clockStr}) — Score: ${hScore} - ${aScore}`;
+        scoreEl.style.color = '#22c55e';
+      } else if (m.status === 'final') {
+        scoreEl.textContent = `FINAL SCORE: ${hScore} - ${aScore}`;
+        scoreEl.style.color = 'var(--tx)';
+      } else {
+        scoreEl.textContent = `SCHEDULED · ${formatMatchDateDisplay(m)}`;
+        scoreEl.style.color = '#38bdf8';
+      }
+    }
 
-  if (platform === 'facebook') {
-    const fbUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`;
-    window.open(fbUrl, '_blank', 'width=620,height=580,menubar=no,toolbar=no,resizable=yes');
-  } else if (platform === 'whatsapp') {
-    const waUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
-    window.open(waUrl, '_blank');
-  }
-}
+    // URL input
+    const urlInp = $('sm-url-inp');
+    if (urlInp) urlInp.value = liveUrl;
 
-function copyLiveMatchLink(btn) {
-  const url = window.location.href;
-  copyToClipboard(url).then(() => {
-    const orig = btn.innerHTML;
-    btn.innerHTML = '<span>✅</span> Copied Link!';
-    setTimeout(() => { btn.innerHTML = orig; }, 2200);
-  });
-}
+    // Formatted post text for Facebook
+    const scoreStr = m.status === 'scheduled' ? 'vs' : `${hScore} - ${aScore}`;
+    const statusStr = m.status === 'live' ? `(${period} · ${clockStr})` : (m.status === 'final' ? '(Full Time)' : `(${formatMatchDateDisplay(m)})`);
+    const postText = `⚽ LIVE MATCH UPDATE: ${hName} ${scoreStr} ${aName} ${statusStr}\n\n👉 Follow live scores, pitch lineups & real-time highlights here:\n${liveUrl}`;
+    const postTextEl = $('sm-post-text');
+    if (postTextEl) postTextEl.value = postText;
 
-function previewModalLiveMatch() {
-  const inp = $('sm-url-inp');
-  if (inp && inp.value) {
-    window.open(inp.value, '_blank');
-  }
-}
+    // Pitchside QR Code
+    const qrImg = $('sm-qr-img');
+    if (qrImg) {
+      qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(liveUrl)}&bgcolor=ffffff&color=000000&margin=4`;
+    }
 
-function returnToCoachMatchSheet() {
-  if (curLiveMatch && curLiveMatch.id) {
-    openMatchSheet(curLiveMatch.id);
-  }
-}
-
-async function initLiveMatchView(matchId) {
-  // Immediately activate the live scorecard screen
-  ss('s-live-match');
-
-  // If coach/admin session is active, show return button
-  const coachBtn = $('as-coach-return-btn');
-  if (coachBtn) {
-    coachBtn.style.display = (sessionStorage.getItem('fhq_session_active') === '1') ? 'inline-block' : 'none';
+    openM('m-share-match');
   }
 
-  try {
-    startGlobalMatchClockTicker();
+  function copyModalLiveLink(btn) {
+    const inp = $('sm-url-inp');
+    if (!inp || !inp.value) return;
+    copyToClipboard(inp.value).then(() => {
+      const orig = btn.textContent;
+      btn.textContent = '✅ Copied!';
+      setTimeout(() => { btn.textContent = orig; }, 2000);
+    });
+  }
 
-    // Parallel load teams, tournaments and match
-    const [teamsSnap, tournsSnap, mSnap] = await Promise.all([
-      getDocs(collection(db, 'teams')),
-      getDocs(collection(db, 'tournaments')),
-      getDoc(doc(db, 'matches', matchId))
-    ]);
+  function copyModalPostText(btn) {
+    const ta = $('sm-post-text');
+    if (!ta || !ta.value) return;
+    copyToClipboard(ta.value).then(() => {
+      const orig = btn.textContent;
+      btn.textContent = '✅ Post Text Copied!';
+      setTimeout(() => { btn.textContent = orig; }, 2000);
+    });
+  }
 
-    teams = teamsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-    tournaments = tournsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+  function shareLiveMatchDirect(platform) {
+    const inp = $('sm-url-inp');
+    const ta = $('sm-post-text');
+    const url = inp?.value || window.location.href;
+    const text = ta?.value || `Live match score & updates: ${url}`;
 
-    const exists = (typeof mSnap.exists === 'function') ? mSnap.exists() : mSnap.exists;
-    if (exists) {
-      const data = (typeof mSnap.data === 'function') ? mSnap.data() : (mSnap.data || {});
-      curLiveMatch = { id: mSnap.id, ...data };
-      setMatchesArray([curLiveMatch, ...matches]);
+    if (platform === 'facebook') {
+      const fbUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`;
+      window.open(fbUrl, '_blank', 'width=620,height=580,menubar=no,toolbar=no,resizable=yes');
+    } else if (platform === 'whatsapp') {
+      const waUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
+      window.open(waUrl, '_blank');
+    }
+  }
 
-      lastKnownLiveScore = {
-        home: (curLiveMatch.home && curLiveMatch.home.score != null) ? curLiveMatch.home.score : 0,
-        away: (curLiveMatch.away && curLiveMatch.away.score != null) ? curLiveMatch.away.score : 0
-      };
+  function copyLiveMatchLink(btn) {
+    const url = window.location.href;
+    copyToClipboard(url).then(() => {
+      const orig = btn.innerHTML;
+      btn.innerHTML = '<span>✅</span> Copied Link!';
+      setTimeout(() => { btn.innerHTML = orig; }, 2200);
+    });
+  }
 
-      renderLiveMatchScreen();
-      subscribeLiveMatch(matchId);
-    } else {
-      alert('Match not found or was removed.');
+  function previewModalLiveMatch() {
+    const inp = $('sm-url-inp');
+    if (inp && inp.value) {
+      window.open(inp.value, '_blank');
+    }
+  }
+
+  function returnToCoachMatchSheet() {
+    if (curLiveMatch && curLiveMatch.id) {
+      openMatchSheet(curLiveMatch.id);
+    }
+  }
+
+  async function initLiveMatchView(matchId) {
+    // Immediately activate the live scorecard screen
+    ss('s-live-match');
+
+    // If coach/admin session is active, show return button
+    const coachBtn = $('as-coach-return-btn');
+    if (coachBtn) {
+      coachBtn.style.display = (sessionStorage.getItem('fhq_session_active') === '1') ? 'inline-block' : 'none';
+    }
+
+    try {
+      startGlobalMatchClockTicker();
+
+      // Parallel load teams, tournaments and match
+      const [teamsSnap, tournsSnap, mSnap] = await Promise.all([
+        getDocs(collection(db, 'teams')),
+        getDocs(collection(db, 'tournaments')),
+        getDoc(doc(db, 'matches', matchId))
+      ]);
+
+      teams = teamsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+      tournaments = tournsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+      const exists = (typeof mSnap.exists === 'function') ? mSnap.exists() : mSnap.exists;
+      if (exists) {
+        const data = (typeof mSnap.data === 'function') ? mSnap.data() : (mSnap.data || {});
+        curLiveMatch = { id: mSnap.id, ...data };
+        setMatchesArray([curLiveMatch, ...matches]);
+
+        lastKnownLiveScore = {
+          home: (curLiveMatch.home && curLiveMatch.home.score != null) ? curLiveMatch.home.score : 0,
+          away: (curLiveMatch.away && curLiveMatch.away.score != null) ? curLiveMatch.away.score : 0
+        };
+
+        renderLiveMatchScreen();
+        subscribeLiveMatch(matchId);
+      } else {
+        alert('Match not found or was removed.');
+        if (sessionStorage.getItem('fhq_session_active') === '1') loadAdmin();
+        else ss('s-login');
+      }
+    } catch (e) {
+      console.error('initLiveMatchView error:', e);
+      alert('Could not load live match: ' + (e.message || e));
       if (sessionStorage.getItem('fhq_session_active') === '1') loadAdmin();
       else ss('s-login');
     }
-  } catch (e) {
-    console.error('initLiveMatchView error:', e);
-    alert('Could not load live match: ' + (e.message || e));
-    if (sessionStorage.getItem('fhq_session_active') === '1') loadAdmin();
-    else ss('s-login');
   }
-}
 
-function subscribeLiveMatch(matchId) {
-  if (liveMatchUnsub) { liveMatchUnsub(); liveMatchUnsub = null; }
+  function subscribeLiveMatch(matchId) {
+    if (liveMatchUnsub) { liveMatchUnsub(); liveMatchUnsub = null; }
 
-  liveMatchUnsub = onSnapshot(doc(db, 'matches', matchId), snap => {
-    const exists = (typeof snap.exists === 'function') ? snap.exists() : snap.exists;
-    if (exists) {
-      const data = (typeof snap.data === 'function') ? snap.data() : (snap.data || {});
-      const updatedMatch = { id: snap.id, ...data };
+    liveMatchUnsub = onSnapshot(doc(db, 'matches', matchId), snap => {
+      const exists = (typeof snap.exists === 'function') ? snap.exists() : snap.exists;
+      if (exists) {
+        const data = (typeof snap.data === 'function') ? snap.data() : (snap.data || {});
+        const updatedMatch = { id: snap.id, ...data };
 
-      // Check if score changed to trigger celebration toast
-      const newH = (updatedMatch.home && updatedMatch.home.score != null) ? updatedMatch.home.score : 0;
-      const newA = (updatedMatch.away && updatedMatch.away.score != null) ? updatedMatch.away.score : 0;
+        // Check if score changed to trigger celebration toast
+        const newH = (updatedMatch.home && updatedMatch.home.score != null) ? updatedMatch.home.score : 0;
+        const newA = (updatedMatch.away && updatedMatch.away.score != null) ? updatedMatch.away.score : 0;
 
-      if (lastKnownLiveScore.home !== null && lastKnownLiveScore.away !== null) {
-        if (newH > lastKnownLiveScore.home) {
-          const lastGoal = (updatedMatch.events || []).filter(e => e.type === 'goal' && e.team === 'home').slice(-1)[0];
-          triggerLiveGoalToast(updatedMatch.home?.name || 'Home', lastGoal?.playerName || '', `${newH} - ${newA}`);
-        } else if (newA > lastKnownLiveScore.away) {
-          const lastGoal = (updatedMatch.events || []).filter(e => e.type === 'goal' && e.team === 'away').slice(-1)[0];
-          triggerLiveGoalToast(updatedMatch.away?.name || 'Away', lastGoal?.playerName || '', `${newH} - ${newA}`);
+        if (lastKnownLiveScore.home !== null && lastKnownLiveScore.away !== null) {
+          if (newH > lastKnownLiveScore.home) {
+            const lastGoal = (updatedMatch.events || []).filter(e => e.type === 'goal' && e.team === 'home').slice(-1)[0];
+            triggerLiveGoalToast(updatedMatch.home?.name || 'Home', lastGoal?.playerName || '', `${newH} - ${newA}`);
+          } else if (newA > lastKnownLiveScore.away) {
+            const lastGoal = (updatedMatch.events || []).filter(e => e.type === 'goal' && e.team === 'away').slice(-1)[0];
+            triggerLiveGoalToast(updatedMatch.away?.name || 'Away', lastGoal?.playerName || '', `${newH} - ${newA}`);
+          }
         }
+        lastKnownLiveScore = { home: newH, away: newA };
+
+        curLiveMatch = updatedMatch;
+        const idx = matches.findIndex(m => m.id === snap.id);
+        if (idx >= 0) matches[idx] = curLiveMatch;
+        else setMatchesArray([curLiveMatch, ...matches]);
+
+        renderLiveMatchScreen();
       }
-      lastKnownLiveScore = { home: newH, away: newA };
+    }, err => {
+      console.warn('Live match subscription notice:', err);
+    });
+  }
 
-      curLiveMatch = updatedMatch;
-      const idx = matches.findIndex(m => m.id === snap.id);
-      if (idx >= 0) matches[idx] = curLiveMatch;
-      else setMatchesArray([curLiveMatch, ...matches]);
+  function triggerLiveGoalToast(teamName, scorerName, scoreStr) {
+    const toast = $('live-goal-toast');
+    const msgEl = $('live-goal-toast-msg');
+    if (!toast || !msgEl) return;
 
-      renderLiveMatchScreen();
+    msgEl.textContent = `⚽ ${scorerName ? esc(scorerName) + ' scored for ' : ''}${esc(teamName)}! (Score: ${scoreStr})`;
+    toast.style.display = 'block';
+
+    // Bumping animation on score digits
+    const scoreDigits = $('as-hero-score');
+    if (scoreDigits) {
+      scoreDigits.classList.remove('bump');
+      void scoreDigits.offsetWidth;
+      scoreDigits.classList.add('bump');
+      setTimeout(() => scoreDigits.classList.remove('bump'), 1000);
     }
-  }, err => {
-    console.warn('Live match subscription notice:', err);
-  });
-}
 
-function triggerLiveGoalToast(teamName, scorerName, scoreStr) {
-  const toast = $('live-goal-toast');
-  const msgEl = $('live-goal-toast-msg');
-  if (!toast || !msgEl) return;
-
-  msgEl.textContent = `⚽ ${scorerName ? esc(scorerName) + ' scored for ' : ''}${esc(teamName)}! (Score: ${scoreStr})`;
-  toast.style.display = 'block';
-
-  // Bumping animation on score digits
-  const scoreDigits = $('as-hero-score');
-  if (scoreDigits) {
-    scoreDigits.classList.remove('bump');
-    void scoreDigits.offsetWidth;
-    scoreDigits.classList.add('bump');
-    setTimeout(() => scoreDigits.classList.remove('bump'), 1000);
+    if (liveGoalToastTimeout) clearTimeout(liveGoalToastTimeout);
+    liveGoalToastTimeout = setTimeout(() => {
+      toast.style.display = 'none';
+    }, 5000);
   }
 
-  if (liveGoalToastTimeout) clearTimeout(liveGoalToastTimeout);
-  liveGoalToastTimeout = setTimeout(() => {
-    toast.style.display = 'none';
-  }, 5000);
-}
+  function renderLiveMatchScreen() {
+    if (!curLiveMatch) return;
+    const m = curLiveMatch;
 
-function renderLiveMatchScreen() {
-  if (!curLiveMatch) return;
-  const m = curLiveMatch;
+    // Reconcile derived score from goals
+    const derivedScore = getMatchScoreFromEvents(m.events);
+    const derivedHomeScore = derivedScore.home;
+    const derivedAwayScore = derivedScore.away;
 
-  // Reconcile derived score from goals
-  const derivedScore = getMatchScoreFromEvents(m.events);
-  const derivedHomeScore = derivedScore.home;
-  const derivedAwayScore = derivedScore.away;
+    const hScore = (m.home && m.home.score != null) ? m.home.score : derivedHomeScore;
+    const aScore = (m.away && m.away.score != null) ? m.away.score : derivedAwayScore;
 
-  const hScore = (m.home && m.home.score != null) ? m.home.score : derivedHomeScore;
-  const aScore = (m.away && m.away.score != null) ? m.away.score : derivedAwayScore;
+    const hTeam = teams.find(t => t.id === m.home?.teamId);
+    const aTeam = teams.find(t => t.id === m.away?.teamId);
 
-  const hTeam = teams.find(t => t.id === m.home?.teamId);
-  const aTeam = teams.find(t => t.id === m.away?.teamId);
+    const tourn = tournaments.find(t => t.id === m.tournamentId);
+    const st = m.status || 'scheduled';
 
-  const tourn = tournaments.find(t => t.id === m.tournamentId);
-  const st = m.status || 'scheduled';
+    // 1. Topbar
+    const tournLbl = $('as-tourn-label');
+    if (tournLbl) {
+      tournLbl.textContent = tourn ? `🏆 ${tourn.name.toUpperCase()}` : '⚽ STANDALONE FRIENDLY';
+    }
 
-  // 1. Topbar
-  const tournLbl = $('as-tourn-label');
-  if (tournLbl) {
-    tournLbl.textContent = tourn ? `🏆 ${tourn.name.toUpperCase()}` : '⚽ STANDALONE FRIENDLY';
-  }
+    const liveInd = $('as-live-indicator');
+    const topStatusText = $('as-top-status-text');
+    if (liveInd && topStatusText) {
+      liveInd.className = 'as-live-pill ' + (st === 'live' ? 'live' : (st === 'final' ? 'final' : 'scheduled'));
+      topStatusText.textContent = (st === 'live' ? 'LIVE' : (st === 'final' ? 'FINAL' : 'SCHEDULED'));
+    }
 
-  const liveInd = $('as-live-indicator');
-  const topStatusText = $('as-top-status-text');
-  if (liveInd && topStatusText) {
-    liveInd.className = 'as-live-pill ' + (st === 'live' ? 'live' : (st === 'final' ? 'final' : 'scheduled'));
-    topStatusText.textContent = (st === 'live' ? 'LIVE' : (st === 'final' ? 'FINAL' : 'SCHEDULED'));
-  }
+    // 2. Hero Card Matchup
+    const hCrest = $('as-home-crest');
+    if (hCrest) hCrest.innerHTML = matchSideIcon(m.home, hTeam);
 
-  // 2. Hero Card Matchup
-  const hCrest = $('as-home-crest');
-  if (hCrest) hCrest.innerHTML = matchSideIcon(m.home, hTeam);
+    const hTitle = $('as-home-title');
+    if (hTitle) hTitle.textContent = m.home?.name || 'Home Team';
 
-  const hTitle = $('as-home-title');
-  if (hTitle) hTitle.textContent = m.home?.name || 'Home Team';
+    const hMeta = $('as-home-meta');
+    if (hMeta) hMeta.textContent = hTeam ? (hTeam.season || 'Club Squad') : (m.home?.lineup?.starters?.length ? 'Roster Imported' : 'New Team');
 
-  const hMeta = $('as-home-meta');
-  if (hMeta) hMeta.textContent = hTeam ? (hTeam.season || 'Club Squad') : (m.home?.lineup?.starters?.length ? 'Roster Imported' : 'New Team');
+    const aCrest = $('as-away-crest');
+    if (aCrest) aCrest.innerHTML = matchSideIcon(m.away, aTeam);
 
-  const aCrest = $('as-away-crest');
-  if (aCrest) aCrest.innerHTML = matchSideIcon(m.away, aTeam);
+    const aTitle = $('as-away-title');
+    if (aTitle) aTitle.textContent = m.away?.name || 'Away Team';
 
-  const aTitle = $('as-away-title');
-  if (aTitle) aTitle.textContent = m.away?.name || 'Away Team';
+    const aMeta = $('as-away-meta');
+    if (aMeta) aMeta.textContent = aTeam ? (aTeam.season || 'Club Squad') : (m.away?.lineup?.starters?.length ? 'Roster Imported' : 'New Team');
 
-  const aMeta = $('as-away-meta');
-  if (aMeta) aMeta.textContent = aTeam ? (aTeam.season || 'Club Squad') : (m.away?.lineup?.starters?.length ? 'Roster Imported' : 'New Team');
+    // Score display
+    const scoreEl = $('as-hero-score');
+    if (scoreEl) {
+      scoreEl.textContent = `${hScore} - ${aScore}`;
+    }
 
-  // Score display
-  const scoreEl = $('as-hero-score');
-  if (scoreEl) {
-    scoreEl.textContent = `${hScore} - ${aScore}`;
-  }
+    const scoreBadge = $('as-score-badge');
+    if (scoreBadge) {
+      if (st === 'live') scoreBadge.textContent = '● REAL-TIME SYNC ACTIVE';
+      else if (st === 'final') scoreBadge.textContent = 'FINAL SCORE';
+      else scoreBadge.textContent = formatMatchDateDisplay(m).toUpperCase();
+    }
 
-  const scoreBadge = $('as-score-badge');
-  if (scoreBadge) {
-    if (st === 'live') scoreBadge.textContent = '● REAL-TIME SYNC ACTIVE';
-    else if (st === 'final') scoreBadge.textContent = 'FINAL SCORE';
-    else scoreBadge.textContent = formatMatchDateDisplay(m).toUpperCase();
-  }
+    const stageTag = $('as-stage-tag');
+    if (stageTag) {
+      stageTag.textContent = tourn ? `${tourn.name} · MATCH CENTER` : 'FRIENDLY MATCH CENTER';
+    }
 
-  const stageTag = $('as-stage-tag');
-  if (stageTag) {
-    stageTag.textContent = tourn ? `${tourn.name} · MATCH CENTER` : 'FRIENDLY MATCH CENTER';
-  }
+    // 3. Two-column key events ticker underneath hero scoreboard
+    const scorersWrap = $('as-hero-scorers');
+    const hScorersList = $('as-home-scorers-list');
+    const aScorersList = $('as-away-scorers-list');
 
-  // 3. Two-column key events ticker underneath hero scoreboard
-  const scorersWrap = $('as-hero-scorers');
-  const hScorersList = $('as-home-scorers-list');
-  const aScorersList = $('as-away-scorers-list');
+    const homeKeyEvents = (m.events || []).filter(e => (e.team === 'home' || !e.team) && (e.type === 'goal' || e.type === 'own_goal' || e.type === 'yellow' || e.type === 'red'));
+    const awayKeyEvents = (m.events || []).filter(e => e.team === 'away' && (e.type === 'goal' || e.type === 'own_goal' || e.type === 'yellow' || e.type === 'red'));
 
-  const homeKeyEvents = (m.events || []).filter(e => (e.team === 'home' || !e.team) && (e.type === 'goal' || e.type === 'own_goal' || e.type === 'yellow' || e.type === 'red'));
-  const awayKeyEvents = (m.events || []).filter(e => e.team === 'away' && (e.type === 'goal' || e.type === 'own_goal' || e.type === 'yellow' || e.type === 'red'));
-
-  if (homeKeyEvents.length || awayKeyEvents.length) {
-    if (scorersWrap) scorersWrap.style.display = 'grid';
-    if (hScorersList) {
-      hScorersList.innerHTML = homeKeyEvents.map(ev => {
-        let ico = '⚽';
-        if (ev.type === 'own_goal') ico = '🔁';
-        else if (ev.type === 'yellow') ico = '🟨';
-        else if (ev.type === 'red') ico = '🟥';
-        return `
+    if (homeKeyEvents.length || awayKeyEvents.length) {
+      if (scorersWrap) scorersWrap.style.display = 'grid';
+      if (hScorersList) {
+        hScorersList.innerHTML = homeKeyEvents.map(ev => {
+          let ico = '⚽';
+          if (ev.type === 'own_goal') ico = '🔁';
+          else if (ev.type === 'yellow') ico = '🟨';
+          else if (ev.type === 'red') ico = '🟥';
+          return `
           <div class="as-scorer-item">
             <span>${ico}</span>
             <strong>${esc(ev.playerName || 'Player')}</strong>
             <span style="color:#94a3b8;">${ev.minute != null ? ev.minute + "'" : ''}</span>
           </div>
         `;
-      }).join('');
-    }
-    if (aScorersList) {
-      aScorersList.innerHTML = awayKeyEvents.map(ev => {
-        let ico = '⚽';
-        if (ev.type === 'own_goal') ico = '🔁';
-        else if (ev.type === 'yellow') ico = '🟨';
-        else if (ev.type === 'red') ico = '🟥';
-        return `
+        }).join('');
+      }
+      if (aScorersList) {
+        aScorersList.innerHTML = awayKeyEvents.map(ev => {
+          let ico = '⚽';
+          if (ev.type === 'own_goal') ico = '🔁';
+          else if (ev.type === 'yellow') ico = '🟨';
+          else if (ev.type === 'red') ico = '🟥';
+          return `
           <div class="as-scorer-item">
             <span>${ico}</span>
             <strong>${esc(ev.playerName || 'Player')}</strong>
             <span style="color:#94a3b8;">${ev.minute != null ? ev.minute + "'" : ''}</span>
           </div>
         `;
-      }).join('');
+        }).join('');
+      }
+    } else {
+      if (scorersWrap) scorersWrap.style.display = 'none';
     }
-  } else {
-    if (scorersWrap) scorersWrap.style.display = 'none';
+
+    // 4. Update live clock display
+    updateLiveMatchHeroClockOnly();
+
+    // 5. Update team names in pitch toggle
+    const btnHName = $('as-btn-home-name');
+    if (btnHName) btnHName.textContent = m.home?.name || 'Home';
+    const btnAName = $('as-btn-away-name');
+    if (btnAName) btnAName.textContent = m.away?.name || 'Away';
+
+    // 6. Update current tab
+    if (currentLiveTab === 'timeline') renderLiveTimeline();
+    else if (currentLiveTab === 'lineup') renderLivePitch();
+    else if (currentLiveTab === 'stats') renderLiveStats();
+    else if (currentLiveTab === 'tournament') renderLiveTournament();
   }
 
-  // 4. Update live clock display
-  updateLiveMatchHeroClockOnly();
+  function updateLiveMatchHeroClockOnly() {
+    if (!curLiveMatch) return;
+    const m = curLiveMatch;
+    const sec = getMatchElapsedSeconds(m);
+    const clockStr = formatMatchClockDisplay(sec);
+    const periodStr = formatMatchPeriodLabel(m);
+    const st = m.status || 'scheduled';
+    const isRunning = m.matchClock?.status === 'running';
 
-  // 5. Update team names in pitch toggle
-  const btnHName = $('as-btn-home-name');
-  if (btnHName) btnHName.textContent = m.home?.name || 'Home';
-  const btnAName = $('as-btn-away-name');
-  if (btnAName) btnAName.textContent = m.away?.name || 'Away';
+    const clockEl = $('as-hero-clock');
+    if (clockEl) clockEl.textContent = clockStr;
 
-  // 6. Update current tab
-  if (currentLiveTab === 'timeline') renderLiveTimeline();
-  else if (currentLiveTab === 'lineup') renderLivePitch();
-  else if (currentLiveTab === 'stats') renderLiveStats();
-  else if (currentLiveTab === 'tournament') renderLiveTournament();
-}
+    const periodEl = $('as-hero-period');
+    if (periodEl) periodEl.textContent = periodStr;
 
-function updateLiveMatchHeroClockOnly() {
-  if (!curLiveMatch) return;
-  const m = curLiveMatch;
-  const sec = getMatchElapsedSeconds(m);
-  const clockStr = formatMatchClockDisplay(sec);
-  const periodStr = formatMatchPeriodLabel(m);
-  const st = m.status || 'scheduled';
-  const isRunning = m.matchClock?.status === 'running';
-
-  const clockEl = $('as-hero-clock');
-  if (clockEl) clockEl.textContent = clockStr;
-
-  const periodEl = $('as-hero-period');
-  if (periodEl) periodEl.textContent = periodStr;
-
-  const clockPulse = $('as-clock-pulse');
-  if (clockPulse) {
-    clockPulse.style.display = (st === 'live' && isRunning) ? 'inline-block' : 'none';
+    const clockPulse = $('as-clock-pulse');
+    if (clockPulse) {
+      clockPulse.style.display = (st === 'live' && isRunning) ? 'inline-block' : 'none';
+    }
   }
-}
 
-function showLiveMatchTab(tabName) {
-  currentLiveTab = tabName;
-  ['timeline', 'lineup', 'stats', 'tournament'].forEach(t => {
-    const btn = $('as-tab-' + t);
-    const view = $('as-view-' + t);
-    if (btn) btn.classList.toggle('active', t === tabName);
-    if (view) view.classList.toggle('active', t === tabName);
-  });
+  function showLiveMatchTab(tabName) {
+    currentLiveTab = tabName;
+    ['timeline', 'lineup', 'stats', 'tournament'].forEach(t => {
+      const btn = $('as-tab-' + t);
+      const view = $('as-view-' + t);
+      if (btn) btn.classList.toggle('active', t === tabName);
+      if (view) view.classList.toggle('active', t === tabName);
+    });
 
-  if (tabName === 'timeline') renderLiveTimeline();
-  else if (tabName === 'lineup') renderLivePitch();
-  else if (tabName === 'stats') renderLiveStats();
-  else if (tabName === 'tournament') renderLiveTournament();
-}
+    if (tabName === 'timeline') renderLiveTimeline();
+    else if (tabName === 'lineup') renderLivePitch();
+    else if (tabName === 'stats') renderLiveStats();
+    else if (tabName === 'tournament') renderLiveTournament();
+  }
 
-function setLivePitchSide(side) {
-  livePitchSide = side;
-  const btnH = $('as-side-btn-home');
-  const btnA = $('as-side-btn-away');
-  if (btnH) btnH.classList.toggle('active', side === 'home');
-  if (btnA) btnA.classList.toggle('active', side === 'away');
-  renderLivePitch();
-}
+  function setLivePitchSide(side) {
+    livePitchSide = side;
+    const btnH = $('as-side-btn-home');
+    const btnA = $('as-side-btn-away');
+    if (btnH) btnH.classList.toggle('active', side === 'home');
+    if (btnA) btnA.classList.toggle('active', side === 'away');
+    renderLivePitch();
+  }
 
-function renderLiveTimeline() {
-  const feedEl = $('as-timeline-feed');
-  if (!feedEl || !curLiveMatch) return;
+  function renderLiveTimeline() {
+    const feedEl = $('as-timeline-feed');
+    if (!feedEl || !curLiveMatch) return;
 
-  const m = curLiveMatch;
-  const events = [...(m.events || [])].sort((a, b) => {
-    const minA = a.minute != null ? a.minute : 999;
-    const minB = b.minute != null ? b.minute : 999;
-    return minA - minB;
-  });
+    const m = curLiveMatch;
+    const events = [...(m.events || [])].sort((a, b) => {
+      const minA = a.minute != null ? a.minute : 999;
+      const minB = b.minute != null ? b.minute : 999;
+      return minA - minB;
+    });
 
-  if (!events.length) {
-    feedEl.innerHTML = `
+    if (!events.length) {
+      feedEl.innerHTML = `
       <div class="as-empty-timeline">
         <div style="font-size:36px;margin-bottom:8px;">⏱️</div>
         <div style="font-size:16px;font-weight:700;color:#fff;margin-bottom:4px;">No match events recorded yet</div>
         <p style="font-size:12.5px;max-width:380px;margin:0 auto;color:#94a3b8;">Key moments such as goals, cards, and substitutions logged pitchside will appear here in real time.</p>
       </div>`;
-    return;
-  }
+      return;
+    }
 
-  const hTeam = teams.find(t => t.id === m.home?.teamId);
-  const aTeam = teams.find(t => t.id === m.away?.teamId);
-  const homeBadge = matchSideIcon(m.home, hTeam);
-  const awayBadge = matchSideIcon(m.away, aTeam);
+    const hTeam = teams.find(t => t.id === m.home?.teamId);
+    const aTeam = teams.find(t => t.id === m.away?.teamId);
+    const homeBadge = matchSideIcon(m.home, hTeam);
+    const awayBadge = matchSideIcon(m.away, aTeam);
 
-  const homeEvents = events.filter(e => e.team === 'home' || !e.team);
-  const awayEvents = events.filter(e => e.team === 'away');
+    const homeEvents = events.filter(e => e.team === 'home' || !e.team);
+    const awayEvents = events.filter(e => e.team === 'away');
 
-  const isAdmin = (sessionStorage.getItem('fhq_session_active') === '1' || !!curUser);
+    const isAdmin = (sessionStorage.getItem('fhq_session_active') === '1' || !!curUser);
 
-  function renderLiveEventItem(ev, side) {
-    const isHome = side === 'home';
-    const teamName = isHome ? (m.home?.name || 'Home') : (m.away?.name || 'Away');
-    const minText = ev.minute != null ? `${ev.minute}'` : '—';
+    function renderLiveEventItem(ev, side) {
+      const isHome = side === 'home';
+      const teamName = isHome ? (m.home?.name || 'Home') : (m.away?.name || 'Away');
+      const minText = ev.minute != null ? `${ev.minute}'` : '—';
 
-    let cardCls = 'goal';
-    let icon = '⚽';
-    let typeTag = 'GOAL';
-    let subText = '';
+      let cardCls = 'goal';
+      let icon = '⚽';
+      let typeTag = 'GOAL';
+      let subText = '';
 
-    if (ev.type === 'goal') {
-      cardCls = 'goal';
-      icon = '⚽';
-      typeTag = 'GOAL';
-      if (ev.relatedPlayerId) {
-        const assister = findMatchPlayer(ev.relatedPlayerId);
-        if (assister) subText = `Assist: ${esc(assister.name)}`;
+      if (ev.type === 'goal') {
+        cardCls = 'goal';
+        icon = '⚽';
+        typeTag = 'GOAL';
+        if (ev.relatedPlayerId) {
+          const assister = findMatchPlayer(ev.relatedPlayerId);
+          if (assister) subText = `Assist: ${esc(assister.name)}`;
+        }
+      } else if (ev.type === 'own_goal') {
+        cardCls = 'goal';
+        icon = '🔁';
+        typeTag = 'OWN GOAL';
+        const beneficiary = ev.team === 'home' ? (m.away?.name || 'Away') : (m.home?.name || 'Home');
+        subText = `Goal for ${esc(beneficiary)}`;
+      } else if (ev.type === 'assist') {
+        cardCls = 'sub';
+        icon = '👟';
+        typeTag = 'ASSIST';
+      } else if (ev.type === 'yellow') {
+        cardCls = 'yellow';
+        icon = '🟨';
+        typeTag = 'YELLOW';
+      } else if (ev.type === 'red') {
+        cardCls = 'red';
+        icon = '🟥';
+        typeTag = 'RED';
+      } else if (ev.type === 'sub') {
+        cardCls = 'sub';
+        icon = '🔄';
+        typeTag = 'SUB';
+        const subIn = findMatchPlayer(ev.playerId) || { name: ev.playerName };
+        const subOff = findMatchPlayer(ev.relatedPlayerId);
+        const inNum = (subIn.jersey != null && subIn.jersey !== '') ? `#${subIn.jersey} ` : (subIn.number != null && subIn.number !== '' ? `#${subIn.number} ` : '');
+        const outNum = (subOff && subOff.jersey != null && subOff.jersey !== '') ? `#${subOff.jersey} ` : (subOff && subOff.number != null && subOff.number !== '' ? `#${subOff.number} ` : '');
+        subText = `🟢 In: ${esc(inNum)}${esc(subIn.name || ev.playerName)}${subOff ? ' · 🔴 Out: ' + esc(outNum) + esc(subOff.name) : ''}`;
       }
-    } else if (ev.type === 'own_goal') {
-      cardCls = 'goal';
-      icon = '🔁';
-      typeTag = 'OWN GOAL';
-      const beneficiary = ev.team === 'home' ? (m.away?.name || 'Away') : (m.home?.name || 'Home');
-      subText = `Goal for ${esc(beneficiary)}`;
-    } else if (ev.type === 'assist') {
-      cardCls = 'sub';
-      icon = '👟';
-      typeTag = 'ASSIST';
-    } else if (ev.type === 'yellow') {
-      cardCls = 'yellow';
-      icon = '🟨';
-      typeTag = 'YELLOW';
-    } else if (ev.type === 'red') {
-      cardCls = 'red';
-      icon = '🟥';
-      typeTag = 'RED';
-    } else if (ev.type === 'sub') {
-      cardCls = 'sub';
-      icon = '🔄';
-      typeTag = 'SUB';
-      const subIn = findMatchPlayer(ev.playerId) || { name: ev.playerName };
-      const subOff = findMatchPlayer(ev.relatedPlayerId);
-      const inNum = (subIn.jersey != null && subIn.jersey !== '') ? `#${subIn.jersey} ` : (subIn.number != null && subIn.number !== '' ? `#${subIn.number} ` : '');
-      const outNum = (subOff && subOff.jersey != null && subOff.jersey !== '') ? `#${subOff.jersey} ` : (subOff && subOff.number != null && subOff.number !== '' ? `#${subOff.number} ` : '');
-      subText = `🟢 In: ${esc(inNum)}${esc(subIn.name || ev.playerName)}${subOff ? ' · 🔴 Out: ' + esc(outNum) + esc(subOff.name) : ''}`;
-    }
 
-    if (ev.note) {
-      subText = (subText ? subText + ' · ' : '') + esc(ev.note);
-    }
+      if (ev.note) {
+        subText = (subText ? subText + ' · ' : '') + esc(ev.note);
+      }
 
-    const adminActions = isAdmin ? `
+      const adminActions = isAdmin ? `
       <div style="margin-left:auto;display:flex;gap:4px;align-items:center;flex-shrink:0;">
         <button type="button" class="obtn" style="padding:2px 7px;font-size:10px;font-weight:700;" title="Edit event" onclick="openEditEventModal('${ev.id}')">✏️</button>
         <button type="button" class="obtn" style="padding:2px 7px;font-size:10px;font-weight:700;color:var(--red);border-color:rgba(220,38,38,0.4);" title="Delete event" onclick="deleteMatchEvent('${ev.id}')">🗑️</button>
       </div>
     ` : '';
 
-    return `
+      return `
       <div class="as-event-card-compact ${cardCls}">
         <div class="as-event-min-pill">${esc(minText)}</div>
         <div class="as-event-icon-wrap">${icon}</div>
@@ -13472,17 +13496,17 @@ function renderLiveTimeline() {
         ${adminActions}
       </div>
     `;
-  }
+    }
 
-  const homeEventsHtml = homeEvents.length
-    ? homeEvents.map(e => renderLiveEventItem(e, 'home')).join('')
-    : `<div class="as-no-events-col">No events logged for ${esc(m.home?.name || 'Home')}</div>`;
+    const homeEventsHtml = homeEvents.length
+      ? homeEvents.map(e => renderLiveEventItem(e, 'home')).join('')
+      : `<div class="as-no-events-col">No events logged for ${esc(m.home?.name || 'Home')}</div>`;
 
-  const awayEventsHtml = awayEvents.length
-    ? awayEvents.map(e => renderLiveEventItem(e, 'away')).join('')
-    : `<div class="as-no-events-col">No events logged for ${esc(m.away?.name || 'Away')}</div>`;
+    const awayEventsHtml = awayEvents.length
+      ? awayEvents.map(e => renderLiveEventItem(e, 'away')).join('')
+      : `<div class="as-no-events-col">No events logged for ${esc(m.away?.name || 'Away')}</div>`;
 
-  feedEl.innerHTML = `
+    feedEl.innerHTML = `
     <div class="as-timeline-two-col">
       <!-- HOME COLUMN -->
       <div class="as-timeline-col home">
@@ -13512,42 +13536,42 @@ function renderLiveTimeline() {
       </div>
     </div>
   `;
-}
+  }
 
-function renderLivePitch() {
-  if (!curLiveMatch) return;
-  const m = curLiveMatch;
-  const side = livePitchSide;
-  const sideData = side === 'home' ? m.home : m.away;
-  const lineup = sideData?.lineup;
+  function renderLivePitch() {
+    if (!curLiveMatch) return;
+    const m = curLiveMatch;
+    const side = livePitchSide;
+    const sideData = side === 'home' ? m.home : m.away;
+    const lineup = sideData?.lineup;
 
-  const formationKey = lineup?.formation || '4-4-2';
-  const formationBadge = $('as-active-formation');
-  if (formationBadge) formationBadge.textContent = `${formationKey.toUpperCase()} FORMATION`;
+    const formationKey = lineup?.formation || '4-4-2';
+    const formationBadge = $('as-active-formation');
+    if (formationBadge) formationBadge.textContent = `${formationKey.toUpperCase()} FORMATION`;
 
-  const layer = $('as-pitch-players-layer');
-  if (layer) {
-    const flat = flattenFormation(formationKey);
-    const starters = lineup?.starters || [];
+    const layer = $('as-pitch-players-layer');
+    if (layer) {
+      const flat = flattenFormation(formationKey);
+      const starters = lineup?.starters || [];
 
-    layer.innerHTML = flat.map((slot, i) => {
-      const p = starters[i];
-      const pName = p ? p.name : slot.role;
-      const pNum = p ? (p.jersey != null && p.jersey !== '' ? p.jersey : (i + 1)) : (i + 1);
-      const pPos = p ? (posCode(p.position) || p.position || slot.role) : slot.role;
+      layer.innerHTML = flat.map((slot, i) => {
+        const p = starters[i];
+        const pName = p ? p.name : slot.role;
+        const pNum = p ? (p.jersey != null && p.jersey !== '' ? p.jersey : (i + 1)) : (i + 1);
+        const pPos = p ? (posCode(p.position) || p.position || slot.role) : slot.role;
 
-      // Event badges for this starter
-      const pEvents = p ? (m.events || []).filter(e => e.team === side && (e.playerId === p.playerId || e.playerName === p.name)) : [];
-      const hasGoal = pEvents.some(e => e.type === 'goal');
-      const hasYellow = pEvents.some(e => e.type === 'yellow');
-      const hasRed = pEvents.some(e => e.type === 'red');
+        // Event badges for this starter
+        const pEvents = p ? (m.events || []).filter(e => e.team === side && (e.playerId === p.playerId || e.playerName === p.name)) : [];
+        const hasGoal = pEvents.some(e => e.type === 'goal');
+        const hasYellow = pEvents.some(e => e.type === 'yellow');
+        const hasRed = pEvents.some(e => e.type === 'red');
 
-      let evBadges = '';
-      if (hasGoal) evBadges += '<span class="as-pin-ev">⚽</span>';
-      if (hasYellow) evBadges += '<span class="as-pin-ev">🟨</span>';
-      if (hasRed) evBadges += '<span class="as-pin-ev">🟥</span>';
+        let evBadges = '';
+        if (hasGoal) evBadges += '<span class="as-pin-ev">⚽</span>';
+        if (hasYellow) evBadges += '<span class="as-pin-ev">🟨</span>';
+        if (hasRed) evBadges += '<span class="as-pin-ev">🟥</span>';
 
-      return `
+        return `
         <div class="as-pin" style="left:${slot.x}%;top:${slot.y}%;">
           <div class="as-pin-badge">
             ${esc(pNum)}
@@ -13557,98 +13581,98 @@ function renderLivePitch() {
           <div class="as-pin-pos">${esc(pPos)}</div>
         </div>
       `;
-    }).join('');
-  }
+      }).join('');
+    }
 
-  // Render Bench Substitutes
-  const subs = lineup?.subs || [];
-  const subsCount = $('as-subs-count');
-  if (subsCount) subsCount.textContent = subs.length;
+    // Render Bench Substitutes
+    const subs = lineup?.subs || [];
+    const subsCount = $('as-subs-count');
+    if (subsCount) subsCount.textContent = subs.length;
 
-  const benchList = $('as-bench-list');
-  if (benchList) {
-    if (!subs.length) {
-      benchList.innerHTML = '<div style="font-size:12px;color:#94a3b8;padding:8px;">No substitutes listed for this side.</div>';
-    } else {
-      benchList.innerHTML = subs.map((s, idx) => `
+    const benchList = $('as-bench-list');
+    if (benchList) {
+      if (!subs.length) {
+        benchList.innerHTML = '<div style="font-size:12px;color:#94a3b8;padding:8px;">No substitutes listed for this side.</div>';
+      } else {
+        benchList.innerHTML = subs.map((s, idx) => `
         <div class="as-bench-item">
           <div class="as-bench-num">${esc(s.jersey != null && s.jersey !== '' ? s.jersey : idx + 12)}</div>
           <div class="as-bench-name">${esc(s.name)}</div>
           <div class="as-bench-pos">${esc(posCode(s.position) || s.position || 'SUB')}</div>
         </div>
       `).join('');
+      }
     }
-  }
 
-  // Render Coaching Staff
-  const staff = lineup?.coaches || [];
-  const staffCount = $('as-staff-count');
-  if (staffCount) staffCount.textContent = staff.length;
+    // Render Coaching Staff
+    const staff = lineup?.coaches || [];
+    const staffCount = $('as-staff-count');
+    if (staffCount) staffCount.textContent = staff.length;
 
-  const staffList = $('as-staff-list');
-  if (staffList) {
-    if (!staff.length) {
-      staffList.innerHTML = '<div style="font-size:12px;color:#94a3b8;padding:8px;">No staff listed for this side.</div>';
-    } else {
-      staffList.innerHTML = staff.map(st => `
+    const staffList = $('as-staff-list');
+    if (staffList) {
+      if (!staff.length) {
+        staffList.innerHTML = '<div style="font-size:12px;color:#94a3b8;padding:8px;">No staff listed for this side.</div>';
+      } else {
+        staffList.innerHTML = staff.map(st => `
         <div class="as-bench-item">
           <div class="as-bench-num" style="background:rgba(255,255,255,0.08);color:#fff;">🧑‍💼</div>
           <div class="as-bench-name">${esc(st.name)}</div>
           <div class="as-bench-pos">${esc(st.role || 'Coach')}</div>
         </div>
       `).join('');
+      }
     }
   }
-}
 
-function renderLiveStats() {
-  const statsContainer = $('as-stats-bars');
-  if (!statsContainer || !curLiveMatch) return;
-  const m = curLiveMatch;
+  function renderLiveStats() {
+    const statsContainer = $('as-stats-bars');
+    if (!statsContainer || !curLiveMatch) return;
+    const m = curLiveMatch;
 
-  const events = m.events || [];
+    const events = m.events || [];
 
-  // Home and Away stats calculation
-  const derivedScore = getMatchScoreFromEvents(events);
-  const hGoals = (m.home && m.home.score != null) ? m.home.score : derivedScore.home;
-  const aGoals = (m.away && m.away.score != null) ? m.away.score : derivedScore.away;
+    // Home and Away stats calculation
+    const derivedScore = getMatchScoreFromEvents(events);
+    const hGoals = (m.home && m.home.score != null) ? m.home.score : derivedScore.home;
+    const aGoals = (m.away && m.away.score != null) ? m.away.score : derivedScore.away;
 
-  const hYellow = events.filter(e => e.type === 'yellow' && e.team === 'home').length;
-  const aYellow = events.filter(e => e.type === 'yellow' && e.team === 'away').length;
+    const hYellow = events.filter(e => e.type === 'yellow' && e.team === 'home').length;
+    const aYellow = events.filter(e => e.type === 'yellow' && e.team === 'away').length;
 
-  const hRed = events.filter(e => e.type === 'red' && e.team === 'home').length;
-  const aRed = events.filter(e => e.type === 'red' && e.team === 'away').length;
+    const hRed = events.filter(e => e.type === 'red' && e.team === 'home').length;
+    const aRed = events.filter(e => e.type === 'red' && e.team === 'away').length;
 
-  const hSubs = events.filter(e => e.type === 'sub' && e.team === 'home').length;
-  const aSubs = events.filter(e => e.type === 'sub' && e.team === 'away').length;
+    const hSubs = events.filter(e => e.type === 'sub' && e.team === 'home').length;
+    const aSubs = events.filter(e => e.type === 'sub' && e.team === 'away').length;
 
-  const hAssists = events.filter(e => (e.type === 'assist' || (e.type === 'goal' && e.relatedPlayerId)) && e.team === 'home').length;
-  const aAssists = events.filter(e => (e.type === 'assist' || (e.type === 'goal' && e.relatedPlayerId)) && e.team === 'away').length;
+    const hAssists = events.filter(e => (e.type === 'assist' || (e.type === 'goal' && e.relatedPlayerId)) && e.team === 'home').length;
+    const aAssists = events.filter(e => (e.type === 'assist' || (e.type === 'goal' && e.relatedPlayerId)) && e.team === 'away').length;
 
-  const statsList = [
-    { name: 'Goals', home: hGoals, away: aGoals },
-    { name: 'Assists', home: hAssists, away: aAssists },
-    { name: 'Yellow Cards', home: hYellow, away: aYellow },
-    { name: 'Red Cards', home: hRed, away: aRed },
-    { name: 'Substitutions', home: hSubs, away: aSubs }
-  ];
+    const statsList = [
+      { name: 'Goals', home: hGoals, away: aGoals },
+      { name: 'Assists', home: hAssists, away: aAssists },
+      { name: 'Yellow Cards', home: hYellow, away: aYellow },
+      { name: 'Red Cards', home: hRed, away: aRed },
+      { name: 'Substitutions', home: hSubs, away: aSubs }
+    ];
 
-  // Update legends
-  const legH = $('as-legend-home');
-  if (legH) legH.textContent = `● ${m.home?.name || 'Home'}`;
-  const legA = $('as-legend-away');
-  if (legA) legA.textContent = `● ${m.away?.name || 'Away'}`;
+    // Update legends
+    const legH = $('as-legend-home');
+    if (legH) legH.textContent = `● ${m.home?.name || 'Home'}`;
+    const legA = $('as-legend-away');
+    if (legA) legA.textContent = `● ${m.away?.name || 'Away'}`;
 
-  statsContainer.innerHTML = statsList.map(st => {
-    const total = st.home + st.away;
-    let hPct = 50;
-    let aPct = 50;
-    if (total > 0) {
-      hPct = Math.round((st.home / total) * 100);
-      aPct = 100 - hPct;
-    }
+    statsContainer.innerHTML = statsList.map(st => {
+      const total = st.home + st.away;
+      let hPct = 50;
+      let aPct = 50;
+      if (total > 0) {
+        hPct = Math.round((st.home / total) * 100);
+        aPct = 100 - hPct;
+      }
 
-    return `
+      return `
       <div class="as-stat-item">
         <div class="as-stat-nums">
           <span class="as-stat-num-home">${st.home}</span>
@@ -13661,94 +13685,94 @@ function renderLiveStats() {
         </div>
       </div>
     `;
-  }).join('');
-}
+    }).join('');
+  }
 
-function renderLiveTournament() {
-  if (!curLiveMatch) return;
-  const m = curLiveMatch;
-  const tourn = tournaments.find(t => t.id === m.tournamentId);
+  function renderLiveTournament() {
+    if (!curLiveMatch) return;
+    const m = curLiveMatch;
+    const tourn = tournaments.find(t => t.id === m.tournamentId);
 
-  const tableContainer = $('as-tourn-standings-table');
-  const otherMatchesContainer = $('as-tourn-other-matches');
-  const panelTitle = $('as-tourn-panel-title');
+    const tableContainer = $('as-tourn-standings-table');
+    const otherMatchesContainer = $('as-tourn-other-matches');
+    const panelTitle = $('as-tourn-panel-title');
 
-  if (!tourn) {
-    if (panelTitle) panelTitle.textContent = 'STANDALONE MATCH DETAILS';
-    if (tableContainer) {
-      tableContainer.innerHTML = `
+    if (!tourn) {
+      if (panelTitle) panelTitle.textContent = 'STANDALONE MATCH DETAILS';
+      if (tableContainer) {
+        tableContainer.innerHTML = `
         <div style="background:#18202d;border-radius:14px;padding:24px;text-align:center;color:#94a3b8;">
           <div style="font-size:32px;margin-bottom:8px;">⚽</div>
           <div style="font-size:15px;font-weight:700;color:#fff;margin-bottom:4px;">Standalone Exhibition / Friendly Match</div>
           <p style="font-size:12px;">This match is an independent fixture and not affiliated with an ongoing league or tournament table.</p>
         </div>`;
-    }
-    if (otherMatchesContainer) {
-      otherMatchesContainer.innerHTML = '<div style="font-size:12px;color:#94a3b8;padding:8px;">No other matches linked to this friendly fixture.</div>';
-    }
-    return;
-  }
-
-  if (panelTitle) panelTitle.textContent = `${tourn.name.toUpperCase()} · LIVE STANDINGS`;
-
-  // Compute tournament standings table
-  const tournMatches = matches.filter(x => x.tournamentId === tourn.id);
-  const teamIds = tourn.teamIds || [];
-  const enteredTeams = teams.filter(tm => teamIds.includes(tm.id));
-
-  const tableMap = {};
-  enteredTeams.forEach(tm => {
-    tableMap[tm.id] = {
-      id: tm.id,
-      name: tm.name,
-      logo: tm.logo,
-      emoji: tm.emoji || '⚽',
-      played: 0, won: 0, drawn: 0, lost: 0, gf: 0, ga: 0, gd: 0, points: 0
-    };
-  });
-
-  tournMatches.forEach(match => {
-    const isCompleted = match.status === 'final' || match.status === 'completed';
-    const isLive = match.status === 'live';
-    if (!isCompleted && !isLive) return;
-
-    const hId = match.home?.teamId;
-    const aId = match.away?.teamId;
-    const hScore = (match.home && match.home.score != null) ? match.home.score : 0;
-    const aScore = (match.away && match.away.score != null) ? match.away.score : 0;
-
-    if (tableMap[hId] && tableMap[aId]) {
-      tableMap[hId].played++;
-      tableMap[aId].played++;
-      tableMap[hId].gf += hScore;
-      tableMap[hId].ga += aScore;
-      tableMap[aId].gf += aScore;
-      tableMap[aId].ga += hScore;
-
-      if (hScore > aScore) {
-        tableMap[hId].won++;
-        tableMap[hId].points += 3;
-        tableMap[aId].lost++;
-      } else if (aScore > hScore) {
-        tableMap[aId].won++;
-        tableMap[aId].points += 3;
-        tableMap[hId].lost++;
-      } else {
-        tableMap[hId].drawn++;
-        tableMap[aId].drawn++;
-        tableMap[hId].points += 1;
-        tableMap[aId].points += 1;
       }
+      if (otherMatchesContainer) {
+        otherMatchesContainer.innerHTML = '<div style="font-size:12px;color:#94a3b8;padding:8px;">No other matches linked to this friendly fixture.</div>';
+      }
+      return;
     }
-  });
 
-  const sortedTable = Object.values(tableMap).map(row => {
-    row.gd = row.gf - row.ga;
-    return row;
-  }).sort((a, b) => b.points - a.points || b.gd - a.gd || b.gf - a.gf || a.name.localeCompare(b.name));
+    if (panelTitle) panelTitle.textContent = `${tourn.name.toUpperCase()} · LIVE STANDINGS`;
 
-  if (tableContainer) {
-    tableContainer.innerHTML = `
+    // Compute tournament standings table
+    const tournMatches = matches.filter(x => x.tournamentId === tourn.id);
+    const teamIds = tourn.teamIds || [];
+    const enteredTeams = teams.filter(tm => teamIds.includes(tm.id));
+
+    const tableMap = {};
+    enteredTeams.forEach(tm => {
+      tableMap[tm.id] = {
+        id: tm.id,
+        name: tm.name,
+        logo: tm.logo,
+        emoji: tm.emoji || '⚽',
+        played: 0, won: 0, drawn: 0, lost: 0, gf: 0, ga: 0, gd: 0, points: 0
+      };
+    });
+
+    tournMatches.forEach(match => {
+      const isCompleted = match.status === 'final' || match.status === 'completed';
+      const isLive = match.status === 'live';
+      if (!isCompleted && !isLive) return;
+
+      const hId = match.home?.teamId;
+      const aId = match.away?.teamId;
+      const hScore = (match.home && match.home.score != null) ? match.home.score : 0;
+      const aScore = (match.away && match.away.score != null) ? match.away.score : 0;
+
+      if (tableMap[hId] && tableMap[aId]) {
+        tableMap[hId].played++;
+        tableMap[aId].played++;
+        tableMap[hId].gf += hScore;
+        tableMap[hId].ga += aScore;
+        tableMap[aId].gf += aScore;
+        tableMap[aId].ga += hScore;
+
+        if (hScore > aScore) {
+          tableMap[hId].won++;
+          tableMap[hId].points += 3;
+          tableMap[aId].lost++;
+        } else if (aScore > hScore) {
+          tableMap[aId].won++;
+          tableMap[aId].points += 3;
+          tableMap[hId].lost++;
+        } else {
+          tableMap[hId].drawn++;
+          tableMap[aId].drawn++;
+          tableMap[hId].points += 1;
+          tableMap[aId].points += 1;
+        }
+      }
+    });
+
+    const sortedTable = Object.values(tableMap).map(row => {
+      row.gd = row.gf - row.ga;
+      return row;
+    }).sort((a, b) => b.points - a.points || b.gd - a.gd || b.gf - a.gf || a.name.localeCompare(b.name));
+
+    if (tableContainer) {
+      tableContainer.innerHTML = `
       <div style="overflow-x:auto;">
         <table class="stat-table" style="width:100%;color:#cbd5e1;">
           <thead>
@@ -13765,9 +13789,9 @@ function renderLiveTournament() {
           </thead>
           <tbody>
             ${sortedTable.map((row, idx) => {
-      const isMatchTeam = row.id === m.home?.teamId || row.id === m.away?.teamId;
-      const badge = row.logo ? `<img src="${esc(row.logo)}" style="width:20px;height:20px;border-radius:50%;object-fit:cover;vertical-align:middle;margin-right:6px;" alt="">` : `<span style="margin-right:6px;">${row.emoji}</span>`;
-      return `
+        const isMatchTeam = row.id === m.home?.teamId || row.id === m.away?.teamId;
+        const badge = row.logo ? `<img src="${esc(row.logo)}" style="width:20px;height:20px;border-radius:50%;object-fit:cover;vertical-align:middle;margin-right:6px;" alt="">` : `<span style="margin-right:6px;">${row.emoji}</span>`;
+        return `
                 <tr style="border-bottom:1px solid rgba(255,255,255,0.05);${isMatchTeam ? 'background:rgba(34,197,94,0.1);font-weight:700;' : ''}">
                   <td style="padding:8px 4px;text-align:center;color:#94a3b8;font-size:12px;">${idx + 1}</td>
                   <td style="padding:8px;color:#fff;display:flex;align-items:center;">${badge}<span>${esc(row.name)}</span></td>
@@ -13779,24 +13803,24 @@ function renderLiveTournament() {
                   <td style="padding:8px;text-align:right;color:#22c55e;font-size:14px;font-weight:800;">${row.points}</td>
                 </tr>
               `;
-    }).join('')}
+      }).join('')}
           </tbody>
         </table>
       </div>
     `;
-  }
+    }
 
-  // Other matches in tournament
-  const otherMatches = tournMatches.filter(x => x.id !== m.id);
-  if (otherMatchesContainer) {
-    if (!otherMatches.length) {
-      otherMatchesContainer.innerHTML = '<div style="font-size:12px;color:#94a3b8;padding:8px;">No other matches scheduled in this tournament.</div>';
-    } else {
-      otherMatchesContainer.innerHTML = otherMatches.map(om => {
-        const omH = (om.home && om.home.score != null) ? om.home.score : 0;
-        const omA = (om.away && om.away.score != null) ? om.away.score : 0;
-        const omSt = om.status || 'scheduled';
-        return `
+    // Other matches in tournament
+    const otherMatches = tournMatches.filter(x => x.id !== m.id);
+    if (otherMatchesContainer) {
+      if (!otherMatches.length) {
+        otherMatchesContainer.innerHTML = '<div style="font-size:12px;color:#94a3b8;padding:8px;">No other matches scheduled in this tournament.</div>';
+      } else {
+        otherMatchesContainer.innerHTML = otherMatches.map(om => {
+          const omH = (om.home && om.home.score != null) ? om.home.score : 0;
+          const omA = (om.away && om.away.score != null) ? om.away.score : 0;
+          const omSt = om.status || 'scheduled';
+          return `
           <div class="as-event-card" style="cursor:pointer;" onclick="initLiveMatchView('${om.id}')" title="View this match live">
             <div style="flex:1;">
               <div style="font-size:11px;color:#94a3b8;margin-bottom:4px;">${formatMatchDateDisplay(om)}</div>
@@ -13809,65 +13833,65 @@ function renderLiveTournament() {
             </div>
           </div>
         `;
-      }).join('');
+        }).join('');
+      }
     }
   }
-}
 
 
-async function loadBrandingFS() {
-  try {
-    const snap = await db.collection('settings').doc('branding').get();
-    if (snap.exists) {
-      const d = snap.data();
-      if (d.name) localStorage.setItem(ANK, d.name);
-      if (d.sub) localStorage.setItem(ASK, d.sub);
-      if (d.logo && d.logo.length > 30) localStorage.setItem(ALK, d.logo);
-      if (d.heroImage && d.heroImage.length > 30) localStorage.setItem('cms_login_hero_image', d.heroImage);
-      applyAdmName();
-      applyHeroShowcaseImage();
+  async function loadBrandingFS() {
+    try {
+      const snap = await db.collection('settings').doc('branding').get();
+      if (snap.exists) {
+        const d = snap.data();
+        if (d.name) localStorage.setItem(ANK, d.name);
+        if (d.sub) localStorage.setItem(ASK, d.sub);
+        if (d.logo && d.logo.length > 30) localStorage.setItem(ALK, d.logo);
+        if (d.heroImage && d.heroImage.length > 30) localStorage.setItem('cms_login_hero_image', d.heroImage);
+        applyAdmName();
+        applyHeroShowcaseImage();
+      }
+    } catch (e) { console.warn('Could not load branding from Firestore:', e); }
+  }
+
+  applyAdmName();
+  applyHeroShowcaseImage();
+  loadBrandingFS();
+  loadAdminCreds();
+  resetLoginForm();
+
+  window.addEventListener('beforeunload', (e) => {
+    if (curMatch && (curMatch.status === 'live' || curMatch.matchClock?.status === 'running')) {
+      e.preventDefault();
+      e.returnValue = 'A match is currently live and the clock is running.';
+      return e.returnValue;
     }
-  } catch (e) { console.warn('Could not load branding from Firestore:', e); }
-}
+  });
 
-applyAdmName();
-applyHeroShowcaseImage();
-loadBrandingFS();
-loadAdminCreds();
-resetLoginForm();
-
-window.addEventListener('beforeunload', (e) => {
-  if (curMatch && (curMatch.status === 'live' || curMatch.matchClock?.status === 'running')) {
-    e.preventDefault();
-    e.returnValue = 'A match is currently live and the clock is running.';
-    return e.returnValue;
-  }
-});
-
-const up = new URLSearchParams(location.search);
-if (up.get('createMatch') || up.get('newMatch')) {
-  initCreateMatchView(up.get('createMatch') || up.get('newMatch'));
-} else if (up.get('live') || up.get('score') || up.get('liveMatch')) {
-  initLiveMatchView(up.get('live') || up.get('score') || up.get('liveMatch'));
-} else if (up.get('match')) {
-  const isAuth = (sessionStorage.getItem('fhq_session_active') === '1' || localStorage.getItem('fhq_session_active') === '1' || !!localStorage.getItem('cms_auth_cached_user'));
-  if (isAuth) {
-    sessionStorage.setItem('fhq_session_active', '1');
-    initMatchView(up.get('match'));
+  const up = new URLSearchParams(location.search);
+  if (up.get('createMatch') || up.get('newMatch')) {
+    initCreateMatchView(up.get('createMatch') || up.get('newMatch'));
+  } else if (up.get('live') || up.get('score') || up.get('liveMatch')) {
+    initLiveMatchView(up.get('live') || up.get('score') || up.get('liveMatch'));
+  } else if (up.get('match')) {
+    const isAuth = (sessionStorage.getItem('fhq_session_active') === '1' || localStorage.getItem('fhq_session_active') === '1' || !!localStorage.getItem('cms_auth_cached_user'));
+    if (isAuth) {
+      sessionStorage.setItem('fhq_session_active', '1');
+      initMatchView(up.get('match'));
+    } else {
+      initLiveMatchView(up.get('match'));
+    }
+  } else if (up.get('team')) {
+    if (up.get('type') === 'staff') initPubStaff(up.get('team'));
+    else initPub(up.get('team'));
+  } else if (up.get('view')) {
+    initPublicView(up.get('view'));
+  } else if (up.get('discuss') || up.get('discussion')) {
+    initPublicDiscussion(up.get('discuss') || up.get('discussion'));
   } else {
-    initLiveMatchView(up.get('match'));
+    if (sessionStorage.getItem('fhq_session_active') === '1' || localStorage.getItem('fhq_session_active') === '1' || !!localStorage.getItem('cms_auth_cached_user')) {
+      loadAdmin();
+    } else {
+      ss('s-login');
+    }
   }
-} else if (up.get('team')) {
-  if (up.get('type') === 'staff') initPubStaff(up.get('team'));
-  else initPub(up.get('team'));
-} else if (up.get('view')) {
-  initPublicView(up.get('view'));
-} else if (up.get('discuss') || up.get('discussion')) {
-  initPublicDiscussion(up.get('discuss') || up.get('discussion'));
-} else {
-  if (sessionStorage.getItem('fhq_session_active') === '1' || localStorage.getItem('fhq_session_active') === '1' || !!localStorage.getItem('cms_auth_cached_user')) {
-    loadAdmin();
-  } else {
-    ss('s-login');
-  }
-}
