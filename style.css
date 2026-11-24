@@ -9166,11 +9166,11 @@ textarea {
 }
 
 .admin-player-disp-pill {
-  font-size: 11.5px;
+  font-size: 13.5px;
   font-weight: 700;
   color: #1a5c1a;
   background: #eef5ee;
-  padding: 3px 8px;
+  padding: 4px 10px;
   border-radius: 6px;
   border: 1px solid rgba(26, 92, 26, 0.2);
   display: inline-block;
@@ -9525,12 +9525,13 @@ textarea {
 }
 
 .admin-pos-badge {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
-  padding: 2.5px 8px;
+  padding: 3px 10px;
   border-radius: 6px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+  display: inline-block;
 }
 
 .admin-pos-gk {

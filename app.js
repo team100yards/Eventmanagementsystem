@@ -186,6 +186,38 @@ function posCode(position) {
   if (low.includes('mid')) return 'CM';
   return key;
 }
+window.posCode = posCode;
+
+function posFullName(position) {
+  const code = posCode(position) || String(position || '').trim().toUpperCase();
+  const map = {
+    'GK': 'Goal Keeper',
+    'CB': 'Centre Back',
+    'CD': 'Centre Back',
+    'RB': 'Right Back',
+    'LB': 'Left Back',
+    'RWB': 'Right Wing Back',
+    'LWB': 'Left Wing Back',
+    'DEF': 'Defender',
+    'DF': 'Defender',
+    'CDM': 'Defensive Midfielder',
+    'CM': 'Central Midfielder',
+    'CAM': 'Attacking Midfielder',
+    'RM': 'Right Midfielder',
+    'LM': 'Left Midfielder',
+    'MF': 'Midfielder',
+    'MID': 'Midfielder',
+    'RW': 'Right Winger',
+    'LW': 'Left Winger',
+    'ST': 'Striker',
+    'CF': 'Centre Forward',
+    'FW': 'Forward',
+    'FWD': 'Forward',
+    'SUB': 'Substitute'
+  };
+  return map[code] || POS_FULL[code] || position || '—';
+}
+window.posFullName = posFullName;
 
 function compressImage(file, maxDimension, quality, callback) {
   if (!file) return;
@@ -1012,7 +1044,7 @@ function openLiveMatchDeskDirect() {
 window.openLiveMatchDeskDirect = openLiveMatchDeskDirect;
 
 function openFormationBuilderDirect() {
-  window.open('formation-builder.html?v=62.0', '_blank');
+  window.open('formation-builder.html?v=63.0', '_blank');
 }
 window.openFormationBuilderDirect = openFormationBuilderDirect;
 
@@ -1350,7 +1382,7 @@ function showAdminTab(tab, keepTeam = false) {
     populateAdminFormationTeamSelect();
     const f = $('adm-formation-frame');
     if (f && (!f.src || f.src === 'about:blank' || !f.src.includes('formation-builder.html'))) {
-      f.src = 'formation-builder.html?v=62.0';
+      f.src = 'formation-builder.html?v=63.0';
     } else {
       setTimeout(() => sendAdmFormationSync(), 150);
       setTimeout(() => sendAdmFormationSync(), 450);
@@ -1588,11 +1620,6 @@ function renderAdminPlayers() {
           <span style="font-size:12.5px;color:var(--mt);font-weight:600;">(${teamPlayers.length} Players)</span>
         </div>
       </div>
-      <div>
-        <button type="button" class="obtn" style="font-size:12px;padding:6px 14px;font-weight:700;color:#1a5c1a;background:rgba(26,92,26,0.08);border-color:rgba(26,92,26,0.3);display:inline-flex;align-items:center;gap:6px;" onclick="promptPw('${selectedTeam.id}')" title="Open Team Dashboard to edit players and manage squad">
-          <span>⚙️ Manage / Edit Roster in Dashboard →</span>
-        </button>
-      </div>
     </div>
   `;
 
@@ -1630,8 +1657,9 @@ function renderAdminPlayers() {
 
   const renderRows = list => list.map(p => {
     const jersey = p.jersey || p.playernum || '—';
-    const pos = posCode(p.position) || p.position || '—';
-    const posCat = getPlayerPosCategory(pos);
+    const rawPos = p.position || '—';
+    const posCat = getPlayerPosCategory(posCode(rawPos));
+    const fullPos = posFullName(rawPos);
     const dispName = getPlayerDisplayName(p);
     const photoImg = p.photo
       ? `<img src="${esc(p.photo)}" alt="" style="width:26px;height:26px;border-radius:50%;object-fit:cover;border:1px solid var(--bd);flex-shrink:0;">`
@@ -1649,7 +1677,7 @@ function renderAdminPlayers() {
           ${dispName ? `<span class="admin-player-disp-pill">${esc(dispName)}</span>` : '<span style="color:var(--mt);font-style:italic;">—</span>'}
         </td>
         <td style="text-align:center;vertical-align:middle;white-space:nowrap;">
-          <span class="admin-pos-badge admin-pos-${posCat}">${esc(pos)}</span>
+          <span class="admin-pos-badge admin-pos-${posCat}">${esc(fullPos)}</span>
         </td>
       </tr>
     `;
@@ -2885,7 +2913,7 @@ function showTab(n) {
   if (n === 'formation') {
     const frame = $('formation-builder-frame');
     if (frame && (!frame.src || frame.src === 'about:blank' || !frame.src.includes('formation-builder.html'))) {
-      frame.src = 'formation-builder.html?v=62.0';
+      frame.src = 'formation-builder.html?v=63.0';
     } else {
       setTimeout(() => sendFormationSync(), 150);
       setTimeout(() => sendFormationSync(), 450);
@@ -4887,7 +4915,7 @@ function openFormationBuilderFullscreen() {
   if (targetTeam) {
     buildFormationSyncPayload(targetTeam);
   }
-  window.open('formation-builder.html?v=62.0', '_blank');
+  window.open('formation-builder.html?v=63.0', '_blank');
 }
 window.openFormationBuilderFullscreen = openFormationBuilderFullscreen;
 
