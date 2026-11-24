@@ -88,7 +88,7 @@ let mevTeam = 'home', mevType = 'goal', matchReturnScreen = 's-admin';
 let homeTeamType = 'app', awayTeamType = 'app';
 let cmOpponentLogos = { home: null, away: null }, cmOpponentLogoBusy = { home: false, away: false }, cmOpponentRosterBusy = { home: false, away: false };
 let matchReportNotesSaveTimer = null, matchReportNotesSaveToken = 0, matchReportNotesWriteChain = Promise.resolve();
-let matchReportGenerationBusy = false, matchStatsImageData = null;
+let matchReportGenerationBusy = false, matchStatsImageData = null, matchStatsImages = [];
 let matchNoteRecognition = null, matchNoteDictationActive = false, matchNoteDictationStamp = '';
 let matchVoiceExtractionChain = Promise.resolve(), matchVoiceDictationSessionId = '', matchVoicePhraseSequence = 0;
 let matchVoiceDictationRestartTimer = null, matchVoiceSessionHasTranscript = false, matchVoicePhraseKeys = new Set(), matchVoiceStopWaiters = [];
@@ -1267,7 +1267,7 @@ function openLiveMatchDeskDirect() {
 window.openLiveMatchDeskDirect = openLiveMatchDeskDirect;
 
 function openFormationBuilderDirect() {
-  window.open('formation-builder.html?v=70.0', '_blank');
+  window.open('formation-builder.html?v=71.0', '_blank');
 }
 window.openFormationBuilderDirect = openFormationBuilderDirect;
 
@@ -1544,7 +1544,7 @@ function showAdminTab(tab, keepTeam = false) {
     populateAdminFormationTeamSelect();
     const f = $('adm-formation-frame');
     if (f && (!f.src || f.src === 'about:blank' || !f.src.includes('formation-builder.html'))) {
-      f.src = 'formation-builder.html?v=70.0';
+      f.src = 'formation-builder.html?v=71.0';
     } else {
       setTimeout(() => sendAdmFormationSync(), 150);
       setTimeout(() => sendAdmFormationSync(), 450);
@@ -3075,7 +3075,7 @@ function showTab(n) {
   if (n === 'formation') {
     const frame = $('formation-builder-frame');
     if (frame && (!frame.src || frame.src === 'about:blank' || !frame.src.includes('formation-builder.html'))) {
-      frame.src = 'formation-builder.html?v=70.0';
+      frame.src = 'formation-builder.html?v=71.0';
     } else {
       setTimeout(() => sendFormationSync(), 150);
       setTimeout(() => sendFormationSync(), 450);
@@ -5366,19 +5366,31 @@ function buildFormationSyncPayload(targetTeam) {
 
   if (sq && Array.isArray(sq.playingXi) && sq.playingXi.length) {
     const sortedXi = sortPlayersByPitchPosition(sq.playingXi);
-    const starters = sortedXi.map(p => ({
-      id: p.id || ('xi_' + String(Math.random()).slice(2, 8)),
-      name: p.name || '',
-      number: p.jersey || p.playernum || '-',
-      position: toFBPositionCode(p.matchPosition || p.position)
-    }));
+    const starters = sortedXi.map(p => {
+      const fullP = (allPlayersCache && allPlayersCache.find(x => x.id === p.id)) || p;
+      const disp = String(p.displayName || fullP.displayName || p.shortName || fullP.shortName || getPlayerDisplayName(fullP) || getPlayerDisplayName(p) || p.name || '').trim();
+      return {
+        id: p.id || ('xi_' + String(Math.random()).slice(2, 8)),
+        name: p.name || '',
+        displayName: disp,
+        shortName: disp,
+        number: p.jersey || p.playernum || '-',
+        position: toFBPositionCode(p.matchPosition || p.position)
+      };
+    });
     const sortedBench = sortPlayersByPitchPosition(sq.bench || sq.subs || []);
-    const subs = sortedBench.map(p => ({
-      id: p.id || ('sub_' + String(Math.random()).slice(2, 8)),
-      name: p.name || '',
-      number: p.jersey || p.playernum || '-',
-      position: toFBPositionCode(p.position)
-    }));
+    const subs = sortedBench.map(p => {
+      const fullP = (allPlayersCache && allPlayersCache.find(x => x.id === p.id)) || p;
+      const disp = String(p.displayName || fullP.displayName || p.shortName || fullP.shortName || getPlayerDisplayName(fullP) || getPlayerDisplayName(p) || p.name || '').trim();
+      return {
+        id: p.id || ('sub_' + String(Math.random()).slice(2, 8)),
+        name: p.name || '',
+        displayName: disp,
+        shortName: disp,
+        number: p.jersey || p.playernum || '-',
+        position: toFBPositionCode(p.position)
+      };
+    });
     const management = (sq.management || sq.staff || target.staff || []).map(s => ({
       id: s.id || ('mg_' + String(Math.random()).slice(2, 8)),
       name: s.name || '',
@@ -5405,19 +5417,33 @@ function buildFormationSyncPayload(targetTeam) {
     }));
     const when = sq.updatedAt ? new Date(sq.updatedAt).toLocaleDateString() : '';
     const source = `Team: ${target.name || 'Unnamed'}${sq.name ? ' (' + sq.name + ')' : ''}${when ? ' (saved ' + when + ')' : ''}`;
-    const starters = (sq.slots || []).map(s => s && s.player ? {
-      id: s.player.id || ('st_' + String(Math.random()).slice(2, 8)),
-      name: s.player.name,
-      number: s.player.jersey || s.player.playernum || '-',
-      position: toFBPositionCode(s.player.matchPosition || s.player.position)
-    } : null);
+    const starters = (sq.slots || []).map(s => {
+      if (!s || !s.player) return null;
+      const p = s.player;
+      const fullP = (allPlayersCache && allPlayersCache.find(x => x.id === p.id)) || p;
+      const disp = String(p.displayName || fullP.displayName || p.shortName || fullP.shortName || getPlayerDisplayName(fullP) || getPlayerDisplayName(p) || p.name || '').trim();
+      return {
+        id: p.id || ('st_' + String(Math.random()).slice(2, 8)),
+        name: p.name,
+        displayName: disp,
+        shortName: disp,
+        number: p.jersey || p.playernum || '-',
+        position: toFBPositionCode(p.matchPosition || p.position)
+      };
+    });
     const sortedSubs = sortPlayersByPitchPosition(sq.subs || []);
-    const subs = sortedSubs.map(s => ({
-      id: s.id || ('sub_' + String(Math.random()).slice(2, 8)),
-      name: s.name,
-      number: s.jersey || s.playernum || '-',
-      position: toFBPositionCode(s.position)
-    }));
+    const subs = sortedSubs.map(s => {
+      const fullP = (allPlayersCache && allPlayersCache.find(x => x.id === s.id)) || s;
+      const disp = String(s.displayName || fullP.displayName || s.shortName || fullP.shortName || getPlayerDisplayName(fullP) || getPlayerDisplayName(s) || s.name || '').trim();
+      return {
+        id: s.id || ('sub_' + String(Math.random()).slice(2, 8)),
+        name: s.name,
+        displayName: disp,
+        shortName: disp,
+        number: s.jersey || s.playernum || '-',
+        position: toFBPositionCode(s.position)
+      };
+    });
     const formationKey = sq.formation || (vState && vState.formationKey) || '4-4-2';
     const formationDef = FORMATIONS[formationKey] || null;
     payload = {
@@ -5433,12 +5459,18 @@ function buildFormationSyncPayload(targetTeam) {
   } else {
     const teamPlayers = allPlayersCache.filter(p => p.teamId === target.id);
     const rosterList = sortPlayersByPitchPosition(teamPlayers.length ? teamPlayers : (target.players || []));
-    const rosterPlayers = rosterList.map(p => ({
-      id: p.id || ('p_' + String(Math.random()).slice(2, 8)),
-      name: p.name,
-      number: p.jersey || p.playernum || '-',
-      position: toFBPositionCode(p.position)
-    }));
+    const rosterPlayers = rosterList.map(p => {
+      const fullP = (allPlayersCache && allPlayersCache.find(x => x.id === p.id)) || p;
+      const disp = String(p.displayName || fullP.displayName || p.shortName || fullP.shortName || getPlayerDisplayName(fullP) || getPlayerDisplayName(p) || p.name || '').trim();
+      return {
+        id: p.id || ('p_' + String(Math.random()).slice(2, 8)),
+        name: p.name,
+        displayName: disp,
+        shortName: disp,
+        number: p.jersey || p.playernum || '-',
+        position: toFBPositionCode(p.position)
+      };
+    });
     const management = (target.staff || []).map(s => ({
       id: s.id || ('mg_' + String(Math.random()).slice(2, 8)),
       name: s.name,
@@ -5492,7 +5524,7 @@ function openFormationBuilderFullscreen() {
   if (targetTeam) {
     buildFormationSyncPayload(targetTeam);
   }
-  window.open('formation-builder.html?v=70.0', '_blank');
+  window.open('formation-builder.html?v=71.0', '_blank');
 }
 window.openFormationBuilderFullscreen = openFormationBuilderFullscreen;
 
@@ -5830,7 +5862,7 @@ function renderPitch() {
       const sideLabel = slotSideLabel(line.r, flat[i] ? flat[i].x : 50, line.lbl);
       const cls = `lu-item ${p ? 'filled' : 'empty-slot'} ${i === luActive ? 'active-slot' : ''}`;
       const av = p ? playerLineupAv(p) : '<div class="lu-av">+</div>';
-      const name = p ? esc(p.name) : esc(label);
+      const name = p ? esc(getPlayerDisplayName(p) || p.name) : esc(label);
       const meta = p ? `${esc(posCode(p.position) || '—')}${p.jersey ? ' · #' + esc(p.jersey) : ''} <span class="lu-slotside">· ${esc(sideLabel)}</span>` : `Tap to assign <span class="lu-slotside">· ${esc(sideLabel)}</span>`;
       const mpos = p ? (p.matchPosition || posCode(p.position) || '') : '';
       const posOptions = posList.map(po => `<option value="${esc(po)}" ${po === mpos ? 'selected' : ''}>${esc(po)}</option>`).join('');
@@ -5959,6 +5991,8 @@ function assignSlot(i, pid) {
   luSlots[i] = {
     id: p.id,
     name: p.name,
+    displayName: p.displayName || getPlayerDisplayName(p) || p.name,
+    shortName: p.shortName || p.displayName || getPlayerDisplayName(p) || p.name,
     position: p.position,
     jersey: p.jersey || '',
     photo: p.photo || null,
@@ -6029,7 +6063,7 @@ function renderBench() {
     const p = luSubs[i];
     const cls = `lu-item ${p ? 'filled' : 'empty-slot'} ${i === luBenchActive ? 'active-slot' : ''}`;
     const av = p ? playerLineupAv(p) : '<div class="lu-av">+</div>';
-    const name = p ? esc(p.name) : `Game Changer ${i + 1}`;
+    const name = p ? esc(getPlayerDisplayName(p) || p.name) : `Game Changer ${i + 1}`;
     const meta = p ? `${esc(posCode(p.position) || '—')}${p.jersey ? ' · #' + esc(p.jersey) : ''} <span class="lu-slotside">· Bench Slot ${i + 1}</span>` : `Tap to assign <span class="lu-slotside">· Bench Slot ${i + 1}</span>`;
     const actions = p ? `<div class="lu-slot-actions" onclick="event.stopPropagation();">
         <div class="lu-tag" onclick="openEditPlayerInSlot('bench',${i})" title="Edit details" style="background:#eef5ee;color:#1a5c1a;">✏️</div>
@@ -6078,6 +6112,8 @@ function assignBenchSlot(i, pid) {
   luSubs[targetIdx] = {
     id: p.id,
     name: p.name,
+    displayName: p.displayName || getPlayerDisplayName(p) || p.name,
+    shortName: p.shortName || p.displayName || getPlayerDisplayName(p) || p.name,
     position: p.position,
     jersey: p.jersey || '',
     photo: p.photo || null
@@ -7874,13 +7910,47 @@ function buildPubFormationSyncPayload() {
     const management = (sq.staff || []).map(s => ({ id: s.id, name: s.name, role: s.role || 'Other' }));
     const when = sq.updatedAt ? new Date(sq.updatedAt).toLocaleDateString() : '';
     const source = `Synced from Playing List${sq.name ? ' — ' + sq.name : ''}${when ? ' (saved ' + when + ')' : ''}`;
-    const starters = (sq.slots || []).map(s => s && s.player ? { id: s.player.id, name: s.player.name, number: s.player.jersey || '-', position: toFBPositionCode(s.player.matchPosition || s.player.position) } : null);
-    const subs = (sq.subs || []).map(s => ({ id: s.id, name: s.name, number: s.jersey || '-', position: toFBPositionCode(s.position) }));
+    const starters = (sq.slots || []).map(s => {
+      if (!s || !s.player) return null;
+      const p = s.player;
+      const fullP = (pvPlayers && pvPlayers.find(x => x.id === p.id)) || p;
+      const disp = String(p.displayName || fullP.displayName || p.shortName || fullP.shortName || getPlayerDisplayName(fullP) || getPlayerDisplayName(p) || p.name || '').trim();
+      return {
+        id: p.id,
+        name: p.name,
+        displayName: disp,
+        shortName: disp,
+        number: p.jersey || '-',
+        position: toFBPositionCode(p.matchPosition || p.position)
+      };
+    });
+    const subs = (sq.subs || []).map(s => {
+      const fullP = (pvPlayers && pvPlayers.find(x => x.id === s.id)) || s;
+      const disp = String(s.displayName || fullP.displayName || s.shortName || fullP.shortName || getPlayerDisplayName(fullP) || getPlayerDisplayName(s) || s.name || '').trim();
+      return {
+        id: s.id,
+        name: s.name,
+        displayName: disp,
+        shortName: disp,
+        number: s.jersey || '-',
+        position: toFBPositionCode(s.position)
+      };
+    });
     const formationKey = sq.formation || (vState && vState.formationKey) || '4-4-2';
     const formationDef = FORMATIONS[formationKey] || null;
     payload = { formation: formationKey, formationDef, starters, subs, management, source };
   } else {
-    const rosterPlayers = (pvPlayers || []).map(p => ({ id: p.id, name: p.name, number: p.jersey || '-', position: toFBPositionCode(p.position) }));
+    const rosterPlayers = (pvPlayers || []).map(p => {
+      const disp = String(p.displayName || p.shortName || getPlayerDisplayName(p) || p.name || '').trim();
+      return {
+        id: p.id,
+        name: p.name,
+        displayName: disp,
+        shortName: disp,
+        number: p.jersey || '-',
+        position: toFBPositionCode(p.position)
+      };
+    });
     const management = (pvTeam && pvTeam.staff || []).map(s => ({ id: s.id, name: s.name, role: s.role || 'Other' }));
     const formationKey = (vState && vState.formationKey) || '4-4-2';
     const formationDef = FORMATIONS[formationKey] || null;
@@ -10760,17 +10830,58 @@ function renderMatchReportMarkdown(markdown) {
   let html = '';
   let paragraph = [];
   let listType = '';
+  let tableRows = [];
+
   const flushParagraph = () => {
     if (paragraph.length) { html += `<p>${paragraph.map(inline).join('<br>')}</p>`; paragraph = []; }
   };
   const closeList = () => { if (listType) { html += `</${listType}>`; listType = ''; } };
+  const closeTable = () => {
+    if (tableRows.length) {
+      let tHtml = '<table>';
+      const isSep = row => row.every(cell => /^[-: ]+$/.test(cell.trim()));
+      let headerDone = false;
+      tableRows.forEach((row, rIdx) => {
+        if (isSep(row)) {
+          headerDone = true;
+          return;
+        }
+        if (rIdx === 0 && !headerDone) {
+          tHtml += '<thead><tr>' + row.map(c => `<th>${inline(c.trim())}</th>`).join('') + '</tr></thead><tbody>';
+        } else {
+          tHtml += '<tr>' + row.map(c => `<td>${inline(c.trim())}</td>`).join('') + '</tr>';
+        }
+      });
+      tHtml += '</tbody></table>';
+      html += tHtml;
+      tableRows = [];
+    }
+  };
+
   lines.forEach(line => {
+    const trimmed = line.trim();
     const heading = line.match(/^\s*(#{1,4})\s+(.+)$/);
     const unordered = line.match(/^\s*[-*+]\s+(.+)$/);
     const ordered = line.match(/^\s*\d+[.)]\s+(.+)$/);
     const quote = line.match(/^\s*>\s?(.*)$/);
-    if (!line.trim()) {
+    const isHr = /^(\*{3,}|-{3,}|_{3,})$/.test(trimmed);
+    const isTable = trimmed.startsWith('|') && trimmed.endsWith('|') && trimmed.length > 2;
+
+    if (isTable) {
+      flushParagraph(); closeList();
+      const cells = trimmed.slice(1, -1).split('|');
+      tableRows.push(cells);
+      return;
+    }
+    closeTable();
+
+    if (!trimmed) {
       flushParagraph(); closeList(); return;
+    }
+    if (isHr) {
+      flushParagraph(); closeList();
+      html += '<hr style="border:none;border-top:1px solid var(--bd);margin:16px 0;">';
+      return;
     }
     if (heading) {
       flushParagraph(); closeList();
@@ -10790,7 +10901,7 @@ function renderMatchReportMarkdown(markdown) {
     }
     closeList(); paragraph.push(line);
   });
-  flushParagraph(); closeList();
+  flushParagraph(); closeList(); closeTable();
   return html;
 }
 
@@ -11114,7 +11225,7 @@ function buildMatchReportEventLog(match) {
   return events.length ? events.map(event => getMatchReportEventLine(event, match)).join('\n') : 'No match events were logged.';
 }
 
-function buildMatchReportPrompt(match, coachNotes, hasStatsImage = false) {
+function buildMatchReportPrompt(match, coachNotes, attachedPhotoCount = 0) {
   const home = match.home || {};
   const away = match.away || {};
   const events = [...(match.events || [])].sort((a, b) => {
@@ -11140,12 +11251,16 @@ function buildMatchReportPrompt(match, coachNotes, hasStatsImage = false) {
   const eventText = events.length
     ? `${match.status === 'final' ? 'Full-time logged events:' : 'Logged events so far:'}\n${events.map(event => getMatchReportEventLine(event, match)).join('\n')}`
     : 'No match events have been logged.';
-  const statsImageInstruction = hasStatsImage
-    ? `\n\nATTACHED MATCH STATISTICS / SCOREBOARD IMAGE:\nAn image containing match statistics (possession %, shots, shots on target, saves, fouls, corners, passing accuracy, or visual charts) is attached. Carefully examine and extract every single visible number, percentage, and metric from the attached image. Synthesize these concrete statistics into the statistical and tactical analysis sections of your report.`
+  const statsImageInstruction = attachedPhotoCount > 0
+    ? `\n\nATTACHED MATCH PHOTOS & STATISTICS SHEETS (${attachedPhotoCount} image${attachedPhotoCount > 1 ? 's' : ''} attached):
+There ${attachedPhotoCount > 1 ? 'are ' + attachedPhotoCount + ' images' : 'is 1 image'} attached containing match statistics, scoreboard captures, official team sheets, possession/shot charts, or coaching whiteboard notes.
+Carefully examine and cross-examine ALL attached images. Extract every single visible number, stat, percentage, metric (possession %, total shots, shots on target, expected goals xG if visible, fouls, yellow/red cards, corner kicks, saves, offsides, passing accuracy).
+Synthesize these concrete metrics into the Tactical Summary & Statistical Synthesis section as a formatted markdown table comparing ${home.name || 'Home'} vs ${away.name || 'Away'}.`
     : '';
+
   return `You are an elite, senior football journalist and tactical analyst for a premier sports publication (such as The Athletic or BBC Sport).
 
-Write an EXHAUSTIVE, DEEP, PUBLICATION-READY MATCH REPORT based strictly on the factual match data below${hasStatsImage ? ' and all extracted metrics from the attached statistics image' : ''}.
+Write an EXHAUSTIVE, DEEP, PUBLICATION-READY MATCH REPORT based strictly on the factual match data below${attachedPhotoCount > 0 ? ` and all extracted metrics from the ${attachedPhotoCount} attached statistics/scoreboard image(s)` : ''}.
 
 DO NOT write a brief summary. Write a full-length, thorough, multi-section journalistic match report with deep tactical insights, chronological drama, player spotlights, and statistical breakdowns. For a live match, clearly state the current score and clock; for a completed match, write in past tense.
 
@@ -11178,7 +11293,13 @@ Evaluate the substitutions made by both managers: who came on, for whom, at what
 Highlight the best players on the pitch: name a Player of the Match, decisive goalscorers or creators, midfield engines, and standout defenders, referencing specific plays.
 
 ## Tactical Summary & Statistical Synthesis
-${hasStatsImage ? 'Extract and present ALL visible metrics from the attached image (possession, total shots, shots on target, fouls, corners, saves). ' : ''}Synthesize the numbers into a definitive verdict on why the match ended ${homeScore} - ${awayScore}.
+Synthesize the key match metrics into a clean Markdown table comparing both sides:
+| Metric | ${home.name || 'Home'} | ${away.name || 'Away'} |
+|---|---|---|
+| Score | ${homeScore} | ${awayScore} |
+${attachedPhotoCount > 0 ? `(Include visible metrics extracted from the images: Possession %, Total Shots, Shots on Target, Corner Kicks, Fouls, Saves, Offsides)` : `(Include estimated metrics based on match events)`}
+
+Follow the table with a sharp tactical synthesis explaining why the match ended ${homeScore} - ${awayScore}.
 
 ## Manager & Coach Field Notes
 Incorporate field observations and coaching notes: "${String(coachNotes || '').trim() || 'No specific coach notes recorded.'}". Relate these observations directly to what unfolded on the pitch.
@@ -11210,56 +11331,106 @@ function scrollToMatchReport() {
 }
 
 async function handleMatchStatsImagePicked(input) {
-  const file = input?.files?.[0];
-  if (!file) return;
+  const files = Array.from(input?.files || []);
+  if (!files.length) return;
   const btn = $('ms-stats-img-btn');
-  const removeBtn = $('ms-stats-img-remove-btn');
-  const previewWrap = $('ms-stats-image-preview-wrap');
-  const previewImg = $('ms-stats-image-preview');
-  const fileNameEl = $('ms-stats-image-name');
   const statusEl = $('ms-report-status');
 
   if (btn) btn.disabled = true;
-  if (statusEl) statusEl.textContent = 'Processing and compressing stats image…';
+  if (statusEl) statusEl.textContent = `Processing and compressing ${files.length} photo${files.length > 1 ? 's' : ''}…`;
 
   try {
-    const compressed = await compressRosterPhotoForGemini(file);
-    matchStatsImageData = {
-      mimeType: compressed.mimeType || 'image/jpeg',
-      data: compressed.data,
-      name: file.name
-    };
-    if (previewImg) previewImg.src = `data:${matchStatsImageData.mimeType};base64,${matchStatsImageData.data}`;
-    if (fileNameEl) fileNameEl.textContent = file.name || 'stats-image.jpg';
-    if (previewWrap) previewWrap.style.display = 'flex';
-    if (removeBtn) removeBtn.style.display = 'inline-flex';
-    if (btn) btn.innerHTML = '<span>📷</span><span>Change Image</span>';
-    if (statusEl) statusEl.textContent = 'Stats image attached. Click "Generate Report" to include it.';
+    for (const file of files) {
+      const compressed = await compressRosterPhotoForGemini(file);
+      const imgObj = {
+        id: 'img_' + Date.now().toString(36) + Math.random().toString(36).substr(2, 4),
+        mimeType: compressed.mimeType || 'image/jpeg',
+        data: compressed.data,
+        name: file.name || 'match-photo.jpg'
+      };
+      matchStatsImages.push(imgObj);
+    }
+    matchStatsImageData = matchStatsImages[0] || null;
+    renderMatchStatsGallery();
+    if (statusEl) statusEl.textContent = `${matchStatsImages.length} photo${matchStatsImages.length > 1 ? 's' : ''} attached. Click "Generate Report" to analyze.`;
   } catch (error) {
-    console.error('Failed to process stats image:', error);
-    alert(error.message || 'Could not process the selected image. Please try another image.');
-    clearMatchStatsImage();
+    console.error('Failed to process image:', error);
+    alert(error.message || 'Could not process one or more images. Please try another image.');
   } finally {
     if (btn) btn.disabled = false;
+    if (input) input.value = '';
   }
 }
 
-function clearMatchStatsImage() {
+function removeMatchStatsImage(idx) {
+  if (idx >= 0 && idx < matchStatsImages.length) {
+    matchStatsImages.splice(idx, 1);
+    matchStatsImageData = matchStatsImages[0] || null;
+    renderMatchStatsGallery();
+    const statusEl = $('ms-report-status');
+    if (statusEl) {
+      statusEl.textContent = matchStatsImages.length
+        ? `${matchStatsImages.length} photo${matchStatsImages.length > 1 ? 's' : ''} attached.`
+        : 'Ready to generate report.';
+    }
+  }
+}
+
+function clearMatchStatsImages() {
+  matchStatsImages = [];
   matchStatsImageData = null;
   const inp = $('ms-stats-image-inp');
   if (inp) inp.value = '';
-  const previewWrap = $('ms-stats-image-preview-wrap');
-  if (previewWrap) previewWrap.style.display = 'none';
-  const previewImg = $('ms-stats-image-preview');
-  if (previewImg) previewImg.src = '';
-  const removeBtn = $('ms-stats-img-remove-btn');
-  if (removeBtn) removeBtn.style.display = 'none';
-  const btn = $('ms-stats-img-btn');
-  if (btn) btn.innerHTML = '<span>📷</span><span>Upload Stats Image</span>';
+  renderMatchStatsGallery();
+  const statusEl = $('ms-report-status');
+  if (statusEl) statusEl.textContent = 'Photos removed. Ready to generate report.';
+}
+
+function clearMatchStatsImage() {
+  clearMatchStatsImages();
+}
+
+function renderMatchStatsGallery() {
+  const wrap = $('ms-stats-gallery-wrap');
+  const grid = $('ms-stats-gallery-grid');
+  const statusLine = $('ms-stats-gallery-status');
+  const btnText = $('ms-stats-img-btn-text');
+  const clearBtn = $('ms-stats-img-clear-btn');
+
+  if (!wrap || !grid) return;
+
+  if (!matchStatsImages || matchStatsImages.length === 0) {
+    wrap.style.display = 'none';
+    grid.innerHTML = '';
+    if (clearBtn) clearBtn.style.display = 'none';
+    if (btnText) btnText.textContent = 'Upload Photos';
+    return;
+  }
+
+  wrap.style.display = 'block';
+  if (clearBtn) clearBtn.style.display = 'inline-flex';
+  if (btnText) btnText.textContent = 'Add More Photos';
+
+  grid.innerHTML = matchStatsImages.map((img, idx) => `
+    <div style="position:relative;background:var(--card,#fff);border:1px solid var(--bd);border-radius:10px;padding:6px;display:flex;flex-direction:column;gap:4px;box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+      <div style="width:100%;height:84px;border-radius:6px;overflow:hidden;background:rgba(0,0,0,0.04);position:relative;">
+        <img src="data:${esc(img.mimeType)};base64,${img.data}" alt="${esc(img.name)}" style="width:100%;height:100%;object-fit:cover;display:block;">
+        <button type="button" onclick="removeMatchStatsImage(${idx})" title="Remove photo" style="position:absolute;top:4px;right:4px;width:22px;height:22px;border-radius:50%;background:rgba(0,0,0,0.65);color:#fff;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;line-height:1;transition:background 0.15s;" onmouseover="this.style.background='#dc2626'" onmouseout="this.style.background='rgba(0,0,0,0.65)'">✕</button>
+      </div>
+      <div style="font-size:10.5px;font-weight:600;color:var(--tx);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${esc(img.name)}">${esc(img.name)}</div>
+    </div>
+  `).join('');
+
+  if (statusLine) {
+    statusLine.innerHTML = `<span>✓</span><span>${matchStatsImages.length} photo${matchStatsImages.length > 1 ? 's' : ''} attached — AI will extract and synthesize data from all attached images</span>`;
+  }
 }
 
 window.handleMatchStatsImagePicked = handleMatchStatsImagePicked;
+window.removeMatchStatsImage = removeMatchStatsImage;
+window.clearMatchStatsImages = clearMatchStatsImages;
 window.clearMatchStatsImage = clearMatchStatsImage;
+window.renderMatchStatsGallery = renderMatchStatsGallery;
 
 async function generateMatchReport() {
   if (!curMatch || matchReportGenerationBusy) return;
@@ -11284,28 +11455,35 @@ async function generateMatchReport() {
     const latestMatch = curMatch?.id === matchId ? curMatch : (matches.find(match => match.id === matchId) || curMatch);
     const matchSnapshot = { ...latestMatch, home: { ...(latestMatch.home || {}) }, away: { ...(latestMatch.away || {}) }, events: [...(latestMatch.events || [])] };
     const notes = String($('ms-report-notes')?.value || '');
-    const hasStatsImage = !!(matchStatsImageData && matchStatsImageData.data);
-    const prompt = buildMatchReportPrompt(matchSnapshot, notes, hasStatsImage);
+    const activePhotos = Array.isArray(matchStatsImages) ? matchStatsImages.filter(img => img && img.data) : [];
+    const hasStatsImages = activePhotos.length > 0;
+    const prompt = buildMatchReportPrompt(matchSnapshot, notes, activePhotos.length);
     const parts = [{ text: prompt }];
-    if (hasStatsImage) {
+
+    activePhotos.forEach(img => {
       parts.push({
         inlineData: {
-          mimeType: matchStatsImageData.mimeType || 'image/jpeg',
-          data: matchStatsImageData.data
+          mimeType: img.mimeType || 'image/jpeg',
+          data: img.data
         }
       });
-    }
-    if (status) status.textContent = hasStatsImage ? 'Analyzing stats image and generating report…' : 'Generating report…';
+    });
+
+    if (status) status.textContent = hasStatsImages
+      ? `Analyzing ${activePhotos.length} attached photo${activePhotos.length > 1 ? 's' : ''} and generating report…`
+      : 'Generating report…';
+
     const summary = await callGeminiGenerateContentStream([{ parts }], {
-      maxOutputTokens: 5000
+      maxOutputTokens: 6000
     }, partialText => {
       if (curMatch?.id !== matchId) return;
       const outputWrap = $('ms-report-output-wrap');
       const output = $('ms-report-output');
       if (outputWrap) outputWrap.style.display = 'block';
-      if (output) output.textContent = partialText;
+      if (output) output.innerHTML = renderMatchReportMarkdown(partialText);
       if (status) status.textContent = 'Writing the report…';
     });
+
     const report = `${summary.trim()}\n\n## Complete Match Event Log\n${buildMatchReportEventLog(matchSnapshot)}`;
     const generatedAt = new Date().toISOString();
     const updates = {
@@ -11334,6 +11512,271 @@ async function generateMatchReport() {
     if (reportErrorMessage && status) status.textContent = reportErrorMessage;
   }
 }
+
+function toggleEditMatchReport() {
+  const editWrap = $('ms-report-edit-wrap');
+  const outputEl = $('ms-report-output');
+  const editArea = $('ms-report-edit-textarea');
+  const editBtn = $('ms-report-edit-btn');
+  if (!editWrap || !editArea) return;
+
+  const isEditing = editWrap.style.display !== 'none';
+  if (isEditing) {
+    cancelEditMatchReport();
+  } else {
+    editArea.value = curMatch?.matchReport || '';
+    editWrap.style.display = 'block';
+    if (outputEl) outputEl.style.display = 'none';
+    if (editBtn) editBtn.innerHTML = '👁️ Preview';
+  }
+}
+
+function cancelEditMatchReport() {
+  const editWrap = $('ms-report-edit-wrap');
+  const outputEl = $('ms-report-output');
+  const editBtn = $('ms-report-edit-btn');
+  if (editWrap) editWrap.style.display = 'none';
+  if (outputEl) outputEl.style.display = 'block';
+  if (editBtn) editBtn.innerHTML = '✏️ Edit';
+}
+
+async function saveFinalizedMatchReport() {
+  if (!curMatch) return;
+  const editArea = $('ms-report-edit-textarea');
+  if (!editArea) return;
+  const newReport = editArea.value.trim();
+  const matchId = curMatch.id;
+  const updatedAt = new Date().toISOString();
+
+  try {
+    await updateDoc(doc(db, 'matches', matchId), {
+      matchReport: newReport,
+      matchReportUpdatedAt: updatedAt
+    });
+    curMatch.matchReport = newReport;
+    curMatch.matchReportUpdatedAt = updatedAt;
+    cancelEditMatchReport();
+    renderMatchReportPanel();
+    if ($('ms-report-status')) $('ms-report-status').textContent = 'Finalized report saved successfully!';
+  } catch (e) {
+    alert('Could not save finalized report: ' + (e.message || e));
+  }
+}
+
+function downloadMatchReportPDF() {
+  if (!curMatch) return;
+  const reportHtml = $('ms-report-output')?.innerHTML || '';
+  if (!reportHtml) {
+    alert('Please generate a match report first before downloading PDF.');
+    return;
+  }
+  const home = curMatch.home || {};
+  const away = curMatch.away || {};
+  const hScore = home.score != null ? home.score : 0;
+  const aScore = away.score != null ? away.score : 0;
+  const tourney = tournaments.find(t => t.id === curMatch.tournamentId);
+  const matchTitle = `${home.name || 'Home'} ${hScore} - ${aScore} ${away.name || 'Away'}`;
+
+  const printWindow = window.open('', '_blank');
+  if (!printWindow) {
+    window.print();
+    return;
+  }
+
+  const printContent = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>${esc(matchTitle)} — Official Match Report</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    @page { size: A4; margin: 18mm 16mm 18mm 16mm; }
+    * { box-sizing: border-box; }
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      color: #111827;
+      background: #ffffff;
+      line-height: 1.6;
+      font-size: 11pt;
+      margin: 0;
+      padding: 24px;
+    }
+    .pdf-header {
+      border-bottom: 3px solid #1a5c1a;
+      padding-bottom: 14px;
+      margin-bottom: 20px;
+    }
+    .pdf-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 9pt;
+      font-weight: 700;
+      color: #1a5c1a;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+    }
+    .pdf-scorebox {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin: 12px 0 6px;
+      padding: 10px 14px;
+      background: #f4f8f4;
+      border-radius: 8px;
+      border: 1px solid #d0e2d0;
+    }
+    .pdf-team {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 26pt;
+      letter-spacing: 0.5px;
+      color: #111827;
+    }
+    .pdf-score {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 32pt;
+      letter-spacing: 2px;
+      color: #1a5c1a;
+      padding: 0 16px;
+    }
+    .pdf-report-body h1 {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 22pt;
+      letter-spacing: 0.5px;
+      color: #1a5c1a;
+      margin: 18pt 0 6pt;
+      line-height: 1.15;
+    }
+    .pdf-report-body h2 {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 16pt;
+      letter-spacing: 0.5px;
+      color: #1a5c1a;
+      border-bottom: 1px solid #e5e7eb;
+      padding-bottom: 4px;
+      margin: 16pt 0 6pt;
+    }
+    .pdf-report-body h3, .pdf-report-body h4 {
+      font-size: 12pt;
+      font-weight: 700;
+      color: #1a5c1a;
+      margin: 12pt 0 4pt;
+    }
+    .pdf-report-body p { margin: 6pt 0; text-align: justify; }
+    .pdf-report-body ul, .pdf-report-body ol { margin: 6pt 0 10pt; padding-left: 20pt; }
+    .pdf-report-body li { margin: 3pt 0; }
+    .pdf-report-body blockquote {
+      border-left: 3px solid #1a5c1a;
+      margin: 8pt 0;
+      padding: 4pt 12pt;
+      background: #f9fafb;
+      font-style: italic;
+      color: #4b5563;
+    }
+    .pdf-report-body table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 10pt 0 14pt;
+      font-size: 9.5pt;
+    }
+    .pdf-report-body th, .pdf-report-body td {
+      border: 1px solid #d1d5db;
+      padding: 6pt 8pt;
+      text-align: left;
+    }
+    .pdf-report-body th { background: #f3f4f6; font-weight: 700; }
+    .pdf-footer {
+      margin-top: 30pt;
+      border-top: 1px solid #e5e7eb;
+      padding-top: 8pt;
+      font-size: 8pt;
+      color: #9ca3af;
+      display: flex;
+      justify-content: space-between;
+    }
+  </style>
+</head>
+<body>
+  <div class="pdf-header">
+    <div class="pdf-meta">
+      <span>${esc(tourney?.name || 'Football Event Management')}</span>
+      <span>${esc(formatMatchDateDisplay(curMatch))}</span>
+    </div>
+    <div class="pdf-scorebox">
+      <div class="pdf-team">${esc(home.name || 'Home')}</div>
+      <div class="pdf-score">${esc(hScore)} - ${esc(aScore)}</div>
+      <div class="pdf-team" style="text-align:right;">${esc(away.name || 'Away')}</div>
+    </div>
+  </div>
+  <div class="pdf-report-body">
+    ${reportHtml}
+  </div>
+  <div class="pdf-footer">
+    <span>Football Event Management System · Official Match Report</span>
+    <span>Generated ${new Date().toLocaleDateString()}</span>
+  </div>
+  <script>
+    window.onload = function() {
+      setTimeout(function() { window.print(); }, 350);
+    };
+  <\/script>
+</body>
+</html>`;
+
+  printWindow.document.open();
+  printWindow.document.write(printContent);
+  printWindow.document.close();
+}
+
+function shareMatchReportWhatsApp() {
+  if (!curMatch) return;
+  const home = curMatch.home || {};
+  const away = curMatch.away || {};
+  const hScore = home.score != null ? home.score : 0;
+  const aScore = away.score != null ? away.score : 0;
+  const tourney = tournaments.find(t => t.id === curMatch.tournamentId);
+  const reportText = String(curMatch.matchReport || '').trim();
+
+  // Extract headline from report if available
+  const headlineMatch = reportText.match(/^#\s+(.+)$/m);
+  const headline = headlineMatch ? headlineMatch[1].trim() : `${home.name || 'Home'} vs ${away.name || 'Away'}`;
+
+  // Extract key summary paragraphs
+  let summary = '';
+  const paragraphs = reportText.split('\n\n').filter(p => !p.startsWith('#') && p.trim().length > 20);
+  if (paragraphs.length) {
+    summary = paragraphs[0].replace(/\*\*/g, '').replace(/\*/g, '').trim();
+    if (summary.length > 280) summary = summary.substring(0, 277) + '...';
+  }
+
+  // Key events (goals, red cards)
+  const keyEvents = (curMatch.events || [])
+    .filter(e => e.type === 'goal' || e.type === 'own_goal' || e.type === 'red')
+    .slice(0, 6)
+    .map(e => {
+      const min = e.minute != null ? `${e.minute}'` : '';
+      const sideName = e.team === 'away' ? (away.name || 'Away') : (home.name || 'Home');
+      const icon = e.type === 'red' ? '🟥' : '⚽';
+      return `${icon} ${min} ${e.playerName || 'Goal'} (${sideName})`;
+    }).join('\n');
+
+  let text = `⚽ *MATCH REPORT: ${home.name || 'Home'} ${hScore} - ${aScore} ${away.name || 'Away'}*\n`;
+  if (tourney?.name) text += `🏆 _${tourney.name}_\n`;
+  text += `\n📌 *${headline}*\n`;
+  if (summary) text += `\n${summary}\n`;
+  if (keyEvents) text += `\n*Key Highlights:*\n${keyEvents}\n`;
+  text += `\n_Generated via Football Event Management System_`;
+
+  const url = `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
+  window.open(url, '_blank');
+}
+
+window.toggleEditMatchReport = toggleEditMatchReport;
+window.cancelEditMatchReport = cancelEditMatchReport;
+window.saveFinalizedMatchReport = saveFinalizedMatchReport;
+window.downloadMatchReportPDF = downloadMatchReportPDF;
+window.shareMatchReportWhatsApp = shareMatchReportWhatsApp;
 
 async function copyGeneratedMatchReport() {
   const text = String(curMatch?.matchReport || '');
