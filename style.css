@@ -2175,6 +2175,11 @@ textarea {
 }
 
 /* PIN */
+#m-pin,
+#m-admin-pin {
+  z-index: 1000005 !important;
+}
+
 .pin-dots {
   display: flex;
   justify-content: center;

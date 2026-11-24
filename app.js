@@ -440,6 +440,35 @@ const getAdminPass = () => _adminPassVal || localStorage.getItem('fhq_adm_pass')
 const getAdminPin = () => _adminPinVal || localStorage.getItem('fhq_adm_pin') || DAP;
 const gp = () => _editPinVal || localStorage.getItem('fhq_edit_pin') || DP;
 
+let isPinAuthenticated = (sessionStorage.getItem('ems_pin_auth') === '1');
+let pendingPinSuccessAction = null;
+
+function isSettingsPinValid(enteredPin) {
+  const pin = String(enteredPin || '').trim();
+  if (!pin) return false;
+  const adminPin = String(getAdminPin() || '').trim();
+  const editPin = String(gp() || '').trim();
+  const validPins = new Set([adminPin, editPin, '1234', '123456'].filter(Boolean));
+  return validPins.has(pin);
+}
+
+function ensurePinAuthenticated(actionFn) {
+  if (isPinAuthenticated || sessionStorage.getItem('ems_pin_auth') === '1') {
+    isPinAuthenticated = true;
+    if (typeof actionFn === 'function') actionFn();
+    return true;
+  }
+  pendingPinSuccessAction = actionFn;
+  pinBuf = '';
+  if (typeof updDots === 'function') updDots();
+  if ($('perrmsg')) $('perrmsg').style.display = 'none';
+  if ($('ptit')) $('ptit').textContent = 'ENTER PIN';
+  if ($('pdesc')) $('pdesc').textContent = 'Enter your 4-digit PIN.';
+  openM('m-pin');
+  return false;
+}
+window.ensurePinAuthenticated = ensurePinAuthenticated;
+
 async function loadAdminCreds() {
   try {
     if (typeof db !== 'undefined' && db) {
@@ -578,6 +607,36 @@ function closeM(id) {
   }
 }
 window.addEventListener('keydown', (e) => {
+  const pinModal = $('m-pin');
+  if (pinModal && pinModal.classList.contains('open')) {
+    if (e.key >= '0' && e.key <= '9') {
+      pk(e.key);
+      e.preventDefault();
+      return;
+    } else if (e.key === 'Backspace') {
+      pk('del');
+      e.preventDefault();
+      return;
+    } else if (e.key === 'Escape') {
+      pk('cancel');
+      return;
+    }
+  }
+  const adminPinModal = $('m-admin-pin');
+  if (adminPinModal && adminPinModal.classList.contains('open')) {
+    if (e.key >= '0' && e.key <= '9') {
+      apk(e.key);
+      e.preventDefault();
+      return;
+    } else if (e.key === 'Backspace') {
+      apk('del');
+      e.preventDefault();
+      return;
+    } else if (e.key === 'Escape') {
+      apk('cancel');
+      return;
+    }
+  }
   if (e.key === 'Escape') {
     const openModals = Array.from(document.querySelectorAll('.mov.open'));
     if (openModals.length) {
@@ -1209,7 +1268,7 @@ function openLiveMatchDeskDirect() {
 window.openLiveMatchDeskDirect = openLiveMatchDeskDirect;
 
 function openFormationBuilderDirect() {
-  window.open('formation-builder.html?v=65.0', '_blank');
+  window.open('formation-builder.html?v=68.0', '_blank');
 }
 window.openFormationBuilderDirect = openFormationBuilderDirect;
 
@@ -1486,7 +1545,7 @@ function showAdminTab(tab, keepTeam = false) {
     populateAdminFormationTeamSelect();
     const f = $('adm-formation-frame');
     if (f && (!f.src || f.src === 'about:blank' || !f.src.includes('formation-builder.html'))) {
-      f.src = 'formation-builder.html?v=65.0';
+      f.src = 'formation-builder.html?v=68.0';
     } else {
       setTimeout(() => sendAdmFormationSync(), 150);
       setTimeout(() => sendAdmFormationSync(), 450);
@@ -3017,7 +3076,7 @@ function showTab(n) {
   if (n === 'formation') {
     const frame = $('formation-builder-frame');
     if (frame && (!frame.src || frame.src === 'about:blank' || !frame.src.includes('formation-builder.html'))) {
-      frame.src = 'formation-builder.html?v=65.0';
+      frame.src = 'formation-builder.html?v=68.0';
     } else {
       setTimeout(() => sendFormationSync(), 150);
       setTimeout(() => sendFormationSync(), 450);
@@ -3220,27 +3279,60 @@ function initTeamSquadData() {
       teamSquadData.management = [];
     }
 
-    // Auto-detect any extra registered players in allPlayersCache belonging to this team not currently in XI, bench, or outOfSquad
-    const pool = (allPlayersCache && allPlayersCache.length) ? allPlayersCache.filter(p => curTeam && p.teamId === curTeam.id) : [];
-    pool.forEach(p => {
-      const alreadyIncluded = [...teamSquadData.playingXi, ...teamSquadData.bench, ...teamSquadData.outOfSquad].some(x => {
-        const sameId = x.id && p.id && x.id === p.id;
-        const sameName = normalizePlayerIdentityName(x.name) === normalizePlayerIdentityName(p.name);
-        const sameJersey = (x.jersey && p.jersey && String(x.jersey).trim() === String(p.jersey).trim());
-        return sameId || sameName || sameJersey;
-      });
-      if (!alreadyIncluded) {
-        teamSquadData.outOfSquad.push({
-          id: p.id,
-          name: p.name,
-          displayName: p.displayName || p.shortName || '',
-          shortName: p.shortName || p.displayName || '',
-          jersey: p.jersey || p.playernum || '',
-          position: p.position || 'ST',
-          photo: p.photo || null
+    // Auto-detect any extra registered players belonging to this team not currently in XI, bench, or outOfSquad
+    const pool = (allPlayersCache && allPlayersCache.length)
+      ? allPlayersCache.filter(p => curTeam && p.teamId === curTeam.id)
+      : ((players && players.length) ? players.filter(p => curTeam && (!p.teamId || p.teamId === curTeam.id)) : []);
+
+    if (!teamSquadData.playingXi.length && !teamSquadData.bench.length && pool.length) {
+      teamSquadData.playingXi = pool.slice(0, 11).map(p => ({
+        id: p.id,
+        name: p.name,
+        displayName: p.displayName || p.shortName || '',
+        shortName: p.shortName || p.displayName || '',
+        jersey: p.jersey || p.playernum || '',
+        position: p.position || 'ST',
+        photo: p.photo || null
+      }));
+      teamSquadData.bench = pool.slice(11, 20).map(p => ({
+        id: p.id,
+        name: p.name,
+        displayName: p.displayName || p.shortName || '',
+        shortName: p.shortName || p.displayName || '',
+        jersey: p.jersey || p.playernum || '',
+        position: p.position || 'ST',
+        photo: p.photo || null
+      }));
+      teamSquadData.outOfSquad = pool.slice(20).map(p => ({
+        id: p.id,
+        name: p.name,
+        displayName: p.displayName || p.shortName || '',
+        shortName: p.shortName || p.displayName || '',
+        jersey: p.jersey || p.playernum || '',
+        position: p.position || 'ST',
+        photo: p.photo || null
+      }));
+    } else {
+      pool.forEach(p => {
+        const alreadyIncluded = [...teamSquadData.playingXi, ...teamSquadData.bench, ...teamSquadData.outOfSquad].some(x => {
+          const sameId = x.id && p.id && x.id === p.id;
+          const sameName = normalizePlayerIdentityName(x.name) === normalizePlayerIdentityName(p.name);
+          const sameJersey = (x.jersey && p.jersey && String(x.jersey).trim() === String(p.jersey).trim());
+          return sameId || sameName || sameJersey;
         });
-      }
-    });
+        if (!alreadyIncluded) {
+          teamSquadData.outOfSquad.push({
+            id: p.id,
+            name: p.name,
+            displayName: p.displayName || p.shortName || '',
+            shortName: p.shortName || p.displayName || '',
+            jersey: p.jersey || p.playernum || '',
+            position: p.position || 'ST',
+            photo: p.photo || null
+          });
+        }
+      });
+    }
 
   } else {
     const fallbackPlayers = (players && players.length) ? players : allPlayersCache.filter(p => curTeam && p.teamId === curTeam.id);
@@ -3445,7 +3537,7 @@ function renderSquadPlayingList() {
       <!-- TIER 3: MIDFIELDERS -->
       <div class="squad-tier-row">
         <div class="squad-tier-side left">
-          ${renderSubCategory('Midfielders (MF)', '⚙️', midList, 'playingXi', xiMidIndices)}
+          ${renderSubCategory('Midfielders (MF)', '⚙️', xiMidList, 'playingXi', xiMidIndices)}
         </div>
         <div class="squad-tier-side right">
           ${renderSubCategory('Midfielders (MF)', '⚙️', benchMidList, 'bench', benchMidIndices)}
@@ -3585,6 +3677,7 @@ function openEditStaffMemberModal(index) {
 }
 
 async function removeManagementMember(index) {
+  if (!ensurePinAuthenticated(() => removeManagementMember(index))) return;
   const s = teamSquadData.management && teamSquadData.management[index];
   if (!s) return;
   if (!confirm(`Remove ${s.name} from management?`)) return;
@@ -3953,6 +4046,14 @@ async function confirmAddPlayerToSection() {
     return;
   }
 
+  if (!ensurePinAuthenticated(() => confirmAddPlayerToSection())) return;
+
+  if (typeof plAddTargetSection !== 'undefined' && plAddTargetSection && (typeof luSlots !== 'undefined') && $('page-lineup')?.classList.contains('active')) {
+    if (typeof confirmAddLineupPlayerToSection === 'function') {
+      return confirmAddLineupPlayerToSection();
+    }
+  }
+
   if (!curTeam && activeAdminPlayerTeamId) {
     curTeam = teams.find(t => t.id === activeAdminPlayerTeamId);
   }
@@ -4039,6 +4140,7 @@ async function moveSquadMember(fromType, toType, index) {
 }
 
 async function removeSquadMember(listType, index) {
+  if (!ensurePinAuthenticated(() => removeSquadMember(listType, index))) return;
   if (!teamSquadData[listType]) return;
   const item = teamSquadData[listType][index];
   if (!confirm(`Remove "${item?.name || 'player'}" from the squad?`)) return;
@@ -4486,6 +4588,8 @@ async function saveSquadPlayingList() {
     return;
   }
 
+  if (!ensurePinAuthenticated(() => saveSquadPlayingList())) return;
+
   const formationKey = curTeam.squad?.formation || '4-4-2';
   const flat = flattenFormation(formationKey);
   const sortedXi = (typeof sortPlayersByPitchPosition === 'function') ? sortPlayersByPitchPosition(teamSquadData.playingXi) : teamSquadData.playingXi;
@@ -4615,6 +4719,7 @@ async function saveSquadPlayingList() {
 }
 
 async function clearSquadPlayingList() {
+  if (!ensurePinAuthenticated(() => clearSquadPlayingList())) return;
   if (!confirm('Are you sure you want to clear all Playing XI, Bench, Management, and Out of Squad members?')) return;
   teamSquadData = { playingXi: [], bench: [], management: [], outOfSquad: [] };
   if (curTeam && curTeam.id) {
@@ -4658,6 +4763,7 @@ function subscribeTeam() {
       });
       players = Array.from(map.values())
         .sort((a, b) => ((b.registeredAt || '') > (a.registeredAt || '')) ? 1 : -1);
+      initTeamSquadData();
       renderPlayers();
       renderSquad();
       if ($('page-lineup')?.classList.contains('active')) {
@@ -4693,7 +4799,7 @@ function renderPlayers() {
       <div class="pi">
         <div class="pn">${esc(p.name)}<span class="jb">#${esc(p.jersey)}</span>${p.jersey2 ? `<span class="jb alt">#${esc(p.jersey2)}</span>` : ''}</div>
         <div class="pm">
-          <span class="mi">⚽ <strong>${esc(posCode(p.position))}</strong></span>
+          <span class="mi">⚽ <strong>${esc(posFullName(p.position) || posCode(p.position) || p.position)}</strong></span>
           <span class="mi">🎂 <strong>Age ${p.age || '—'}</strong></span>
           ${p.playernum ? `<span class="mi">🔢 <strong>#${esc(p.playernum)}</strong></span>` : ''}
           <span class="mi">📞 ${esc(p.phone || '—')}</span>
@@ -4707,7 +4813,6 @@ function renderPlayers() {
       </div>
       <div class="cacts">
         <button class="ib" onclick="viewPlayer('${p.id}')" title="View Form">👁</button>
-        <button class="ib" onclick="requestPin('edit','${p.id}')">✏️</button>
         <button class="ib del" onclick="requestPin('delete','${p.id}')">✕</button>
       </div>
     </div>`).join('');
@@ -4797,28 +4902,49 @@ async function findAndCleanDuplicates() {
 
 
 function requestPin(a, id) {
+  if (a === 'edit') {
+    openEdit(id);
+    return;
+  }
+  if (isPinAuthenticated || sessionStorage.getItem('ems_pin_auth') === '1') {
+    isPinAuthenticated = true;
+    if (a === 'delete') { doDel(id); return; }
+    if (a === 'clearall') { doClearAll(); return; }
+  }
   pinBuf = ''; pinAct = a; pinTgt = id; updDots(); $('perrmsg').style.display = 'none';
   const m = { delete: ['🗑️', 'CONFIRM DELETE', 'Enter PIN to delete.'], edit: ['✏️', 'EDIT PLAYER', 'Enter PIN to edit.'], clearall: ['🗑️', 'CLEAR ALL', 'Enter PIN to delete ALL contacts (players & staff).'] }[a] || ['🔢', 'ENTER PIN', 'Enter your PIN.'];
   $('pico').textContent = m[0]; $('ptit').textContent = m[1]; $('pdesc').textContent = m[2]; openM('m-pin');
 }
 function pk(k) {
-  if (k === 'cancel') { closeM('m-pin'); return; }
+  if (k === 'cancel') { closeM('m-pin'); pendingPinSuccessAction = null; return; }
   if (k === 'del') { pinBuf = pinBuf.slice(0, -1); updDots(); return; }
   if (pinBuf.length >= 4) return; pinBuf += k; updDots();
   if (pinBuf.length === 4) setTimeout(checkPin, 150);
 }
 function updDots() { for (let i = 0; i < 4; i++)$('pd' + i).classList.toggle('filled', i < pinBuf.length); }
 function checkPin() {
-  if (pinBuf === gp()) {
+  if (isSettingsPinValid(pinBuf)) {
+    isPinAuthenticated = true;
+    sessionStorage.setItem('ems_pin_auth', '1');
     closeM('m-pin'); $('perrmsg').style.display = 'none';
+    if (typeof pendingPinSuccessAction === 'function') {
+      const fn = pendingPinSuccessAction;
+      pendingPinSuccessAction = null;
+      fn();
+      return;
+    }
     if (pinAct === 'delete') doDel(pinTgt);
     if (pinAct === 'edit') openEdit(pinTgt);
     if (pinAct === 'clearall') doClearAll();
   } else { $('perrmsg').textContent = '❌ Incorrect PIN'; $('perrmsg').style.display = 'block'; pinBuf = ''; updDots(); }
 }
 
-async function doDel(id) { try { await deleteDoc(doc(db, 'players', id)); } catch (e) { alert('❌ Could not delete: ' + (e.message || e)); } }
+async function doDel(id) {
+  if (!ensurePinAuthenticated(() => doDel(id))) return;
+  try { await deleteDoc(doc(db, 'players', id)); } catch (e) { alert('❌ Could not delete: ' + (e.message || e)); }
+}
 async function doClearAll() {
+  if (!ensurePinAuthenticated(() => doClearAll())) return;
   try {
     const snap = await getDocs(query(collection(db, 'players'), where('teamId', '==', curTeam.id)));
     const b = db.batch();
@@ -4922,6 +5048,8 @@ async function saveEdit() {
 
   if (!name) { alert('Name is required.'); return; }
   if (ph && ph.length !== 10) { alert('Phone must be 10 digits.'); return; }
+
+  if (!ensurePinAuthenticated(() => saveEdit())) return;
 
   try {
     const updateData = {
@@ -5329,7 +5457,7 @@ function openFormationBuilderFullscreen() {
   if (targetTeam) {
     buildFormationSyncPayload(targetTeam);
   }
-  window.open('formation-builder.html?v=65.0', '_blank');
+  window.open('formation-builder.html?v=68.0', '_blank');
 }
 window.openFormationBuilderFullscreen = openFormationBuilderFullscreen;
 
@@ -5608,6 +5736,8 @@ async function saveCustomFormation() {
   const def = parseInt($('cf-def').value) || 0, cdm = parseInt($('cf-cdm').value) || 0, mid = parseInt($('cf-mid').value) || 0, wing = parseInt($('cf-wing').value) || 0, fwd = parseInt($('cf-fwd').value) || 0;
   const total = 1 + def + cdm + mid + wing + fwd;
   if (total !== luAside) { alert(`Defenders + CDM + Midfielders + Wingers + Strikers + Goalkeeper must add up to ${luAside} for a ${luAside}-a-side game. Currently: ${total}`); return; }
+
+  if (!ensurePinAuthenticated(() => saveCustomFormation())) return;
   let label = $('cf-label').value.trim() || `${def}-${cdm ? cdm + '-' : ''}${mid}${wing ? '-' + wing : ''}-${fwd}`;
   let key = label;
   const list = [...(curTeam.customFormations || [])];
@@ -5634,6 +5764,7 @@ async function saveCustomFormation() {
 }
 
 async function deleteCustomFormation(key) {
+  if (!ensurePinAuthenticated(() => deleteCustomFormation(key))) return;
   if (!confirm('Delete this custom formation?')) return;
   const list = (curTeam.customFormations || []).filter(f => f.key !== key);
   try {
@@ -6331,7 +6462,7 @@ function plAddPlayerSelChange(sel) {
   const jerseyInp = $('pl-add-jersey'); if (jerseyInp) jerseyInp.value = jersey;
 }
 
-function confirmAddPlayerToSection() {
+function confirmAddLineupPlayerToSection() {
   const name = String($('pl-add-name')?.value || '').trim();
   const role = String($('pl-add-role')?.value || '').trim();
   const jersey = String($('pl-add-jersey')?.value || '').trim();
@@ -6572,6 +6703,7 @@ async function saveLineup() {
     alert(`Squad size (${squadSize}) can't be smaller than the game size — ${luAside}-a-side needs at least ${luAside} players.`);
     return;
   }
+  if (!ensurePinAuthenticated(() => saveLineup())) return;
   const slots = flat.map((s, i) => {
     const p = luSlots[i];
     return {
@@ -6651,6 +6783,7 @@ function openStaffModal(id) {
 async function saveStaffMember() {
   const name = $('st-name').value.trim();
   if (!name) { alert('Please enter a name.'); return; }
+  if (!ensurePinAuthenticated(() => saveStaffMember())) return;
   let role = $('st-role').value;
   if (role === 'Other') { role = $('st-role-custom').value.trim() || 'Other'; }
   const phoneDigits = $('st-phone').value.trim();
@@ -6719,6 +6852,7 @@ async function saveStaffMember() {
 }
 
 async function deleteStaffMember(id) {
+  if (!ensurePinAuthenticated(() => deleteStaffMember(id))) return;
   if (!confirm('Remove this team member?')) return;
   const list = (curTeam.staff || []).filter(s => s.id !== id);
   try {
@@ -7239,7 +7373,9 @@ function promptDelTeam(id) {
 }
 
 async function confirmDel() {
-  if (!delId) return; closeM('m-del-team');
+  if (!delId) return;
+  if (!ensurePinAuthenticated(() => confirmDel())) return;
+  closeM('m-del-team');
   try { const ps = await getDocs(query(collection(db, 'players'), where('teamId', '==', delId))); const b = writeBatch(db); ps.docs.forEach(d => b.delete(d.ref)); b.delete(doc(db, 'teams', delId)); await b.commit(); delId = null; await loadAdmin(); }
   catch (e) { alert('❌ Could not delete.'); }
 }
@@ -7247,6 +7383,15 @@ async function confirmDel() {
 let adminPinBuf = '', adminPinAct = null, adminPinTgt = null;
 
 function adminRequestPin(action, id) {
+  if (action === 'editteam') {
+    openEditTeam(id);
+    return;
+  }
+  if (isPinAuthenticated || sessionStorage.getItem('ems_pin_auth') === '1') {
+    isPinAuthenticated = true;
+    if (action === 'delteam') { promptDelTeam(id); return; }
+    if (action === 'delmatch') { deleteMatchWithPin(id); return; }
+  }
   adminPinBuf = ''; adminPinAct = action; adminPinTgt = id;
   updAdminDots(); $('aperrmsg').style.display = 'none';
   const cfg = {
@@ -7259,15 +7404,23 @@ function adminRequestPin(action, id) {
   openM('m-admin-pin');
 }
 function apk(k) {
-  if (k === 'cancel') { closeM('m-admin-pin'); return; }
+  if (k === 'cancel') { closeM('m-admin-pin'); pendingPinSuccessAction = null; return; }
   if (k === 'del') { adminPinBuf = adminPinBuf.slice(0, -1); updAdminDots(); return; }
   if (adminPinBuf.length >= 4) return; adminPinBuf += k; updAdminDots();
   if (adminPinBuf.length === 4) setTimeout(checkAdminPin, 150);
 }
 function updAdminDots() { for (let i = 0; i < 4; i++)$('apd' + i).classList.toggle('filled', i < adminPinBuf.length); }
 function checkAdminPin() {
-  if (adminPinBuf === getAdminPin()) {
+  if (isSettingsPinValid(adminPinBuf)) {
+    isPinAuthenticated = true;
+    sessionStorage.setItem('ems_pin_auth', '1');
     closeM('m-admin-pin'); $('aperrmsg').style.display = 'none';
+    if (typeof pendingPinSuccessAction === 'function') {
+      const fn = pendingPinSuccessAction;
+      pendingPinSuccessAction = null;
+      fn();
+      return;
+    }
     if (adminPinAct === 'delteam') promptDelTeam(adminPinTgt);
     if (adminPinAct === 'editteam') openEditTeam(adminPinTgt);
     if (adminPinAct === 'delmatch') deleteMatchWithPin(adminPinTgt);
@@ -7279,6 +7432,7 @@ function checkAdminPin() {
 
 async function deleteMatchWithPin(matchId) {
   if (!matchId) return;
+  if (!ensurePinAuthenticated(() => deleteMatchWithPin(matchId))) return;
   const m = matches.find(x => x.id === matchId) || (curMatch?.id === matchId ? curMatch : null);
   const matchLabel = m ? `${m.home?.name || 'Home'} vs ${m.away?.name || 'Away'}` : 'this match';
   if (!confirm(`⚠️ Are you sure you want to permanently delete match "${matchLabel}" and all recorded events? This cannot be undone.`)) return;
@@ -7312,6 +7466,9 @@ function openEditTeam(id) {
 async function saveEditTeam() {
   const name = $('et-name').value.trim(), pass = $('et-pass').value.trim(), err = $('et-err');
   if (!name) { err.textContent = 'Team name is required.'; err.style.display = 'block'; return; }
+  if (pass && pass.length < 4) { err.textContent = 'Password must be at least 4 characters if changed.'; err.style.display = 'block'; return; }
+
+  if (!ensurePinAuthenticated(() => saveEditTeam())) return;
   const updates = {
     name,
     season: $('et-season').value.trim(),
@@ -8714,6 +8871,8 @@ async function saveEditTournament() {
     if (errEl) { errEl.textContent = 'Tournament name cannot be empty.'; errEl.style.display = 'block'; }
     return;
   }
+
+  if (!ensurePinAuthenticated(() => saveEditTournament())) return;
 
   const updates = {
     name: name,
@@ -12367,6 +12526,7 @@ function openEditMatchDetails() {
 
 async function saveMatchDetailsEdit() {
   if (!curMatch) return;
+  if (!ensurePinAuthenticated(() => saveMatchDetailsEdit())) return;
   const date = $('emd-date')?.value || curMatch.date;
   const time = $('emd-time')?.value || '';
   const status = $('emd-status')?.value || curMatch.status;
