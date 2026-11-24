@@ -1012,7 +1012,7 @@ function openLiveMatchDeskDirect() {
 window.openLiveMatchDeskDirect = openLiveMatchDeskDirect;
 
 function openFormationBuilderDirect() {
-  window.open('formation-builder.html?v=57.0', '_blank');
+  window.open('formation-builder.html?v=58.0', '_blank');
 }
 window.openFormationBuilderDirect = openFormationBuilderDirect;
 
@@ -1350,7 +1350,7 @@ function showAdminTab(tab, keepTeam = false) {
     populateAdminFormationTeamSelect();
     const f = $('adm-formation-frame');
     if (f && (!f.src || f.src === 'about:blank' || !f.src.includes('formation-builder.html'))) {
-      f.src = 'formation-builder.html?v=57.0';
+      f.src = 'formation-builder.html?v=58.0';
     } else {
       setTimeout(() => sendAdmFormationSync(), 150);
       setTimeout(() => sendAdmFormationSync(), 450);
@@ -1512,27 +1512,12 @@ function renderAdminPlayers() {
   const stP = $('st-p');
   if (stP) stP.textContent = allPlayersCache.length;
 
-  const filter = $('admin-player-filter-team');
-  if (filter) {
-    const selected = activeAdminPlayerTeamId || '';
-    filter.innerHTML = '<option value="">All Teams (Cards View)</option>' + teams.map(team =>
-      `<option value="${esc(team.id)}" ${selected === team.id ? 'selected' : ''}>${esc(team.name || 'Unnamed team')}</option>`
-    ).join('');
-    filter.value = selected;
-  }
-
   if (!teams.length && !allPlayersCache.length) {
     el.innerHTML = '<div class="admin-player-empty" style="background:var(--card,#fff);border:1px solid var(--bd);border-radius:12px;padding:30px;text-align:center;">No teams or registered players found. Create a team first to add players.</div>';
     return;
   }
 
   const query = String($('admin-player-search')?.value || '').toLowerCase().trim();
-
-  // If filter dropdown selection changed
-  const filterTeamId = filter?.value || '';
-  if (filterTeamId && filterTeamId !== activeAdminPlayerTeamId) {
-    activeAdminPlayerTeamId = filterTeamId;
-  }
 
   // 1. TEAMS & PLAYERS TAB VIEW: When no team is selected, display clean, aligned Team Cards
   if (!activeAdminPlayerTeamId) {
@@ -1544,10 +1529,6 @@ function renderAdminPlayers() {
     });
 
     el.innerHTML = `
-      <div style="margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
-        <div style="font-size:13.5px;color:var(--mt);font-weight:600;">Select a team below to view its squad roster:</div>
-        <div style="font-size:12px;color:var(--mt);">${teams.length} Teams · ${allPlayersCache.length} Total Players</div>
-      </div>
       <div class="admin-player-team-selector-cards" style="margin-bottom:0;">
         ${filteredTeams.map(t => {
           const logoHtml = t.logo ? `<img src="${esc(t.logo)}" alt="" style="width:40px;height:40px;border-radius:50%;object-fit:cover;border:1.5px solid var(--bd);">` : `<span style="font-size:28px;">${t.emoji || '⚽'}</span>`;
@@ -2881,7 +2862,7 @@ function showTab(n) {
   if (n === 'formation') {
     const frame = $('formation-builder-frame');
     if (frame && (!frame.src || frame.src === 'about:blank' || !frame.src.includes('formation-builder.html'))) {
-      frame.src = 'formation-builder.html?v=57.0';
+      frame.src = 'formation-builder.html?v=58.0';
     } else {
       setTimeout(() => sendFormationSync(), 150);
       setTimeout(() => sendFormationSync(), 450);
@@ -4682,7 +4663,7 @@ function openFormationBuilderFullscreen() {
   if (targetTeam) {
     buildFormationSyncPayload(targetTeam);
   }
-  window.open('formation-builder.html?v=57.0', '_blank');
+  window.open('formation-builder.html?v=58.0', '_blank');
 }
 window.openFormationBuilderFullscreen = openFormationBuilderFullscreen;
 
