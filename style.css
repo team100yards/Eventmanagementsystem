@@ -4506,10 +4506,11 @@ textarea {
   white-space: nowrap;
 }
 
-.scoreboard-main {
+.scoreboard-main,
+.sb-hero-matchup {
   display: grid;
   grid-template-columns: 1fr auto 1fr;
-  align-items: start;
+  align-items: center;
   gap: 20px;
   position: relative;
   z-index: 2;
@@ -4776,35 +4777,76 @@ textarea {
   transform: translateY(-1px);
 }
 
+/* ══ DEDICATED 2-COLUMN EVENTS SECTION BELOW MATCHUP ══ */
+.sb-events-two-col {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: flex-start;
+  gap: 20px;
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, .15);
+}
+
+.sb-events-col {
+  display: flex;
+  min-width: 0;
+  width: 100%;
+}
+
+.sb-events-col.home {
+  justify-content: flex-end;
+}
+
+.sb-events-col.away {
+  justify-content: flex-start;
+}
+
+.sb-events-divider {
+  width: 1px;
+  align-self: stretch;
+  min-height: 24px;
+  background: rgba(255, 255, 255, .15);
+}
+
 .sb-team-events {
   display: flex;
   flex-direction: column;
   gap: 5px;
   width: 100%;
-  max-width: 220px;
-  max-height: 140px;
+  max-width: 320px;
+  max-height: 180px;
   overflow-y: auto;
   overscroll-behavior: contain;
   scrollbar-width: thin;
 }
 
+.sb-events-col.home .sb-team-events {
+  align-items: flex-end;
+}
+
+.sb-events-col.away .sb-team-events {
+  align-items: flex-start;
+}
+
 .sb-event-item {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
   gap: 6px;
-  width: 100%;
+  width: auto;
+  max-width: 100%;
   background: rgba(0, 0, 0, .28);
   border: 1px solid rgba(255, 255, 255, .16);
   border-radius: 8px;
-  padding: 4px 8px;
+  padding: 4px 10px;
   color: #fff;
   font-size: 11px;
   font-weight: 600;
   line-height: 1.25;
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
   box-sizing: border-box;
 }
 
@@ -5506,10 +5548,17 @@ textarea {
     padding: 18px 14px;
   }
 
-  .scoreboard-main {
+  .scoreboard-main,
+  .sb-hero-matchup {
     grid-template-columns: 1fr auto 1fr;
     gap: 12px;
-    align-items: start;
+    align-items: center;
+  }
+
+  .sb-events-two-col {
+    gap: 12px;
+    margin-top: 10px;
+    padding-top: 10px;
   }
 
   .sb-team-side .sb-badge {
@@ -5547,8 +5596,8 @@ textarea {
   }
 
   .sb-team-events {
-    max-width: 150px;
-    max-height: 110px;
+    max-width: 100%;
+    max-height: 140px;
   }
 
   .sb-event-item {
@@ -5562,8 +5611,16 @@ textarea {
     padding: 14px 10px;
   }
 
-  .scoreboard-main {
+  .scoreboard-main,
+  .sb-hero-matchup {
     gap: 8px;
+    align-items: center;
+  }
+
+  .sb-events-two-col {
+    gap: 8px;
+    margin-top: 8px;
+    padding-top: 8px;
   }
 
   .sb-team-side .sb-badge {

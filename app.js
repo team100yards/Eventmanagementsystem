@@ -988,7 +988,7 @@ function openLiveMatchDeskDirect() {
 window.openLiveMatchDeskDirect = openLiveMatchDeskDirect;
 
 function openFormationBuilderDirect() {
-  window.open('formation-builder.html?v=42.0', '_blank');
+  window.open('formation-builder.html?v=51.0', '_blank');
 }
 window.openFormationBuilderDirect = openFormationBuilderDirect;
 
@@ -1317,7 +1317,7 @@ function showAdminTab(tab) {
     populateAdminFormationTeamSelect();
     const f = $('adm-formation-frame');
     if (f && (!f.src || f.src === 'about:blank' || !f.src.includes('formation-builder.html'))) {
-      f.src = 'formation-builder.html?v=42.0';
+      f.src = 'formation-builder.html?v=51.0';
     } else {
       setTimeout(() => sendAdmFormationSync(), 150);
     }
@@ -1384,6 +1384,13 @@ function renderBirthdayBanner(allPlayers) {
   </div>`;
 }
 
+function openTeamRosterView(teamId) {
+  activeAdminPlayerTeamId = teamId;
+  showAdminTab('players');
+  renderAdminPlayers();
+}
+window.openTeamRosterView = openTeamRosterView;
+
 function renderAdmin() {
   const tp = teams.length, pp = allPlayersCache.length;
   const stT = $('st-t'); if (stT) stT.textContent = tp;
@@ -1407,18 +1414,19 @@ function renderAdmin() {
   el.innerHTML = `
     <div class="admin-player-team-selector-cards" style="margin-bottom:0;">
       ${teams.map(t => {
-        const logoHtml = t.logo ? `<img src="${esc(t.logo)}" alt="" style="width:36px;height:36px;border-radius:50%;object-fit:cover;border:1.5px solid var(--bd);">` : `<span style="font-size:26px;">${t.emoji || '⚽'}</span>`;
+        const logoHtml = t.logo ? `<img src="${esc(t.logo)}" alt="" style="width:38px;height:38px;border-radius:50%;object-fit:cover;border:1.5px solid var(--bd);">` : `<span style="font-size:26px;">${t.emoji || '⚽'}</span>`;
         const tCount = t.pc != null ? t.pc : allPlayersCache.filter(p => p.teamId === t.id).length;
         return `
-          <div class="admin-player-team-card" onclick="promptPw('${t.id}')" style="justify-content:space-between;">
+          <div class="admin-player-team-card" onclick="openTeamRosterView('${t.id}')" style="justify-content:space-between;cursor:pointer;">
             <div style="display:flex;align-items:center;gap:12px;min-width:0;">
               <div style="flex-shrink:0;">${logoHtml}</div>
               <div style="min-width:0;">
                 <div style="font-weight:700;font-size:14px;color:var(--tx);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(t.name)}</div>
-                <div style="font-size:12px;color:var(--mt);">${tCount} Players</div>
+                <div style="font-size:12px;color:var(--mt);">${tCount} Players · Tap to view roster</div>
               </div>
             </div>
             <div onclick="event.stopPropagation();" style="display:flex;align-items:center;gap:6px;">
+              <button type="button" class="obtn" style="font-size:11.5px;padding:5px 10px;font-weight:700;color:#1a5c1a;" onclick="promptPw('${t.id}')" title="Open Team Dashboard">Dashboard →</button>
               <button type="button" class="obtn" style="font-size:11px;padding:4px 8px;" onclick="openEditTeam('${t.id}')" title="Edit team">✏️</button>
               <button type="button" class="obtn d" style="font-size:11px;padding:4px 8px;" onclick="promptDelTeam('${t.id}')" title="Delete team">🗑️</button>
             </div>
@@ -1543,14 +1551,19 @@ function renderAdminPlayers() {
 
   html += `
     <div class="admin-player-squad-bar">
-      <div class="admin-player-squad-bar-left">
-        ${tLogo}
-        <div>
-          <div class="admin-player-squad-team-title">${esc(selectedTeam.name)}</div>
-          <div class="admin-player-squad-team-meta">${teamPlayers.length} Registered Players</div>
+      <div class="admin-player-squad-bar-left" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+        <button type="button" class="obtn" style="font-size:12px;padding:6px 12px;font-weight:700;display:inline-flex;align-items:center;gap:6px;" onclick="showAdminTab('teams')" title="Return to Teams list">
+          <span>← Back to Teams</span>
+        </button>
+        <div style="display:flex;align-items:center;gap:10px;">
+          ${tLogo}
+          <div>
+            <div class="admin-player-squad-team-title">${esc(selectedTeam.name)}</div>
+            <div class="admin-player-squad-team-meta">${teamPlayers.length} Registered Players</div>
+          </div>
         </div>
       </div>
-      <div class="admin-player-squad-bar-right">
+      <div class="admin-player-squad-bar-right" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
         <div class="squad-formation-selector">
           <span class="squad-formation-label">Formation:</span>
           <select id="admin-squad-formation-sel" onchange="changeTeamSquadFormation(this.value)">
@@ -1559,6 +1572,9 @@ function renderAdminPlayers() {
         </div>
         <button type="button" class="squad-pitch-btn" onclick="curTeam=teams.find(t=>t.id==='${selectedTeam.id}');openTeamFormationVisualizer();" title="Open Tactical Pitch Formation Visualizer">
           <span>♟️ Pitch</span>
+        </button>
+        <button type="button" class="squad-pitch-btn" style="background:#1a5c1a;color:#fff;border-color:#1a5c1a;font-weight:700;" onclick="promptPw('${selectedTeam.id}')" title="Go to Team Dashboard">
+          <span>Go to Dashboard →</span>
         </button>
       </div>
     </div>
@@ -1610,6 +1626,9 @@ function renderAdminPlayers() {
         <td style="text-align:center;width:110px;">
           <span class="admin-pos-badge admin-pos-${posCat}">${esc(pos)}</span>
         </td>
+        <td style="text-align:center;width:90px;">
+          <button type="button" class="obtn" style="font-size:11.5px;padding:4px 9px;font-weight:600;" onclick="openEdit('${p.id}')" title="Edit player details and position">✏️ Edit</button>
+        </td>
       </tr>
     `;
   }).join('');
@@ -1623,23 +1642,24 @@ function renderAdminPlayers() {
             <th>PLAYER NAME</th>
             <th>DISPLAY NAME</th>
             <th style="text-align:center;width:110px;">POSITION</th>
+            <th style="text-align:center;width:90px;">ACTION</th>
           </tr>
         </thead>
         <tbody>
           ${gkList.length ? `
-            <tr class="admin-player-group-hdr"><td colspan="4">🧤 Goalkeepers (${gkList.length})</td></tr>
+            <tr class="admin-player-group-hdr"><td colspan="5">🧤 Goalkeepers (${gkList.length})</td></tr>
             ${renderRows(gkList)}
           ` : ''}
           ${defList.length ? `
-            <tr class="admin-player-group-hdr"><td colspan="4">🛡️ Defenders (${defList.length})</td></tr>
+            <tr class="admin-player-group-hdr"><td colspan="5">🛡️ Defenders (${defList.length})</td></tr>
             ${renderRows(defList)}
           ` : ''}
           ${midList.length ? `
-            <tr class="admin-player-group-hdr"><td colspan="4">⚙️ Midfielders (${midList.length})</td></tr>
+            <tr class="admin-player-group-hdr"><td colspan="5">⚙️ Midfielders (${midList.length})</td></tr>
             ${renderRows(midList)}
           ` : ''}
           ${fwdList.length ? `
-            <tr class="admin-player-group-hdr"><td colspan="4">⚡ Strikers / Forwards (${fwdList.length})</td></tr>
+            <tr class="admin-player-group-hdr"><td colspan="5">⚡ Strikers / Forwards (${fwdList.length})</td></tr>
             ${renderRows(fwdList)}
           ` : ''}
         </tbody>
@@ -2814,7 +2834,7 @@ function getBaseUrl() {
 }
 
 function showTab(n) {
-  ['squad', 'setup'].forEach(x => {
+  ['squad', 'formation', 'setup'].forEach(x => {
     $('page-' + x) && $('page-' + x).classList.toggle('active', x === n);
     $('tab-' + x) && $('tab-' + x).classList.toggle('active', x === n);
   });
@@ -2824,15 +2844,18 @@ function showTab(n) {
   }
   if (n === 'setup') loadSetup();
   if (n === 'squad') renderSquadPlayingList();
+  if (n === 'formation') {
+    const frame = $('formation-builder-frame');
+    if (frame && (!frame.src || frame.src === 'about:blank' || !frame.src.includes('formation-builder.html'))) {
+      frame.src = 'formation-builder.html?v=51.0';
+    } else {
+      setTimeout(() => sendFormationSync(), 150);
+    }
+  }
 }
 
 function openFormationVisualizer() {
-  ['squad', 'lineup', 'db', 'chat', 'setup'].forEach(x => {
-    $('page-' + x) && $('page-' + x).classList.remove('active');
-  });
-  $('page-formation') && $('page-formation').classList.add('active');
-  const tm = document.querySelector('#s-team .tmain');
-  if (tm) tm.classList.add('tmain-wide');
+  showTab('formation');
   sendFormationSync();
 }
 
@@ -3479,6 +3502,27 @@ async function confirmAddPlayerToSection() {
       if (modalPhotoData !== undefined) {
         item.photo = modalPhotoData;
       }
+      if (item.id) {
+        const inCache = allPlayersCache.find(x => x.id === item.id);
+        if (inCache) {
+          inCache.name = name;
+          inCache.displayName = displayName;
+          inCache.shortName = displayName;
+          inCache.position = role || 'ST';
+          inCache.jersey = jersey || '';
+          if (modalPhotoData !== undefined) inCache.photo = modalPhotoData;
+        }
+        try {
+          updateDoc(doc(db, 'players', item.id), {
+            name,
+            displayName,
+            shortName: displayName,
+            position: role || 'ST',
+            jersey: jersey || '',
+            ...(modalPhotoData !== undefined ? { photo: modalPhotoData } : {})
+          }).catch(() => {});
+        } catch (e) {}
+      }
     }
   } else {
     const newEntry = {
@@ -3550,7 +3594,12 @@ function openTeamFormationVisualizer() {
   }
   if (!curTeam) return;
   buildFormationSyncPayload(curTeam);
-  window.open('formation-builder.html?v=50.0', '_blank');
+  const teamScreen = $('s-team');
+  if (teamScreen && teamScreen.classList.contains('active')) {
+    showTab('formation');
+  } else {
+    window.open('formation-builder.html?v=51.0', '_blank');
+  }
 }
 window.openTeamFormationVisualizer = openTeamFormationVisualizer;
 
@@ -4149,7 +4198,21 @@ async function doClearAll() {
 }
 
 function openEdit(id) {
-  const p = players.find(x => x.id === id); if (!p) return; editId = id;
+  let p = players.find(x => x.id === id);
+  if (!p) p = allPlayersCache.find(x => x.id === id);
+  if (!p && curTeam && curTeam.squad) {
+    p = (curTeam.squad.playingXi || []).find(x => x.id === id) || (curTeam.squad.bench || []).find(x => x.id === id);
+  }
+  if (!p) {
+    for (const t of teams) {
+      if (t.squad) {
+        const found = (t.squad.playingXi || []).find(x => x.id === id) || (t.squad.bench || []).find(x => x.id === id);
+        if (found) { p = found; break; }
+      }
+    }
+  }
+  if (!p) return;
+  editId = id;
   editPhotoData = p.photo || null;
   const epPrev = $('e-photo-preview'), epPh = $('e-photo-ph'), epInp = $('e-photo-inp');
   if (epInp) epInp.value = '';
@@ -4157,12 +4220,24 @@ function openEdit(id) {
     if (p.photo) { epPrev.src = p.photo; epPrev.style.display = 'block'; epPh.style.display = 'none'; }
     else { epPrev.style.display = 'none'; epPrev.src = ''; epPh.style.display = 'block'; }
   }
-  $('e-name').value = p.name || ''; $('e-dob').value = p.dob || ''; $('e-age').value = p.age || '';
-  $('e-father').value = p.father || ''; $('e-addr').value = p.address || '';
+  $('e-name').value = p.name || '';
+  const dispEl = $('e-dispname');
+  if (dispEl) dispEl.value = p.displayName || p.shortName || '';
+  $('e-dob').value = p.dob || '';
+  $('e-age').value = p.age || '';
+  $('e-father').value = p.father || '';
+  $('e-addr').value = p.address || '';
   $('e-ph').value = (p.phone || '').replace('+91', '');
-  $('e-j1').value = p.jersey || ''; $('e-j2').value = p.jersey2 || ''; $('e-sq').value = p.playernum || ''; $('e-foot').value = p.foot || ''; $('e-notes').value = p.notes || '';
-  const posList = (curTeam && curTeam.positions && curTeam.positions.length) ? curTeam.positions : (pos && pos.length ? pos : [...DPOS]);
-  $('e-pos').innerHTML = '<option value="">Select</option>' + posList.map(x => `<option value="${esc(x)}"${x === posCode(p.position) ? ' selected' : ''}>${esc(x)}</option>`).join('');
+  $('e-j1').value = p.jersey || '';
+  $('e-j2').value = p.jersey2 || '';
+  $('e-sq').value = p.playernum || '';
+  $('e-foot').value = p.foot || '';
+  $('e-notes').value = p.notes || '';
+  const teamPositions = (curTeam && curTeam.positions && curTeam.positions.length) ? curTeam.positions : null;
+  const posList = teamPositions || (pos && pos.length ? pos : [...DPOS]);
+  const curPos = posCode(p.position) || p.position || '';
+  if (!posList.includes(curPos) && curPos) posList.unshift(curPos);
+  $('e-pos').innerHTML = '<option value="">Select</option>' + posList.map(x => `<option value="${esc(x)}"${x === curPos ? ' selected' : ''}>${esc(x)}</option>`).join('');
   openM('m-edit');
 }
 function handleEditPhoto(input) {
@@ -4181,15 +4256,110 @@ function eAge() {
   $('e-age').value = a;
 }
 async function saveEdit() {
-  const name = $('e-name').value.trim(), ph = $('e-ph').value.trim();
+  const name = $('e-name').value.trim();
+  const ph = $('e-ph').value.trim();
+  const displayName = $('e-dispname') ? $('e-dispname').value.trim() : '';
+  const position = $('e-pos').value || 'ST';
+  const jersey = $('e-j1').value;
+  const jersey2 = $('e-j2').value;
+  const playernum = $('e-sq').value;
+  const dob = $('e-dob').value;
+  const age = $('e-age').value;
+  const father = $('e-father').value.trim();
+  const address = $('e-addr').value.trim();
+  const foot = $('e-foot').value;
+  const notes = $('e-notes').value.trim();
+
   if (!name) { alert('Name is required.'); return; }
   if (ph && ph.length !== 10) { alert('Phone must be 10 digits.'); return; }
+
   try {
-    const updateData = { name, dob: $('e-dob').value, age: $('e-age').value, father: $('e-father').value.trim(), address: $('e-addr').value.trim(), phone: ph ? '+91' + ph : '', position: $('e-pos').value, jersey: $('e-j1').value, jersey2: $('e-j2').value, playernum: $('e-sq').value, foot: $('e-foot').value, notes: $('e-notes').value.trim() };
+    const updateData = {
+      name,
+      displayName,
+      shortName: displayName,
+      dob,
+      age,
+      father,
+      address,
+      phone: ph ? '+91' + ph : '',
+      position,
+      jersey,
+      jersey2,
+      playernum,
+      foot,
+      notes
+    };
     if (editPhotoData !== undefined) updateData.photo = editPhotoData;
-    await updateDoc(doc(db, 'players', editId), updateData);
+
+    // 1. Update Firestore players collection (if document exists)
+    try {
+      await updateDoc(doc(db, 'players', editId), updateData);
+    } catch (fsErr) {
+      console.warn('Direct doc update in players collection failed/skipped:', fsErr);
+    }
+
+    // 2. Update allPlayersCache in memory
+    const inCache = allPlayersCache.find(x => x.id === editId);
+    if (inCache) {
+      Object.assign(inCache, updateData);
+    }
+
+    // 3. Update players array if in team view
+    const inPlayers = players.find(x => x.id === editId);
+    if (inPlayers) {
+      Object.assign(inPlayers, updateData);
+    }
+
+    // 4. Update team squad if player is in Playing XI or Bench
+    let squadChanged = false;
+    const targetTeam = curTeam || (inCache ? teams.find(t => t.id === inCache.teamId) : null);
+    if (targetTeam && targetTeam.squad) {
+      ['playingXi', 'bench'].forEach(sec => {
+        const list = targetTeam.squad[sec];
+        if (Array.isArray(list)) {
+          const item = list.find(x => x.id === editId || (x.name && x.name.toLowerCase() === (inCache?.name || name).toLowerCase()));
+          if (item) {
+            item.name = name;
+            item.displayName = displayName;
+            item.shortName = displayName;
+            item.position = position;
+            item.jersey = jersey || playernum || '';
+            if (editPhotoData !== undefined) item.photo = editPhotoData;
+            squadChanged = true;
+          }
+        }
+      });
+      if (squadChanged) {
+        if (typeof teamSquadData !== 'undefined' && teamSquadData) {
+          ['playingXi', 'bench'].forEach(sec => {
+            const list = teamSquadData[sec];
+            if (Array.isArray(list)) {
+              const item = list.find(x => x.id === editId || (x.name && x.name.toLowerCase() === (inCache?.name || name).toLowerCase()));
+              if (item) {
+                item.name = name;
+                item.displayName = displayName;
+                item.shortName = displayName;
+                item.position = position;
+                item.jersey = jersey || playernum || '';
+                if (editPhotoData !== undefined) item.photo = editPhotoData;
+              }
+            }
+          });
+        }
+        await persistTeamSquadNow(false);
+      }
+    }
+
     closeM('m-edit');
-  } catch (e) { alert('❌ Could not save.'); }
+    if (typeof renderAdminPlayers === 'function') renderAdminPlayers();
+    if (typeof renderSquadPlayingList === 'function') renderSquadPlayingList();
+    if (typeof renderAdmin === 'function') renderAdmin();
+    alert('✅ Player details updated successfully!');
+  } catch (e) {
+    console.error('saveEdit error:', e);
+    alert('❌ Could not save: ' + (e.message || e));
+  }
 }
 
 const FORMATIONS = {
@@ -4441,7 +4611,7 @@ function openFormationBuilderFullscreen() {
   if (targetTeam) {
     buildFormationSyncPayload(targetTeam);
   }
-  window.open('formation-builder.html?v=42.0', '_blank');
+  window.open('formation-builder.html?v=51.0', '_blank');
 }
 window.openFormationBuilderFullscreen = openFormationBuilderFullscreen;
 
@@ -9533,11 +9703,13 @@ function renderMatchScoreboardEvents() {
     const bMinute = b.minute == null ? 999 : Number(b.minute);
     return aMinute - bMinute;
   });
+  let totalKeyEvents = 0;
   ['home', 'away'].forEach(side => {
     const feed = $(`ms-${side}-events`);
     if (!feed) return;
     // Show only goals and cards in top scoreboard hero; assists and substitutions (changes) are excluded
     const sideEvents = events.filter(event => event.team === side && (event.type === 'goal' || event.type === 'own_goal' || event.type === 'yellow' || event.type === 'red'));
+    totalKeyEvents += sideEvents.length;
     if (!sideEvents.length) {
       feed.innerHTML = '';
       return;
@@ -9559,6 +9731,10 @@ function renderMatchScoreboardEvents() {
       return `<div class="sb-event-item" title="${esc(minute)} ${esc(text)}"><span class="sb-event-ico">${icon}</span><span class="sb-event-min">${esc(minute)}</span><span class="sb-event-text">${esc(text)}</span></div>`;
     }).join('');
   });
+  const twoColEl = $('ms-events-two-col');
+  if (twoColEl) {
+    twoColEl.style.display = totalKeyEvents > 0 ? 'grid' : 'none';
+  }
 }
 
 function renderMatchReportPanel() {
