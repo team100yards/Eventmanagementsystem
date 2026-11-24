@@ -1278,7 +1278,7 @@
                         animation: isTargetForSwap ? "pulse 1.4s infinite" : "none"
                       }}
                     >
-                      <svg width="52" height="52" viewBox="0 0 64 64" style={{ filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.5))", pointerEvents: "none" }}>
+                      <svg width="68" height="68" viewBox="0 0 64 64" style={{ filter: "drop-shadow(0 2px 5px rgba(0,0,0,0.55))", pointerEvents: "none" }}>
                         <path
                           d="M20,6 L8,14 L14,26 L20,22 L20,58 L44,58 L44,22 L50,26 L56,14 L44,6 L38,10 Q32,16 26,10 Z"
                           fill={player ? C.cream : "rgba(244,241,232,0.25)"}
@@ -1289,7 +1289,7 @@
                         <text
                           x="32" y="41"
                           textAnchor="middle"
-                          fontSize="20"
+                          fontSize="22"
                           fontWeight="800"
                           fill={C.ink}
                           style={{ fontFamily: "'JetBrains Mono', monospace" }}
@@ -1299,11 +1299,11 @@
                       </svg>
                       <div
                         className="oswald text-center leading-tight truncate font-bold"
-                        style={{ fontSize: 12, color: C.cream, marginTop: 4, maxWidth: 86, pointerEvents: "none", textShadow: "0 1px 3px rgba(0,0,0,0.9)" }}
+                        style={{ fontSize: 13, color: C.cream, marginTop: 4, maxWidth: 96, pointerEvents: "none", textShadow: "0 1px 3px rgba(0,0,0,0.9)" }}
                       >
                         {displayName}
                       </div>
-                      <div style={{ fontSize: 9.5, color: groupColor, letterSpacing: "0.02em", pointerEvents: "none", fontWeight: 700 }}>{player ? player.canonical : slot.label}</div>
+                      <div style={{ fontSize: 10, color: groupColor, letterSpacing: "0.02em", pointerEvents: "none", fontWeight: 700 }}>{player ? player.canonical : slot.label}</div>
                     </div>
                   );
                 })}

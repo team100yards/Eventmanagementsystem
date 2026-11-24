@@ -8981,6 +8981,8 @@ textarea {
   -webkit-overflow-scrolling: touch;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
   margin-bottom: 24px;
+  width: 100%;
+  max-width: 980px;
 }
 
 .admin-player-group-hdr td {

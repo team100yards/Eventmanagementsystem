@@ -1012,7 +1012,7 @@ function openLiveMatchDeskDirect() {
 window.openLiveMatchDeskDirect = openLiveMatchDeskDirect;
 
 function openFormationBuilderDirect() {
-  window.open('formation-builder.html?v=58.0', '_blank');
+  window.open('formation-builder.html?v=59.0', '_blank');
 }
 window.openFormationBuilderDirect = openFormationBuilderDirect;
 
@@ -1350,7 +1350,7 @@ function showAdminTab(tab, keepTeam = false) {
     populateAdminFormationTeamSelect();
     const f = $('adm-formation-frame');
     if (f && (!f.src || f.src === 'about:blank' || !f.src.includes('formation-builder.html'))) {
-      f.src = 'formation-builder.html?v=58.0';
+      f.src = 'formation-builder.html?v=59.0';
     } else {
       setTimeout(() => sendAdmFormationSync(), 150);
       setTimeout(() => sendAdmFormationSync(), 450);
@@ -1572,7 +1572,7 @@ function renderAdminPlayers() {
   const tLogo = selectedTeam.logo ? `<img src="${esc(selectedTeam.logo)}" alt="" style="width:36px;height:36px;border-radius:50%;object-fit:cover;border:1.5px solid #1a5c1a;flex-shrink:0;">` : `<span style="font-size:26px;flex-shrink:0;">${selectedTeam.emoji || '⚽'}</span>`;
 
   let html = `
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;padding:4px 0;flex-wrap:wrap;gap:10px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;padding:4px 0;flex-wrap:wrap;gap:10px;max-width:980px;">
       <div style="display:flex;align-items:center;gap:12px;">
         <button type="button" class="obtn" style="font-size:12px;padding:6px 14px;font-weight:700;display:inline-flex;align-items:center;gap:6px;" onclick="activeAdminPlayerTeamId=null;renderAdminPlayers();" title="Return to Team Cards">
           <span aria-hidden="true">←</span> <span>Back to Teams</span>
@@ -1628,7 +1628,7 @@ function renderAdminPlayers() {
       : `<div style="width:26px;height:26px;border-radius:50%;background:rgba(0,0,0,0.06);display:inline-flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;">👤</div>`;
     return `
       <tr>
-        <td style="text-align:center;font-weight:800;font-family:'Bebas Neue',sans-serif;font-size:18px;color:#1a5c1a;width:65px;vertical-align:middle;white-space:nowrap;">#${esc(jersey)}</td>
+        <td style="text-align:center;font-weight:800;font-family:'Bebas Neue',sans-serif;font-size:18px;color:#1a5c1a;vertical-align:middle;white-space:nowrap;">#${esc(jersey)}</td>
         <td style="vertical-align:middle;white-space:nowrap;">
           <div style="display:flex;align-items:center;gap:10px;min-width:0;">
             ${photoImg}
@@ -1638,10 +1638,10 @@ function renderAdminPlayers() {
         <td style="vertical-align:middle;white-space:nowrap;">
           ${dispName ? `<span class="admin-player-disp-pill">${esc(dispName)}</span>` : '<span style="color:var(--mt);font-style:italic;">—</span>'}
         </td>
-        <td style="text-align:center;width:115px;vertical-align:middle;white-space:nowrap;">
+        <td style="text-align:center;vertical-align:middle;white-space:nowrap;">
           <span class="admin-pos-badge admin-pos-${posCat}">${esc(pos)}</span>
         </td>
-        <td style="text-align:center;width:85px;vertical-align:middle;white-space:nowrap;">
+        <td style="text-align:center;vertical-align:middle;white-space:nowrap;">
           <button type="button" class="obtn" style="font-size:11.5px;padding:4px 9px;font-weight:600;" onclick="openEdit('${p.id}')" title="Edit player details and position">✏️ Edit</button>
         </td>
       </tr>
@@ -1653,11 +1653,11 @@ function renderAdminPlayers() {
       <table class="admin-player-table" style="margin:0;width:100%;border-collapse:collapse;">
         <thead>
           <tr>
-            <th style="width:65px;text-align:center;white-space:nowrap;">#</th>
-            <th style="text-align:left;white-space:nowrap;">PLAYER NAME</th>
-            <th style="text-align:left;white-space:nowrap;">DISPLAY NAME</th>
-            <th style="text-align:center;width:115px;white-space:nowrap;">POSITION</th>
-            <th style="text-align:center;width:85px;white-space:nowrap;">ACTION</th>
+            <th style="width:60px;text-align:center;white-space:nowrap;">#</th>
+            <th style="width:38%;text-align:left;white-space:nowrap;">PLAYER NAME</th>
+            <th style="width:26%;text-align:left;white-space:nowrap;">DISPLAY NAME</th>
+            <th style="width:18%;text-align:center;white-space:nowrap;">POSITION</th>
+            <th style="width:18%;text-align:center;white-space:nowrap;">ACTION</th>
           </tr>
         </thead>
         <tbody>
@@ -2862,7 +2862,7 @@ function showTab(n) {
   if (n === 'formation') {
     const frame = $('formation-builder-frame');
     if (frame && (!frame.src || frame.src === 'about:blank' || !frame.src.includes('formation-builder.html'))) {
-      frame.src = 'formation-builder.html?v=58.0';
+      frame.src = 'formation-builder.html?v=59.0';
     } else {
       setTimeout(() => sendFormationSync(), 150);
       setTimeout(() => sendFormationSync(), 450);
@@ -4663,7 +4663,7 @@ function openFormationBuilderFullscreen() {
   if (targetTeam) {
     buildFormationSyncPayload(targetTeam);
   }
-  window.open('formation-builder.html?v=58.0', '_blank');
+  window.open('formation-builder.html?v=59.0', '_blank');
 }
 window.openFormationBuilderFullscreen = openFormationBuilderFullscreen;
 
