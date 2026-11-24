@@ -239,6 +239,58 @@
         { code: "ST", label: "ST", x: 37, y: 15 },
         { code: "ST", label: "ST", x: 63, y: 15 },
       ],
+      "4-1-4-1": [
+        { code: "GK", label: "GK", x: 50, y: 93 },
+        { code: "LB", label: "LB", x: 14, y: 74 },
+        { code: "CB", label: "CB", x: 37, y: 78 },
+        { code: "CB", label: "CB", x: 63, y: 78 },
+        { code: "RB", label: "RB", x: 86, y: 74 },
+        { code: "CDM", label: "CDM", x: 50, y: 62 },
+        { code: "LM", label: "LM", x: 14, y: 44 },
+        { code: "CM", label: "CM", x: 37, y: 46 },
+        { code: "CM", label: "CM", x: 63, y: 46 },
+        { code: "RM", label: "RM", x: 86, y: 44 },
+        { code: "ST", label: "ST", x: 50, y: 15 },
+      ],
+      "4-5-1": [
+        { code: "GK", label: "GK", x: 50, y: 93 },
+        { code: "LB", label: "LB", x: 14, y: 74 },
+        { code: "CB", label: "CB", x: 37, y: 78 },
+        { code: "CB", label: "CB", x: 63, y: 78 },
+        { code: "RB", label: "RB", x: 86, y: 74 },
+        { code: "LM", label: "LM", x: 14, y: 46 },
+        { code: "CM", label: "CM", x: 32, y: 50 },
+        { code: "CDM", label: "CDM", x: 50, y: 56 },
+        { code: "CM", label: "CM", x: 68, y: 50 },
+        { code: "RM", label: "RM", x: 86, y: 46 },
+        { code: "ST", label: "ST", x: 50, y: 15 },
+      ],
+      "5-4-1": [
+        { code: "GK", label: "GK", x: 50, y: 93 },
+        { code: "LWB", label: "LWB", x: 10, y: 68 },
+        { code: "CB", label: "CB", x: 30, y: 78 },
+        { code: "CB", label: "CB", x: 50, y: 80 },
+        { code: "CB", label: "CB", x: 70, y: 78 },
+        { code: "RWB", label: "RWB", x: 90, y: 68 },
+        { code: "LM", label: "LM", x: 14, y: 46 },
+        { code: "CM", label: "CM", x: 37, y: 50 },
+        { code: "CM", label: "CM", x: 63, y: 50 },
+        { code: "RM", label: "RM", x: 86, y: 46 },
+        { code: "ST", label: "ST", x: 50, y: 15 },
+      ],
+      "3-5-1-1": [
+        { code: "GK", label: "GK", x: 50, y: 93 },
+        { code: "CB", label: "CB", x: 28, y: 78 },
+        { code: "CB", label: "CB", x: 50, y: 80 },
+        { code: "CB", label: "CB", x: 72, y: 78 },
+        { code: "LWB", label: "LWB", x: 9, y: 54 },
+        { code: "CM", label: "CM", x: 34, y: 52 },
+        { code: "CDM", label: "CDM", x: 50, y: 58 },
+        { code: "CM", label: "CM", x: 66, y: 52 },
+        { code: "RWB", label: "RWB", x: 91, y: 54 },
+        { code: "CAM", label: "CAM", x: 50, y: 32 },
+        { code: "ST", label: "ST", x: 50, y: 15 },
+      ],
     };
 
     const ZONE_SIZE = { GK: [22, 15], DEF: [30, 20], MID: [34, 22], FWD: [30, 22] };
@@ -310,6 +362,7 @@
       const [manualPlayers, setManualPlayers] = useState([]);
       const [formationKey, setFormationKey] = useState("4-3-3");
       const [isFullscreen, setIsFullscreen] = useState(false);
+      const [isCoach, setIsCoach] = useState(true);
       const LINE_GROUPS = ["GK", "DEF", "MID", "FWD"];
       const [activeLines, setActiveLines] = useState(LINE_GROUPS);
       const [ballPos, setBallPos] = useState({ x: 50, y: 50 });
@@ -374,6 +427,9 @@
       // ---------- Sync roster from the Football Forum parent app (Match XI: playing 11 + subs + management) ----------
       const applySyncPayload = (data) => {
         if (!data) return;
+        if (typeof data.isCoach === "boolean") {
+          setIsCoach(data.isCoach);
+        }
         if (data.formation && !FORMATIONS[data.formation] && data.formationDef) {
           FORMATIONS[data.formation] = autoLayoutFormation(data.formationDef);
         }
@@ -434,6 +490,9 @@
           const data = e.data;
           if (!data || typeof data !== "object") return;
           if (data.type === "ff-sync") applySyncPayload(data);
+          if (data.type === "ff-chat-sync" && typeof data.isCoach === "boolean") {
+            setIsCoach(data.isCoach);
+          }
         };
         window.addEventListener("message", handleMessage);
         // First load cached team formation from localStorage if available

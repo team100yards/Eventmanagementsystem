@@ -988,7 +988,7 @@ function openLiveMatchDeskDirect() {
 window.openLiveMatchDeskDirect = openLiveMatchDeskDirect;
 
 function openFormationBuilderDirect() {
-  window.open('formation-builder.html?v=53.0', '_blank');
+  window.open('formation-builder.html?v=54.0', '_blank');
 }
 window.openFormationBuilderDirect = openFormationBuilderDirect;
 
@@ -1323,9 +1323,11 @@ function showAdminTab(tab, keepTeam = false) {
     populateAdminFormationTeamSelect();
     const f = $('adm-formation-frame');
     if (f && (!f.src || f.src === 'about:blank' || !f.src.includes('formation-builder.html'))) {
-      f.src = 'formation-builder.html?v=53.0';
+      f.src = 'formation-builder.html?v=54.0';
     } else {
       setTimeout(() => sendAdmFormationSync(), 150);
+      setTimeout(() => sendAdmFormationSync(), 450);
+      setTimeout(() => sendAdmFormationSync(), 900);
     }
   }
 }
@@ -2881,9 +2883,11 @@ function showTab(n) {
   if (n === 'formation') {
     const frame = $('formation-builder-frame');
     if (frame && (!frame.src || frame.src === 'about:blank' || !frame.src.includes('formation-builder.html'))) {
-      frame.src = 'formation-builder.html?v=53.0';
+      frame.src = 'formation-builder.html?v=54.0';
     } else {
       setTimeout(() => sendFormationSync(), 150);
+      setTimeout(() => sendFormationSync(), 450);
+      setTimeout(() => sendFormationSync(), 900);
     }
   }
 }
@@ -3626,13 +3630,21 @@ function openTeamFormationVisualizer() {
   if (!curTeam && activeAdminPlayerTeamId) {
     curTeam = teams.find(t => t.id === activeAdminPlayerTeamId);
   }
+  if (!curTeam && teams && teams.length) {
+    curTeam = teams[0];
+  }
   if (!curTeam) return;
   buildFormationSyncPayload(curTeam);
   const teamScreen = $('s-team');
   if (teamScreen && teamScreen.classList.contains('active')) {
     showTab('formation');
   } else {
-    window.open('formation-builder.html?v=53.0', '_blank');
+    showAdminTab('formation');
+    populateAdminFormationTeamSelect();
+    const sel = $('adm-formation-team-select');
+    if (sel) sel.value = curTeam.id;
+    setTimeout(() => sendAdmFormationSync(curTeam.id), 150);
+    setTimeout(() => sendAdmFormationSync(curTeam.id), 500);
   }
 }
 window.openTeamFormationVisualizer = openTeamFormationVisualizer;
@@ -4645,7 +4657,7 @@ function openFormationBuilderFullscreen() {
   if (targetTeam) {
     buildFormationSyncPayload(targetTeam);
   }
-  window.open('formation-builder.html?v=53.0', '_blank');
+  window.open('formation-builder.html?v=54.0', '_blank');
 }
 window.openFormationBuilderFullscreen = openFormationBuilderFullscreen;
 
@@ -4701,6 +4713,34 @@ window.addEventListener('message', e => {
     const sel = $('adm-formation-team-select');
     if (sel) sel.value = d.teamId;
     sendAdmFormationSync(d.teamId);
+  }
+  if (d.type === 'ff-lineup-updated' && (d.starters || d.subs)) {
+    const selId = $('adm-formation-team-select')?.value;
+    const targetTeam = (selId ? teams.find(t => t.id === selId) : null) || curTeam;
+    if (targetTeam && targetTeam.id) {
+      if (!targetTeam.squad) targetTeam.squad = {};
+      if (Array.isArray(d.starters)) {
+        targetTeam.squad.playingXi = d.starters.filter(Boolean).map(p => ({
+          id: p.id,
+          name: p.name,
+          jersey: p.number || p.jersey || '',
+          position: p.position || 'ST'
+        }));
+      }
+      if (Array.isArray(d.subs)) {
+        targetTeam.squad.bench = d.subs.filter(Boolean).map(p => ({
+          id: p.id,
+          name: p.name,
+          jersey: p.number || p.jersey || '',
+          position: p.position || 'ST'
+        }));
+      }
+      try {
+        setDoc(doc(db, 'teams', targetTeam.id), { squad: targetTeam.squad }, { merge: true });
+      } catch (err) {
+        console.warn('Could not auto-persist visualizer lineup update:', err);
+      }
+    }
   }
   if (d.type === 'ff-height' && d.height) {
     const teamFrame = $('formation-builder-frame');
