@@ -219,6 +219,170 @@ function posFullName(position) {
 }
 window.posFullName = posFullName;
 
+function normalizePlayerIdentityName(str) {
+  if (!str) return '';
+  return String(str)
+    .toLowerCase()
+    .replace(/[^\w\s]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+window.normalizePlayerIdentityName = normalizePlayerIdentityName;
+
+function getPlayerCanonicalKey(teamId, jersey, name, fallbackId) {
+  const tId = String(teamId || '').trim();
+  const jNum = String(jersey != null ? jersey : '').trim();
+  const normName = normalizePlayerIdentityName(name);
+
+  if (tId && jNum && normName) {
+    return `${tId}_#${jNum}_${normName}`;
+  }
+  if (tId && normName) {
+    return `${tId}_name_${normName}`;
+  }
+  if (tId && jNum) {
+    return `${tId}_#${jNum}`;
+  }
+  if (normName) {
+    return `name_${normName}`;
+  }
+  return fallbackId ? `id_${fallbackId}` : `rnd_${Math.random()}`;
+}
+window.getPlayerCanonicalKey = getPlayerCanonicalKey;
+
+function findExistingTeamPlayer(teamId, jersey, name, extraPool = []) {
+  const normName = normalizePlayerIdentityName(name);
+  const normJersey = String(jersey != null ? jersey : '').trim();
+
+  const isMatch = (p) => {
+    if (!p) return false;
+    const pJersey = String(p.jersey != null ? p.jersey : (p.playernum != null ? p.playernum : '')).trim();
+    const pName = normalizePlayerIdentityName(p.name);
+    // 1. Both jersey & name match
+    if (normJersey && pJersey && normJersey === pJersey && normName && pName && normName === pName) {
+      return true;
+    }
+    // 2. Jersey matches within the same team
+    if (normJersey && pJersey && normJersey === pJersey) {
+      return true;
+    }
+    // 3. Normalized name matches
+    if (normName && pName && normName === pName) {
+      return true;
+    }
+    return false;
+  };
+
+  // 1. Check extraPool
+  if (Array.isArray(extraPool)) {
+    const hit = extraPool.find(isMatch);
+    if (hit) return hit;
+  }
+
+  // 2. Check curTeam or teams.find(teamId) squad
+  const tObj = (typeof curTeam !== 'undefined' && curTeam && curTeam.id === teamId)
+    ? curTeam
+    : (Array.isArray(teams) ? teams.find(t => t.id === teamId) : null) || (typeof curTeam !== 'undefined' ? curTeam : null);
+  if (tObj && tObj.squad) {
+    const sq = tObj.squad;
+    const sqPool = [
+      ...(Array.isArray(sq.playingXi) ? sq.playingXi : []),
+      ...(Array.isArray(sq.bench) ? sq.bench : []),
+      ...(Array.isArray(sq.subs) ? sq.subs : []),
+      ...(Array.isArray(sq.slots) ? sq.slots.map(s => s?.player).filter(Boolean) : [])
+    ];
+    const hit = sqPool.find(isMatch);
+    if (hit) return hit;
+  }
+
+  // 3. Check memory teamSquadData if current team
+  if (typeof teamSquadData === 'object' && teamSquadData) {
+    const memPool = [
+      ...(Array.isArray(teamSquadData.playingXi) ? teamSquadData.playingXi : []),
+      ...(Array.isArray(teamSquadData.bench) ? teamSquadData.bench : [])
+    ];
+    const hit = memPool.find(isMatch);
+    if (hit) return hit;
+  }
+
+  // 4. Check global allPlayersCache / players
+  const globalList = (typeof allPlayersCache !== 'undefined' && Array.isArray(allPlayersCache) && allPlayersCache.length)
+    ? allPlayersCache
+    : (typeof players !== 'undefined' && Array.isArray(players) ? players : []);
+  if (globalList.length) {
+    const hit = globalList.find(p => (!teamId || p.teamId === teamId) && isMatch(p));
+    if (hit) return hit;
+  }
+
+  // 5. Check raw Firestore players list
+  if (window._rawFsPlayersList && Array.isArray(window._rawFsPlayersList)) {
+    const hit = window._rawFsPlayersList.find(p => (!teamId || p.teamId === teamId) && isMatch(p));
+    if (hit) return hit;
+  }
+
+  return null;
+}
+window.findExistingTeamPlayer = findExistingTeamPlayer;
+
+function matchOrCreateSquadPlayer({ teamId, name, displayName, position, jersey, extraPool = [] }) {
+  const pName = String(name || '').trim();
+  const rawJersey = String(jersey != null ? jersey : '').trim();
+  const existing = findExistingTeamPlayer(teamId, rawJersey, pName, extraPool);
+
+  if (existing) {
+    const resolvedDisp = displayName || existing.displayName || existing.shortName || getPlayerDisplayName({ name: pName });
+    return {
+      id: existing.id || ('sq_' + Date.now().toString(36) + Math.random().toString(36).substr(2, 4)),
+      name: pName,
+      displayName: resolvedDisp,
+      shortName: resolvedDisp,
+      position: position || existing.position || 'ST',
+      jersey: (rawJersey !== '') ? rawJersey : (existing.jersey || existing.playernum || ''),
+      photo: existing.photo || null,
+      dob: existing.dob || null,
+      _isExisting: true
+    };
+  }
+
+  const newId = 'sq_' + Date.now().toString(36) + Math.random().toString(36).substr(2, 4);
+  const resolvedDisp = displayName || getPlayerDisplayName({ name: pName });
+  return {
+    id: newId,
+    name: pName,
+    displayName: resolvedDisp,
+    shortName: resolvedDisp,
+    position: position || 'ST',
+    jersey: rawJersey,
+    photo: null,
+    dob: null,
+    _isExisting: false
+  };
+}
+window.matchOrCreateSquadPlayer = matchOrCreateSquadPlayer;
+
+function findExistingStaffMember(teamId, name, extraPool = []) {
+  const normName = normalizePlayerIdentityName(name);
+  if (!normName) return null;
+  const isMatch = s => s && normalizePlayerIdentityName(s.name) === normName;
+  if (Array.isArray(extraPool)) {
+    const hit = extraPool.find(isMatch);
+    if (hit) return hit;
+  }
+  const tObj = (typeof curTeam !== 'undefined' && curTeam && curTeam.id === teamId)
+    ? curTeam
+    : (Array.isArray(teams) ? teams.find(t => t.id === teamId) : null) || (typeof curTeam !== 'undefined' ? curTeam : null);
+  if (tObj && tObj.squad && Array.isArray(tObj.squad.management)) {
+    const hit = tObj.squad.management.find(isMatch);
+    if (hit) return hit;
+  }
+  if (typeof teamSquadData === 'object' && Array.isArray(teamSquadData?.management)) {
+    const hit = teamSquadData.management.find(isMatch);
+    if (hit) return hit;
+  }
+  return null;
+}
+window.findExistingStaffMember = findExistingStaffMember;
+
 function compressImage(file, maxDimension, quality, callback) {
   if (!file) return;
   const isImage = (file.type && file.type.match(/image.*/)) || /\.(jpe?g|png|webp|gif|bmp|svg|avif)$/i.test(file.name || '');
@@ -1044,7 +1208,7 @@ function openLiveMatchDeskDirect() {
 window.openLiveMatchDeskDirect = openLiveMatchDeskDirect;
 
 function openFormationBuilderDirect() {
-  window.open('formation-builder.html?v=63.0', '_blank');
+  window.open('formation-builder.html?v=64.0', '_blank');
 }
 window.openFormationBuilderDirect = openFormationBuilderDirect;
 
@@ -1070,12 +1234,14 @@ function aggregateAllPlayers(rawFsPlayers = []) {
     if (!p) return;
     const pName = String(p.name || '').trim();
     if (!pName) return;
-    const key = p.id || (p.teamId ? `${p.teamId}_${p.jersey || p.playernum || ''}_${pName}` : `p_${pName}`).toLowerCase();
+    const key = getPlayerCanonicalKey(p.teamId, p.jersey || p.playernum, pName, p.id);
     map.set(key, {
       id: p.id || key,
       teamId: p.teamId || '',
       teamName: p.teamName || '',
       name: pName,
+      displayName: p.displayName || p.shortName || null,
+      shortName: p.shortName || p.displayName || null,
       jersey: p.jersey || p.playernum || '',
       playernum: p.jersey || p.playernum || '',
       position: p.position || 'ST',
@@ -1091,134 +1257,71 @@ function aggregateAllPlayers(rawFsPlayers = []) {
     const teamId = t.id;
     const teamName = t.name || '';
 
+    const processSquadPlayer = (p, defaultRole, defaultPos) => {
+      if (!p || !p.name) return;
+      const pName = String(p.name).trim();
+      const num = p.jersey || p.playernum || '';
+      const key = getPlayerCanonicalKey(teamId, num, pName, p.id);
+
+      const existing = map.get(key);
+      if (existing) {
+        // Merge without duplicating! Keep photo if existing has it, or take from p
+        map.set(key, {
+          ...existing,
+          id: existing.id || p.id || key,
+          teamId: existing.teamId || teamId,
+          teamName: existing.teamName || teamName,
+          displayName: p.displayName || p.shortName || existing.displayName || existing.shortName || null,
+          shortName: p.shortName || p.displayName || existing.shortName || existing.displayName || null,
+          position: p.position || existing.position || defaultPos,
+          jersey: (p.jersey != null && p.jersey !== '') ? p.jersey : existing.jersey,
+          playernum: (p.jersey != null && p.jersey !== '') ? p.jersey : existing.playernum,
+          photo: existing.photo || p.photo || null,
+          role: existing.role || defaultRole
+        });
+      } else {
+        map.set(key, {
+          id: p.id || key,
+          teamId: teamId,
+          teamName: teamName,
+          name: pName,
+          displayName: p.displayName || p.shortName || null,
+          shortName: p.shortName || p.displayName || null,
+          jersey: num,
+          playernum: num,
+          position: p.position || defaultPos,
+          photo: p.photo || null,
+          dob: p.dob || null,
+          role: defaultRole
+        });
+      }
+    };
+
     // Playing XI
     if (t.squad && Array.isArray(t.squad.playingXi)) {
-      t.squad.playingXi.forEach(p => {
-        if (!p || !p.name) return;
-        const pName = String(p.name).trim();
-        const num = p.jersey || p.playernum || '';
-        const key = p.id || `${teamId}_${num}_${pName}`.toLowerCase();
-        if (!map.has(key)) {
-          map.set(key, {
-            id: p.id || key,
-            teamId: teamId,
-            teamName: teamName,
-            name: pName,
-            displayName: p.displayName || p.shortName || null,
-            shortName: p.shortName || p.displayName || null,
-            jersey: num,
-            playernum: num,
-            position: p.position || 'ST',
-            photo: p.photo || null,
-            dob: p.dob || null,
-            role: 'Starter'
-          });
-        }
-      });
+      t.squad.playingXi.forEach(p => processSquadPlayer(p, 'Starter', 'ST'));
     }
 
     // Bench / Substitutes
     if (t.squad && Array.isArray(t.squad.bench)) {
-      t.squad.bench.forEach(p => {
-        if (!p || !p.name) return;
-        const pName = String(p.name).trim();
-        const num = p.jersey || p.playernum || '';
-        const key = p.id || `${teamId}_${num}_${pName}`.toLowerCase();
-        if (!map.has(key)) {
-          map.set(key, {
-            id: p.id || key,
-            teamId: teamId,
-            teamName: teamName,
-            name: pName,
-            displayName: p.displayName || p.shortName || null,
-            shortName: p.shortName || p.displayName || null,
-            jersey: num,
-            playernum: num,
-            position: p.position || 'SUB',
-            photo: p.photo || null,
-            dob: p.dob || null,
-            role: 'Substitute'
-          });
-        }
-      });
+      t.squad.bench.forEach(p => processSquadPlayer(p, 'Substitute', 'SUB'));
     }
 
     // Slots
     if (t.squad && Array.isArray(t.squad.slots)) {
       t.squad.slots.forEach(slot => {
-        const p = slot?.player;
-        if (!p || !p.name) return;
-        const pName = String(p.name).trim();
-        const num = p.jersey || p.playernum || '';
-        const key = p.id || `${teamId}_${num}_${pName}`.toLowerCase();
-        if (!map.has(key)) {
-          map.set(key, {
-            id: p.id || key,
-            teamId: teamId,
-            teamName: teamName,
-            name: pName,
-            displayName: p.displayName || p.shortName || null,
-            shortName: p.shortName || p.displayName || null,
-            jersey: num,
-            playernum: num,
-            position: p.position || slot.role || 'ST',
-            photo: p.photo || null,
-            dob: p.dob || null,
-            role: 'Starter'
-          });
-        }
+        if (slot?.player) processSquadPlayer(slot.player, 'Starter', slot.role || 'ST');
       });
     }
 
     // Subs
     if (t.squad && Array.isArray(t.squad.subs)) {
-      t.squad.subs.forEach(p => {
-        if (!p || !p.name) return;
-        const pName = String(p.name).trim();
-        const num = p.jersey || p.playernum || '';
-        const key = p.id || `${teamId}_${num}_${pName}`.toLowerCase();
-        if (!map.has(key)) {
-          map.set(key, {
-            id: p.id || key,
-            teamId: teamId,
-            teamName: teamName,
-            name: pName,
-            displayName: p.displayName || p.shortName || null,
-            shortName: p.shortName || p.displayName || null,
-            jersey: num,
-            playernum: num,
-            position: p.position || 'SUB',
-            photo: p.photo || null,
-            dob: p.dob || null,
-            role: 'Substitute'
-          });
-        }
-      });
+      t.squad.subs.forEach(p => processSquadPlayer(p, 'Substitute', 'SUB'));
     }
 
     // Team direct players array
     if (Array.isArray(t.players)) {
-      t.players.forEach(p => {
-        if (!p || !p.name) return;
-        const pName = String(p.name).trim();
-        const num = p.jersey || p.playernum || '';
-        const key = p.id || `${teamId}_${num}_${pName}`.toLowerCase();
-        if (!map.has(key)) {
-          map.set(key, {
-            id: p.id || key,
-            teamId: teamId,
-            teamName: teamName,
-            name: pName,
-            displayName: p.displayName || p.shortName || null,
-            shortName: p.shortName || p.displayName || null,
-            jersey: num,
-            playernum: num,
-            position: p.position || 'ST',
-            photo: p.photo || null,
-            dob: p.dob || null
-          });
-        }
-      });
+      t.players.forEach(p => processSquadPlayer(p, 'Squad Member', 'ST'));
     }
   });
 
@@ -1382,7 +1485,7 @@ function showAdminTab(tab, keepTeam = false) {
     populateAdminFormationTeamSelect();
     const f = $('adm-formation-frame');
     if (f && (!f.src || f.src === 'about:blank' || !f.src.includes('formation-builder.html'))) {
-      f.src = 'formation-builder.html?v=63.0';
+      f.src = 'formation-builder.html?v=64.0';
     } else {
       setTimeout(() => sendAdmFormationSync(), 150);
       setTimeout(() => sendAdmFormationSync(), 450);
@@ -2913,7 +3016,7 @@ function showTab(n) {
   if (n === 'formation') {
     const frame = $('formation-builder-frame');
     if (frame && (!frame.src || frame.src === 'about:blank' || !frame.src.includes('formation-builder.html'))) {
-      frame.src = 'formation-builder.html?v=63.0';
+      frame.src = 'formation-builder.html?v=64.0';
     } else {
       setTimeout(() => sendFormationSync(), 150);
       setTimeout(() => sendFormationSync(), 450);
@@ -3616,6 +3719,48 @@ async function persistTeamSquadNow(showToast = true) {
     curTeam.squad = squad;
     const teamInArr = teams.find(t => t.id === curTeam.id);
     if (teamInArr) teamInArr.squad = squad;
+
+    // Sync squad players to Firestore players collection for live match & players tab
+    const allSquadPlayers = [...playingXi, ...subs];
+    try {
+      const batch = writeBatch(db);
+      const savedIds = new Set();
+      allSquadPlayers.forEach(p => {
+        if (p && p.id) {
+          savedIds.add(p.id);
+          batch.set(doc(db, 'players', p.id), {
+            id: p.id,
+            name: p.name || '',
+            displayName: p.displayName || p.shortName || '',
+            shortName: p.shortName || p.displayName || '',
+            jersey: p.jersey || '',
+            playernum: p.jersey || '',
+            position: p.position || 'ST',
+            photo: p.photo || null,
+            teamId: curTeam.id,
+            teamName: curTeam.name || ''
+          }, { merge: true });
+        }
+      });
+      if (window._rawFsPlayersList && Array.isArray(window._rawFsPlayersList)) {
+        window._rawFsPlayersList.forEach(rawP => {
+          if (rawP && rawP.teamId === curTeam.id && !savedIds.has(rawP.id)) {
+            const duplicateOf = allSquadPlayers.find(p => {
+              const sameName = normalizePlayerIdentityName(p.name) === normalizePlayerIdentityName(rawP.name);
+              const sameJersey = (p.jersey && rawP.jersey && String(p.jersey).trim() === String(rawP.jersey).trim());
+              return sameName || sameJersey;
+            });
+            if (duplicateOf) {
+              batch.delete(doc(db, 'players', rawP.id));
+            }
+          }
+        });
+      }
+      await batch.commit();
+    } catch (bErr) {
+      console.warn('persistTeamSquadNow batch error:', bErr);
+    }
+
     if (typeof refreshPlayersCache === 'function') refreshPlayersCache();
     if (showToast) {
       const existingToast = $('squad-save-toast');
@@ -3692,14 +3837,17 @@ async function confirmAddPlayerToSection() {
       }
     }
   } else {
-    const newEntry = {
-      id: pId,
+    const existingPlayer = matchOrCreateSquadPlayer({
+      teamId: curTeam?.id,
       name,
       displayName,
-      shortName: displayName,
       position: role || 'ST',
       jersey: jersey || '',
-      photo: modalPhotoData || null
+      extraPool: [...teamSquadData.playingXi, ...teamSquadData.bench]
+    });
+    const newEntry = {
+      ...existingPlayer,
+      photo: modalPhotoData || existingPlayer.photo || null
     };
     if (squadModalTargetType === 'bench') {
       teamSquadData.bench.push(newEntry);
@@ -3843,31 +3991,29 @@ async function handleSquadCSVUpload(input) {
       const roleLower = roleVal.toLowerCase();
       const jerseyVal = getVal(r, jerseyCol);
       const rawDisp = getVal(r, dispCol);
-      const displayName = rawDisp || getPlayerDisplayName({ name });
 
       // Support staff/management rows in CSV
       const isStaffKeyword = roleLower.includes('coach') || roleLower.includes('manager') || roleLower.includes('physio') || roleLower.includes('doctor') || roleLower.includes('staff') || roleLower.includes('kit') || roleLower.includes('trainer') || roleLower.includes('assistant');
       const isStaffSection = secVal.includes('management') || secVal.includes('staff');
       if (isStaffSection || isStaffKeyword) {
+        const existingStaff = findExistingStaffMember(curTeam?.id, name, newManagement);
         newManagement.push({
-          id: 'stf_' + Math.random().toString(36).substr(2, 8),
+          id: existingStaff ? existingStaff.id : ('stf_' + Date.now().toString(36) + Math.random().toString(36).substr(2, 4)),
           name,
-          role: roleVal || 'Staff',
-          photo: null
+          role: roleVal || existingStaff?.role || 'Staff',
+          photo: existingStaff?.photo || null
         });
         continue;
       }
 
-      const id = 'sq_' + Math.random().toString(36).substr(2, 8);
-      const playerItem = {
-        id,
+      const playerItem = matchOrCreateSquadPlayer({
+        teamId: curTeam?.id,
         name,
-        displayName,
-        shortName: displayName,
+        displayName: rawDisp,
         position: roleVal || 'ST',
         jersey: jerseyVal || '',
-        photo: null
-      };
+        extraPool: [...newXi, ...newBench]
+      });
 
       if (secVal.includes('11') || secVal.includes('eleven') || secVal.includes('start') || secVal.includes('first') || secVal.includes('playing') || secVal === '1') {
         newXi.push(playerItem);
@@ -3881,6 +4027,26 @@ async function handleSquadCSVUpload(input) {
         }
       }
     }
+
+    // Retain existing players from curTeam.squad who were not in the CSV (so previous match squad members remain on bench without duplicating)
+    const existingSquad = [
+      ...(Array.isArray(curTeam?.squad?.playingXi) ? curTeam.squad.playingXi : []),
+      ...(Array.isArray(curTeam?.squad?.bench) ? curTeam.squad.bench : []),
+      ...(Array.isArray(teamSquadData?.playingXi) ? teamSquadData.playingXi : []),
+      ...(Array.isArray(teamSquadData?.bench) ? teamSquadData.bench : [])
+    ];
+    existingSquad.forEach(prevP => {
+      if (!prevP || !prevP.name) return;
+      const alreadyInNew = [...newXi, ...newBench].some(p => {
+        const sameName = normalizePlayerIdentityName(p.name) === normalizePlayerIdentityName(prevP.name);
+        const sameJersey = (p.jersey && prevP.jersey && String(p.jersey).trim() === String(prevP.jersey).trim());
+        const sameId = p.id && prevP.id && p.id === prevP.id;
+        return sameId || sameName || sameJersey;
+      });
+      if (!alreadyInNew) {
+        newBench.push(prevP);
+      }
+    });
 
     teamSquadData = {
       playingXi: newXi,
@@ -3949,6 +4115,7 @@ async function handleMatchLineupCSVUpload(input) {
 
     const newStarters = [];
     const newBench = [];
+    const sideTeamId = amlSide === 'home' ? curMatch?.home?.teamId : curMatch?.away?.teamId;
 
     for (let i = 1; i < rows.length; i++) {
       const r = rows[i];
@@ -3959,18 +4126,16 @@ async function handleMatchLineupCSVUpload(input) {
       const posVal = getVal(r, posCol) || 'ST';
       const jerseyVal = getVal(r, jerseyCol);
       const rawDisp = getVal(r, dispCol);
-      const dispName = rawDisp || getPlayerDisplayName({ name });
 
-      const playerObj = {
-        id: 'usr_' + Date.now() + Math.random().toString(36).substr(2, 6),
+      const playerObj = matchOrCreateSquadPlayer({
+        teamId: sideTeamId,
         name,
-        displayName: dispName,
-        shortName: dispName,
+        displayName: rawDisp,
         position: posVal,
-        matchPosition: posCode(posVal),
         jersey: jerseyVal,
-        photo: null
-      };
+        extraPool: [...newStarters, ...newBench]
+      });
+      playerObj.matchPosition = posCode(playerObj.position);
 
       if (secVal.includes('bench') || secVal.includes('sub') || secVal.includes('reserve') || secVal === '0') {
         newBench.push(playerObj);
@@ -3983,6 +4148,37 @@ async function handleMatchLineupCSVUpload(input) {
           newBench.push(playerObj);
         }
       }
+    }
+
+    // Retain existing players from team squad not in the CSV so they are kept on bench without duplicating
+    const teamObj = teams.find(t => t.id === sideTeamId);
+    if (teamObj && teamObj.squad) {
+      const prevSquad = [
+        ...(Array.isArray(teamObj.squad.playingXi) ? teamObj.squad.playingXi : []),
+        ...(Array.isArray(teamObj.squad.bench) ? teamObj.squad.bench : [])
+      ];
+      prevSquad.forEach(prevP => {
+        if (!prevP || !prevP.name) return;
+        const alreadyIn = [...newStarters, ...newBench].some(p => {
+          const sameName = normalizePlayerIdentityName(p.name) === normalizePlayerIdentityName(prevP.name);
+          const sameJersey = (p.jersey && prevP.jersey && String(p.jersey).trim() === String(prevP.jersey).trim());
+          const sameId = p.id && prevP.id && p.id === prevP.id;
+          return sameId || sameName || sameJersey;
+        });
+        if (!alreadyIn) {
+          const preservedP = {
+            id: prevP.id,
+            name: prevP.name,
+            displayName: prevP.displayName || prevP.shortName || prevP.name,
+            shortName: prevP.shortName || prevP.displayName || prevP.name,
+            position: prevP.position || 'SUB',
+            matchPosition: posCode(prevP.position || 'SUB'),
+            jersey: prevP.jersey || '',
+            photo: prevP.photo || null
+          };
+          newBench.push(preservedP);
+        }
+      });
     }
 
     const flat = flattenFormation(amlFormation);
@@ -4056,29 +4252,47 @@ async function handleSquadAIPhotoUpload(input) {
       const jersey = p.number ? String(p.number).replace(/\D/g, '') : '';
       const section = String(p.section || '').toLowerCase();
 
-      const newEntry = {
-        name: name,
+      if (section.includes('staff') || section.includes('coach') || section.includes('mgmt')) {
+        const existingStaff = findExistingStaffMember(curTeam?.id, name, teamSquadData.management);
+        if (existingStaff) {
+          existingStaff.role = rawPos || existingStaff.role || 'Staff Member';
+        } else {
+          teamSquadData.management.push({
+            id: 'stf_' + Date.now().toString(36) + Math.random().toString(36).substr(2, 4),
+            name: name,
+            role: rawPos || 'Staff Member',
+            photo: null
+          });
+          addedCount++;
+        }
+        return;
+      }
+
+      const playerItem = matchOrCreateSquadPlayer({
+        teamId: curTeam?.id,
+        name,
         position: pos,
         jersey: jersey || null,
-        photo: null
-      };
+        extraPool: [...teamSquadData.playingXi, ...teamSquadData.bench]
+      });
 
-      if (section.includes('staff') || section.includes('coach') || section.includes('mgmt')) {
-        teamSquadData.management.push({
-          name: newEntry.name,
-          role: rawPos || 'Staff Member',
-          photo: null
-        });
-      } else if (section.includes('bench') || section.includes('sub')) {
-        teamSquadData.bench.push(newEntry);
+      const inXi = teamSquadData.playingXi.findIndex(x => x.id === playerItem.id);
+      const inBench = teamSquadData.bench.findIndex(x => x.id === playerItem.id);
+
+      if (inXi !== -1) {
+        teamSquadData.playingXi[inXi] = { ...teamSquadData.playingXi[inXi], ...playerItem };
+      } else if (inBench !== -1) {
+        teamSquadData.bench[inBench] = { ...teamSquadData.bench[inBench], ...playerItem };
       } else {
-        if (teamSquadData.playingXi.length < 11) {
-          teamSquadData.playingXi.push(newEntry);
+        if (section.includes('bench') || section.includes('sub')) {
+          teamSquadData.bench.push(playerItem);
+        } else if (teamSquadData.playingXi.length < 11) {
+          teamSquadData.playingXi.push(playerItem);
         } else {
-          teamSquadData.bench.push(newEntry);
+          teamSquadData.bench.push(playerItem);
         }
+        addedCount++;
       }
-      addedCount++;
     });
 
     renderSquadPlayingList();
@@ -4170,8 +4384,10 @@ async function saveSquadPlayingList() {
     const allSquadPlayers = [...squad.playingXi, ...squad.bench];
     try {
       const batch = writeBatch(db);
+      const savedIds = new Set();
       allSquadPlayers.forEach(p => {
         if (p && p.id) {
+          savedIds.add(p.id);
           batch.set(doc(db, 'players', p.id), {
             id: p.id,
             name: p.name || '',
@@ -4186,6 +4402,24 @@ async function saveSquadPlayingList() {
           }, { merge: true });
         }
       });
+
+      // Prune any old duplicate documents in Firestore for this team that have the same name or jersey but different obsolete ID
+      if (window._rawFsPlayersList && Array.isArray(window._rawFsPlayersList)) {
+        window._rawFsPlayersList.forEach(rawP => {
+          if (rawP && rawP.teamId === curTeam.id && !savedIds.has(rawP.id)) {
+            const duplicateOf = allSquadPlayers.find(p => {
+              const sameName = normalizePlayerIdentityName(p.name) === normalizePlayerIdentityName(rawP.name);
+              const sameJersey = (p.jersey && rawP.jersey && String(p.jersey).trim() === String(rawP.jersey).trim());
+              return sameName || sameJersey;
+            });
+            if (duplicateOf) {
+              console.log('Pruning orphaned duplicate player doc in Firestore:', rawP.id, rawP.name);
+              batch.delete(doc(db, 'players', rawP.id));
+            }
+          }
+        });
+      }
+
       await batch.commit();
     } catch (bErr) {
       console.warn('Batch write players error:', bErr);
@@ -4915,7 +5149,7 @@ function openFormationBuilderFullscreen() {
   if (targetTeam) {
     buildFormationSyncPayload(targetTeam);
   }
-  window.open('formation-builder.html?v=63.0', '_blank');
+  window.open('formation-builder.html?v=64.0', '_blank');
 }
 window.openFormationBuilderFullscreen = openFormationBuilderFullscreen;
 
@@ -5794,25 +6028,16 @@ function applyPlayingListUpload() {
   const totalSlots = flat.length;
 
   const getOrCreatePlayer = (item) => {
-    const found = players.find(p => p.name.trim().toLowerCase() === item.name.trim().toLowerCase());
-    if (found) {
-      return {
-        id: found.id,
-        name: found.name,
-        position: found.position || item.position,
-        jersey: (found.jersey != null && found.jersey !== '') ? found.jersey : (item.jersey || ''),
-        photo: found.photo || null,
-        matchPosition: posCode(found.position || item.position)
-      };
-    }
-    return {
-      id: 'upl_' + Math.random().toString(36).substr(2, 9),
+    const p = matchOrCreateSquadPlayer({
+      teamId: curTeam?.id,
       name: item.name,
+      displayName: item.displayName,
       position: item.position || 'ST',
       jersey: item.jersey || '',
-      photo: null,
-      matchPosition: posCode(item.position)
-    };
+      extraPool: []
+    });
+    p.matchPosition = posCode(p.position || 'ST');
+    return p;
   };
 
   luSlots = flat.map((_, i) => {
@@ -5835,17 +6060,17 @@ function applyPlayingListUpload() {
 
   if (!curTeam.staff) curTeam.staff = [];
   staff.forEach(s => {
-    let existing = (curTeam.staff || []).find(st => st.name.trim().toLowerCase() === s.name.trim().toLowerCase());
+    let existing = findExistingStaffMember(curTeam?.id, s.name, curTeam.staff);
     if (!existing) {
-      existing = { id: 'stf_' + Math.random().toString(36).substr(2, 9), name: s.name, role: s.role };
+      existing = { id: 'stf_' + Date.now().toString(36) + Math.random().toString(36).substr(2, 4), name: s.name, role: s.role, photo: null };
       curTeam.staff.push(existing);
     }
   });
 
   luStaff = staff.map(s => {
-    const existing = curTeam.staff.find(st => st.name.trim().toLowerCase() === s.name.trim().toLowerCase());
+    const existing = findExistingStaffMember(curTeam?.id, s.name, curTeam.staff);
     return {
-      id: existing ? existing.id : 'stf_' + Math.random().toString(36).substr(2, 9),
+      id: existing ? existing.id : ('stf_' + Date.now().toString(36) + Math.random().toString(36).substr(2, 4)),
       name: s.name,
       role: s.role
     };
