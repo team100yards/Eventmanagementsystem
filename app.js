@@ -67,7 +67,7 @@ function getPlayerDisplayName(p) {
 }
 window.getPlayerDisplayName = getPlayerDisplayName;
 
-let curTeam = null, teams = [], players = [], unsub = null, pos = [...DPOS];
+let curTeam = null, teams = [], players = [], unsub = null, teamDocUnsub = null, pos = [...DPOS];
 let pvId = null, pvTeam = null, pvPlayers = [], pvUnsub = null, pvMergedFormationKeys = [];
 let pubId = null, pubTeam = null, pfPhotoData = null;
 let pubStId = null, pubStTeam = null;
@@ -1012,7 +1012,7 @@ function openLiveMatchDeskDirect() {
 window.openLiveMatchDeskDirect = openLiveMatchDeskDirect;
 
 function openFormationBuilderDirect() {
-  window.open('formation-builder.html?v=61.0', '_blank');
+  window.open('formation-builder.html?v=62.0', '_blank');
 }
 window.openFormationBuilderDirect = openFormationBuilderDirect;
 
@@ -1350,7 +1350,7 @@ function showAdminTab(tab, keepTeam = false) {
     populateAdminFormationTeamSelect();
     const f = $('adm-formation-frame');
     if (f && (!f.src || f.src === 'about:blank' || !f.src.includes('formation-builder.html'))) {
-      f.src = 'formation-builder.html?v=61.0';
+      f.src = 'formation-builder.html?v=62.0';
     } else {
       setTimeout(() => sendAdmFormationSync(), 150);
       setTimeout(() => sendAdmFormationSync(), 450);
@@ -1588,6 +1588,11 @@ function renderAdminPlayers() {
           <span style="font-size:12.5px;color:var(--mt);font-weight:600;">(${teamPlayers.length} Players)</span>
         </div>
       </div>
+      <div>
+        <button type="button" class="obtn" style="font-size:12px;padding:6px 14px;font-weight:700;color:#1a5c1a;background:rgba(26,92,26,0.08);border-color:rgba(26,92,26,0.3);display:inline-flex;align-items:center;gap:6px;" onclick="promptPw('${selectedTeam.id}')" title="Open Team Dashboard to edit players and manage squad">
+          <span>⚙️ Manage / Edit Roster in Dashboard →</span>
+        </button>
+      </div>
     </div>
   `;
 
@@ -1646,9 +1651,6 @@ function renderAdminPlayers() {
         <td style="text-align:center;vertical-align:middle;white-space:nowrap;">
           <span class="admin-pos-badge admin-pos-${posCat}">${esc(pos)}</span>
         </td>
-        <td style="text-align:center;vertical-align:middle;white-space:nowrap;">
-          <button type="button" class="obtn" style="font-size:11.5px;padding:4px 9px;font-weight:600;" onclick="openEdit('${p.id}')" title="Edit player details and position">✏️ Edit</button>
-        </td>
       </tr>
     `;
   }).join('');
@@ -1659,27 +1661,26 @@ function renderAdminPlayers() {
         <thead>
           <tr>
             <th style="width:60px;text-align:center;white-space:nowrap;">#</th>
-            <th style="width:38%;text-align:left;white-space:nowrap;">PLAYER NAME</th>
-            <th style="width:26%;text-align:left;white-space:nowrap;">DISPLAY NAME</th>
-            <th style="width:18%;text-align:center;white-space:nowrap;">POSITION</th>
-            <th style="width:18%;text-align:center;white-space:nowrap;">ACTION</th>
+            <th style="width:42%;text-align:left;white-space:nowrap;">PLAYER NAME</th>
+            <th style="width:33%;text-align:left;white-space:nowrap;">DISPLAY NAME</th>
+            <th style="width:25%;text-align:center;white-space:nowrap;">POSITION</th>
           </tr>
         </thead>
         <tbody>
           ${gkList.length ? `
-            <tr class="admin-player-group-hdr"><td colspan="5">🧤 Goalkeepers (${gkList.length})</td></tr>
+            <tr class="admin-player-group-hdr"><td colspan="4">🧤 Goalkeepers (${gkList.length})</td></tr>
             ${renderRows(gkList)}
           ` : ''}
           ${defList.length ? `
-            <tr class="admin-player-group-hdr"><td colspan="5">🛡️ Defenders (${defList.length})</td></tr>
+            <tr class="admin-player-group-hdr"><td colspan="4">🛡️ Defenders (${defList.length})</td></tr>
             ${renderRows(defList)}
           ` : ''}
           ${midList.length ? `
-            <tr class="admin-player-group-hdr"><td colspan="5">⚙️ Midfielders (${midList.length})</td></tr>
+            <tr class="admin-player-group-hdr"><td colspan="4">⚙️ Midfielders (${midList.length})</td></tr>
             ${renderRows(midList)}
           ` : ''}
           ${fwdList.length ? `
-            <tr class="admin-player-group-hdr"><td colspan="5">⚡ Forwards (${fwdList.length})</td></tr>
+            <tr class="admin-player-group-hdr"><td colspan="4">⚡ Forwards (${fwdList.length})</td></tr>
             ${renderRows(fwdList)}
           ` : ''}
         </tbody>
@@ -2829,14 +2830,31 @@ function doTeamLogin() {
   enterTeam();
 }
 
-function enterTeam() {
+async function enterTeam() {
   $('tt-name').textContent = (curTeam.name || 'TEAM').toUpperCase();
   applyTeamTopbarLogo();
-  ss('s-team'); showTab('squad'); loadShare(); subscribeTeam();
+  initTeamSquadData();
+  ss('s-team');
+  showTab('squad');
+  loadShare();
+  subscribeTeam();
+
+  try {
+    const tSnap = await getDoc(doc(db, 'teams', curTeam.id));
+    if (tSnap.exists()) {
+      curTeam = { ...curTeam, ...tSnap.data(), id: tSnap.id };
+      initTeamSquadData();
+      renderSquadPlayingList();
+      if (typeof sendFormationSync === 'function') sendFormationSync();
+    }
+  } catch (err) {
+    console.warn('enterTeam getDoc error:', err);
+  }
 }
 
 function goBack() {
   if (unsub) { unsub(); unsub = null; }
+  if (teamDocUnsub) { teamDocUnsub(); teamDocUnsub = null; }
   if (coachChatUnsub) { coachChatUnsub(); coachChatUnsub = null; }
   players = []; curTeam = null;
   loadAdmin();
@@ -2867,7 +2885,7 @@ function showTab(n) {
   if (n === 'formation') {
     const frame = $('formation-builder-frame');
     if (frame && (!frame.src || frame.src === 'about:blank' || !frame.src.includes('formation-builder.html'))) {
-      frame.src = 'formation-builder.html?v=61.0';
+      frame.src = 'formation-builder.html?v=62.0';
     } else {
       setTimeout(() => sendFormationSync(), 150);
       setTimeout(() => sendFormationSync(), 450);
@@ -3059,18 +3077,23 @@ function initTeamSquadData() {
       teamSquadData.management = [];
     }
   } else {
-    if (players && players.length) {
-      teamSquadData.playingXi = players.slice(0, 11).map(p => ({
+    const fallbackPlayers = (players && players.length) ? players : allPlayersCache.filter(p => curTeam && p.teamId === curTeam.id);
+    if (fallbackPlayers && fallbackPlayers.length) {
+      teamSquadData.playingXi = fallbackPlayers.slice(0, 11).map(p => ({
         id: p.id,
         name: p.name,
-        jersey: p.jersey || '',
+        displayName: p.displayName || p.shortName || '',
+        shortName: p.shortName || p.displayName || '',
+        jersey: p.jersey || p.playernum || '',
         position: p.position || 'ST',
         photo: p.photo || null
       }));
-      teamSquadData.bench = players.slice(11).map(p => ({
+      teamSquadData.bench = fallbackPlayers.slice(11).map(p => ({
         id: p.id,
         name: p.name,
-        jersey: p.jersey || '',
+        displayName: p.displayName || p.shortName || '',
+        shortName: p.shortName || p.displayName || '',
+        jersey: p.jersey || p.playernum || '',
         position: p.position || 'ST',
         photo: p.photo || null
       }));
@@ -3215,9 +3238,132 @@ function renderSquadPlayingList() {
         ${teamSquadData.bench.length ? teamSquadData.bench.map((p, idx) => renderPlayerRow(p, 'bench', idx)).join('') : '<div class="squad-empty-box">No bench players assigned yet. Use "+ Add Bench Player" or upload a squad list.</div>'}
       </div>
     </div>
+
+    <!-- SECTION 3: MANAGEMENT & STAFF -->
+    <div class="squad-section-card">
+      <div class="squad-section-head">
+        <div class="squad-section-title">
+          <span>🧑‍💼 MANAGEMENT &amp; STAFF</span>
+          <span class="squad-badge" style="background:#4a5568;">${(teamSquadData.management || []).length} Officials</span>
+        </div>
+        <div class="squad-head-actions">
+          <button type="button" class="squad-btn-secondary" onclick="openAddManagementModal()">＋ Add Staff Member</button>
+        </div>
+      </div>
+      <div class="squad-list-grid">
+        ${(teamSquadData.management || []).length ? teamSquadData.management.map((s, idx) => `
+          <div class="squad-row">
+            <div class="squad-row-left">
+              <div class="squad-avatar-wrap" onclick="triggerStaffPhotoUpload(${idx})" title="Click to upload/change photo">
+                ${s.photo ? `<img src="${esc(s.photo)}" class="squad-avatar-img" alt="">` : '<div style="font-size:24px;">🧑‍💼</div>'}
+                <div class="squad-avatar-btn">📷 PHOTO</div>
+              </div>
+              <div>
+                <div class="squad-name">${esc(s.name)}</div>
+                <div style="margin-top:2px;">
+                  <span class="squad-pos-pill" style="background:#edf2f7;color:#2d3748;font-weight:700;">${esc(s.role || 'Staff')}</span>
+                </div>
+              </div>
+            </div>
+            <div class="squad-actions">
+              <button type="button" class="squad-act-chip" onclick="openEditStaffMemberModal(${idx})" title="Edit details">✏️ Edit</button>
+              <button type="button" class="squad-act-chip remove" onclick="removeManagementMember(${idx})" title="Remove">✕</button>
+            </div>
+          </div>
+        `).join('') : '<div class="squad-empty-box">No management or coaching staff added yet. Use "+ Add Staff Member" or upload a squad list.</div>'}
+      </div>
+    </div>
   `;
 
   el.innerHTML = html;
+}
+
+function openAddManagementModal() {
+  editStaffId = null;
+  const tit = $('staff-mtit'); if (tit) tit.textContent = '➕ ADD STAFF MEMBER';
+  if ($('st-name')) $('st-name').value = '';
+  if ($('st-role')) $('st-role').value = 'Manager';
+  if ($('st-role-custom')) $('st-role-custom').value = '';
+  if ($('st-role-other')) $('st-role-other').style.display = 'none';
+  if ($('st-phone')) $('st-phone').value = '';
+  if ($('st-notes')) $('st-notes').value = '';
+  openM('m-staff');
+}
+
+function openEditStaffMemberModal(index) {
+  const s = teamSquadData.management && teamSquadData.management[index];
+  if (!s) return;
+  editStaffId = s.id || ('stf_' + index);
+  const tit = $('staff-mtit'); if (tit) tit.textContent = '✏️ EDIT STAFF MEMBER';
+  if ($('st-name')) $('st-name').value = s.name || '';
+  const standardRoles = ['Manager', 'Coach', 'Assistant Coach', '2nd Coach', 'Physio', 'Kit Man'];
+  if (standardRoles.includes(s.role)) {
+    if ($('st-role')) $('st-role').value = s.role;
+    if ($('st-role-other')) $('st-role-other').style.display = 'none';
+  } else {
+    if ($('st-role')) $('st-role').value = 'Other';
+    if ($('st-role-custom')) $('st-role-custom').value = s.role || '';
+    if ($('st-role-other')) $('st-role-other').style.display = 'block';
+  }
+  if ($('st-phone')) $('st-phone').value = (s.phone || '').replace('+91', '');
+  if ($('st-notes')) $('st-notes').value = s.notes || '';
+  openM('m-staff');
+}
+
+async function removeManagementMember(index) {
+  const s = teamSquadData.management && teamSquadData.management[index];
+  if (!s) return;
+  if (!confirm(`Remove ${s.name} from management?`)) return;
+  teamSquadData.management.splice(index, 1);
+  if (curTeam && curTeam.squad) {
+    curTeam.squad.management = [...teamSquadData.management];
+    curTeam.squad.staff = [...teamSquadData.management];
+    try {
+      await updateDoc(doc(db, 'teams', curTeam.id), {
+        'squad.management': curTeam.squad.management,
+        'squad.staff': curTeam.squad.staff,
+        staff: curTeam.squad.staff
+      });
+    } catch (e) { console.warn('Remove staff error:', e); }
+  }
+  renderSquadPlayingList();
+}
+
+let staffPhotoTargetIndex = null;
+function triggerStaffPhotoUpload(index) {
+  staffPhotoTargetIndex = index;
+  const inp = $('squad-photo-inp');
+  if (inp) {
+    inp.onchange = function() {
+      handleStaffPhotoUpload(this);
+    };
+    inp.click();
+  }
+}
+
+function handleStaffPhotoUpload(input) {
+  const file = input.files[0];
+  if (!file || staffPhotoTargetIndex == null) return;
+  const reader = new FileReader();
+  reader.onload = async function (e) {
+    const s = teamSquadData.management && teamSquadData.management[staffPhotoTargetIndex];
+    if (s) {
+      s.photo = e.target.result;
+      renderSquadPlayingList();
+      if (curTeam && curTeam.squad) {
+        curTeam.squad.management = [...teamSquadData.management];
+        curTeam.squad.staff = [...teamSquadData.management];
+        try {
+          await updateDoc(doc(db, 'teams', curTeam.id), {
+            'squad.management': curTeam.squad.management,
+            'squad.staff': curTeam.squad.staff
+          });
+        } catch (err) { console.warn('Photo update error:', err); }
+      }
+    }
+  };
+  reader.readAsDataURL(file);
+  input.value = '';
 }
 
 function renderSquad() {
@@ -3319,47 +3465,10 @@ function openEditSquadMemberModal(listType, index) {
   const item = teamSquadData[squadModalTargetType] && teamSquadData[squadModalTargetType][index];
   if (!item) return;
 
-  modalPhotoData = item.photo || null;
-
-  const titEl = $('pl-add-tit');
-  const descEl = $('pl-add-desc');
-  const nameInp = $('pl-add-name');
-  const dispInp = $('pl-add-display-name');
-  const roleInp = $('pl-add-role');
-  const jerseyInp = $('pl-add-jersey');
-  const jerseyField = $('pl-add-jersey-field');
-  const roleLabel = $('pl-add-role-label');
-  const photoPrev = $('pl-add-photo-preview');
-  const photoClear = $('pl-add-photo-clear');
-  const errEl = $('pl-add-err');
-  const saveBtn = $('pl-add-save-btn');
-
-  if (errEl) { errEl.textContent = ''; errEl.style.display = 'none'; }
-  if (nameInp) nameInp.value = item.name || '';
-  if (dispInp) dispInp.value = item.displayName || item.shortName || '';
-  if (roleInp) roleInp.value = item.position || item.role || '';
-  if (jerseyInp) jerseyInp.value = item.jersey || '';
-  if (saveBtn) saveBtn.textContent = 'SAVE CHANGES';
-
-  if (modalPhotoData) {
-    if (photoPrev) photoPrev.innerHTML = `<img src="${esc(modalPhotoData)}" style="width:100%;height:100%;object-fit:cover;">`;
-    if (photoClear) photoClear.style.display = 'inline-block';
-  } else {
-    if (photoPrev) photoPrev.innerHTML = '👤';
-    if (photoClear) photoClear.style.display = 'none';
+  if (!item.id) {
+    item.id = 'sq_' + Math.random().toString(36).substr(2, 8);
   }
-
-  if (titEl) titEl.textContent = 'EDIT SQUAD PLAYER';
-  if (descEl) descEl.textContent = 'Update name, display name, jersey, position or photograph.';
-  if (roleLabel) roleLabel.textContent = 'Position (e.g. ST, CB, GK)';
-  if (jerseyField) jerseyField.style.display = 'block';
-
-  const sel = $('pl-add-player-sel');
-  if (sel) {
-    sel.innerHTML = `<option value="">— Editing: ${esc(item.name)} —</option>`;
-  }
-
-  openM('m-pl-add-player');
+  openEdit(item.id);
 }
 
 function handleModalPhotoPicked(input) {
@@ -3692,6 +3801,7 @@ async function handleSquadCSVUpload(input) {
 
     const newXi = [];
     const newBench = [];
+    const newManagement = [];
 
     const getVal = (r, idx) => (idx >= 0 && idx < r.length) ? String(r[idx] || '').trim() : '';
 
@@ -3707,10 +3817,18 @@ async function handleSquadCSVUpload(input) {
       const rawDisp = getVal(r, dispCol);
       const displayName = rawDisp || getPlayerDisplayName({ name });
 
-      // Skip staff/management if present in file
+      // Support staff/management rows in CSV
       const isStaffKeyword = roleLower.includes('coach') || roleLower.includes('manager') || roleLower.includes('physio') || roleLower.includes('doctor') || roleLower.includes('staff') || roleLower.includes('kit') || roleLower.includes('trainer') || roleLower.includes('assistant');
       const isStaffSection = secVal.includes('management') || secVal.includes('staff');
-      if (isStaffSection || isStaffKeyword) continue;
+      if (isStaffSection || isStaffKeyword) {
+        newManagement.push({
+          id: 'stf_' + Math.random().toString(36).substr(2, 8),
+          name,
+          role: roleVal || 'Staff',
+          photo: null
+        });
+        continue;
+      }
 
       const id = 'sq_' + Math.random().toString(36).substr(2, 8);
       const playerItem = {
@@ -3739,11 +3857,11 @@ async function handleSquadCSVUpload(input) {
     teamSquadData = {
       playingXi: newXi,
       bench: newBench,
-      management: []
+      management: newManagement.length ? newManagement : (teamSquadData.management || [])
     };
 
     renderSquadPlayingList();
-    alert(`🎉 Successfully uploaded squad from CSV!\n\n⚽ Playing XI: ${newXi.length} players\n💺 Bench: ${newBench.length} players\n\nClick "SAVE SQUAD" to persist changes.`);
+    alert(`🎉 Successfully uploaded squad from CSV!\n\n⚽ Playing XI: ${newXi.length} players\n💺 Bench: ${newBench.length} players\n🧑‍💼 Management: ${teamSquadData.management.length} staff\n\nClick "SAVE SQUAD" to persist changes.`);
   } catch (e) {
     console.error('Squad CSV error:', e);
     alert('Failed to parse CSV file: ' + (e.message || e));
@@ -4017,7 +4135,36 @@ async function saveSquadPlayingList() {
   try {
     await updateDoc(doc(db, 'teams', curTeam.id), { squad });
     curTeam.squad = squad;
+    const teamInArr = teams.find(t => t.id === curTeam.id);
+    if (teamInArr) teamInArr.squad = squad;
+
+    // Batch sync all players to the Firestore players collection for live match & players tab sync
+    const allSquadPlayers = [...squad.playingXi, ...squad.bench];
+    try {
+      const batch = writeBatch(db);
+      allSquadPlayers.forEach(p => {
+        if (p && p.id) {
+          batch.set(doc(db, 'players', p.id), {
+            id: p.id,
+            name: p.name || '',
+            displayName: p.displayName || p.shortName || '',
+            shortName: p.shortName || p.displayName || '',
+            jersey: p.jersey || '',
+            playernum: p.jersey || '',
+            position: p.position || 'ST',
+            photo: p.photo || null,
+            teamId: curTeam.id,
+            teamName: curTeam.name || ''
+          }, { merge: true });
+        }
+      });
+      await batch.commit();
+    } catch (bErr) {
+      console.warn('Batch write players error:', bErr);
+    }
+
     if (typeof refreshPlayersCache === 'function') refreshPlayersCache();
+    if (typeof sendFormationSync === 'function') sendFormationSync();
     alert('✅ Squad & Playing List saved successfully!');
   } catch (e) {
     console.error('saveSquadPlayingList error:', e);
@@ -4042,7 +4189,22 @@ async function clearSquadPlayingList() {
 
 function subscribeTeam() {
   if (unsub) { unsub(); unsub = null; }
+  if (teamDocUnsub) { teamDocUnsub(); teamDocUnsub = null; }
   if (!curTeam) return;
+
+  // Real-time listener for the team doc to keep squad, staff, and settings instantly synchronized
+  teamDocUnsub = onSnapshot(doc(db, 'teams', curTeam.id), snap => {
+    if (snap.exists()) {
+      const data = snap.data();
+      curTeam = { ...curTeam, ...data, id: snap.id };
+      const teamInArr = teams.find(t => t.id === curTeam.id);
+      if (teamInArr) Object.assign(teamInArr, curTeam);
+      initTeamSquadData();
+      renderSquadPlayingList();
+      if (typeof sendFormationSync === 'function') sendFormationSync();
+    }
+  }, err => console.warn('teamDocUnsub error:', err));
+
   unsub = onSnapshot(
     query(collection(db, 'players'), where('teamId', '==', curTeam.id)),
     snap => {
@@ -4725,7 +4887,7 @@ function openFormationBuilderFullscreen() {
   if (targetTeam) {
     buildFormationSyncPayload(targetTeam);
   }
-  window.open('formation-builder.html?v=61.0', '_blank');
+  window.open('formation-builder.html?v=62.0', '_blank');
 }
 window.openFormationBuilderFullscreen = openFormationBuilderFullscreen;
 
@@ -6061,6 +6223,7 @@ async function saveStaffMember() {
   const fullPhone = phoneDigits ? ('+91' + phoneDigits) : '';
   const notes = $('st-notes').value.trim();
 
+  if (!curTeam) return;
   const list = [...(curTeam.staff || [])];
   let targetId = editStaffId;
 
@@ -6080,17 +6243,44 @@ async function saveStaffMember() {
 
   if (targetId) {
     const idx = list.findIndex(s => s.id === targetId);
-    if (idx >= 0) list[idx] = entry; else list.push(entry);
+    if (idx >= 0) {
+      entry.photo = list[idx].photo || null;
+      list[idx] = entry;
+    } else {
+      list.push(entry);
+    }
   } else {
     entry.registeredAt = new Date().toISOString();
     list.push(entry);
   }
 
+  if (typeof teamSquadData !== 'undefined' && teamSquadData) {
+    if (!teamSquadData.management) teamSquadData.management = [];
+    const mIdx = teamSquadData.management.findIndex(s => s.id === entry.id || (s.name && s.name.toLowerCase() === name.toLowerCase()));
+    if (mIdx >= 0) {
+      entry.photo = teamSquadData.management[mIdx].photo || entry.photo || null;
+      teamSquadData.management[mIdx] = { ...teamSquadData.management[mIdx], ...entry };
+    } else {
+      teamSquadData.management.push(entry);
+    }
+  }
+
+  if (curTeam.squad) {
+    curTeam.squad.management = [...list];
+    curTeam.squad.staff = [...list];
+  }
+  curTeam.staff = list;
+
   try {
-    await updateDoc(doc(db, 'teams', curTeam.id), { staff: list });
-    curTeam.staff = list;
+    await updateDoc(doc(db, 'teams', curTeam.id), {
+      staff: list,
+      'squad.management': curTeam.squad ? curTeam.squad.management : list,
+      'squad.staff': curTeam.squad ? curTeam.squad.staff : list
+    });
     closeM('m-staff');
     renderStaffList();
+    renderSquadPlayingList();
+    alert('✅ Staff member saved successfully!');
   } catch (e) { alert('❌ Could not save: ' + (e.message || e)); }
 }
 
