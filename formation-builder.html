@@ -702,6 +702,11 @@
       };
 
       useEffect(() => {
+        const urlParams = new URLSearchParams(window.location.search);
+        const urlSide = urlParams.get('side');
+        const urlTeamId = urlParams.get('teamId');
+        const urlMatchId = urlParams.get('matchId');
+
         const handleMessage = (e) => {
           const data = e.data;
           if (!data || typeof data !== "object") return;
@@ -717,18 +722,26 @@
           if (cached) {
             const parsed = JSON.parse(cached);
             if (parsed && typeof parsed === 'object') {
-              applySyncPayload(parsed);
+              if (!urlSide || parsed.matchSide === urlSide || parsed.teamId === urlTeamId) {
+                applySyncPayload(parsed);
+              }
             }
           }
         } catch (e) { }
 
         // Let the parent / opener app know we're mounted and ready to receive the roster
+        const readyMsg = {
+          type: "ff-ready",
+          side: urlSide || undefined,
+          teamId: urlTeamId || undefined,
+          matchId: urlMatchId || undefined
+        };
         try {
           if (window.parent && window.parent !== window) {
-            window.parent.postMessage({ type: "ff-ready" }, "*");
+            window.parent.postMessage(readyMsg, "*");
           }
           if (window.opener && !window.opener.closed) {
-            window.opener.postMessage({ type: "ff-ready" }, "*");
+            window.opener.postMessage(readyMsg, "*");
           }
         } catch (e) { }
         reportHeight();
@@ -747,12 +760,22 @@
       }, []);
 
       const requestResync = () => {
+        const urlParams = new URLSearchParams(window.location.search);
+        const urlSide = urlParams.get('side');
+        const urlTeamId = urlParams.get('teamId');
+        const urlMatchId = urlParams.get('matchId');
+        const resyncMsg = {
+          type: "ff-request-sync",
+          side: urlSide || undefined,
+          teamId: urlTeamId || undefined,
+          matchId: urlMatchId || undefined
+        };
         try {
           if (window.parent && window.parent !== window) {
-            window.parent.postMessage({ type: "ff-request-sync" }, "*");
+            window.parent.postMessage(resyncMsg, "*");
           }
           if (window.opener && !window.opener.closed) {
-            window.opener.postMessage({ type: "ff-request-sync" }, "*");
+            window.opener.postMessage(resyncMsg, "*");
           }
         } catch (e) { }
         try {
@@ -760,7 +783,9 @@
           if (cached) {
             const parsed = JSON.parse(cached);
             if (parsed && typeof parsed === 'object') {
-              applySyncPayload(parsed);
+              if (!urlSide || parsed.matchSide === urlSide || parsed.teamId === urlTeamId) {
+                applySyncPayload(parsed);
+              }
             }
           }
         } catch (e) { }

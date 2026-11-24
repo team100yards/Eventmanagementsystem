@@ -4451,13 +4451,37 @@ textarea {
   justify-content: flex-end;
   gap: 6px;
   flex: 1;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.ms-topbar-actions::-webkit-scrollbar {
+  display: none;
 }
 
 .ms-topbar-actions .tbtn {
-  padding: 7px 10px;
-  font-size: 11.5px;
+  padding: 6px 10px;
+  font-size: 12px;
   white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  flex-shrink: 0;
+}
+
+.ms-topbar-actions .tbtn .tbtn-icon {
+  font-size: 15px;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ms-topbar-actions .tbtn svg {
+  flex-shrink: 0;
 }
 
 .ms-share-live-top {
@@ -5548,11 +5572,15 @@ textarea {
   .ms-topbar-actions {
     flex-basis: 100%;
     justify-content: flex-start;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
   }
 
   .ms-topbar-actions .tbtn {
     padding: 6px 8px;
-    font-size: 10.5px;
+    font-size: 11px;
+    flex-shrink: 0;
   }
 }
 

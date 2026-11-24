@@ -1267,7 +1267,8 @@ function openLiveMatchDeskDirect() {
 window.openLiveMatchDeskDirect = openLiveMatchDeskDirect;
 
 function openFormationBuilderDirect() {
-  window.open('formation-builder.html?v=73.0', '_blank');
+  _lastMatchVisualizerPayload = null;
+  window.open('formation-builder.html?v=74.0', '_blank');
 }
 window.openFormationBuilderDirect = openFormationBuilderDirect;
 
@@ -1544,7 +1545,7 @@ function showAdminTab(tab, keepTeam = false) {
     populateAdminFormationTeamSelect();
     const f = $('adm-formation-frame');
     if (f && (!f.src || f.src === 'about:blank' || !f.src.includes('formation-builder.html'))) {
-      f.src = 'formation-builder.html?v=73.0';
+      f.src = 'formation-builder.html?v=74.0';
     } else {
       setTimeout(() => sendAdmFormationSync(), 150);
       setTimeout(() => sendAdmFormationSync(), 450);
@@ -3075,7 +3076,7 @@ function showTab(n) {
   if (n === 'formation') {
     const frame = $('formation-builder-frame');
     if (frame && (!frame.src || frame.src === 'about:blank' || !frame.src.includes('formation-builder.html'))) {
-      frame.src = 'formation-builder.html?v=73.0';
+      frame.src = 'formation-builder.html?v=74.0';
     } else {
       setTimeout(() => sendFormationSync(), 150);
       setTimeout(() => sendFormationSync(), 450);
@@ -3489,8 +3490,8 @@ function renderSquadPlayingList() {
                 ${formationOptionsHtml}
               </select>
             </div>
-            <button type="button" class="squad-pitch-btn" onclick="openTeamFormationVisualizer()" title="Open Tactical Pitch Formation Visualizer">
-              <span>♟️ Pitch</span>
+            <button type="button" class="squad-pitch-btn" onclick="openTeamFormationVisualizer()" title="Tactical Board (Formation Visualizer)" aria-label="Tactical Board" style="display:inline-flex;align-items:center;justify-content:center;padding:5px 9px;">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none;"><rect x="3" y="3" width="18" height="18" rx="2"></rect><line x1="3" y1="12" x2="21" y2="12"></line><circle cx="12" cy="12" r="3.2"></circle><path d="M7 6l2 2m0-2L7 8"></path><circle cx="16" cy="7" r="1.2"></circle><path d="M15 16l2 2m0-2l-2 2"></path><circle cx="8" cy="17" r="1.2"></circle></svg>
             </button>
             <button type="button" class="squad-btn-secondary" onclick="openAddSquadMemberModal('playingXi')">＋ Add Starter</button>
           </div>
@@ -4185,6 +4186,7 @@ async function changeTeamSquadFormation(newFormation) {
 window.changeTeamSquadFormation = changeTeamSquadFormation;
 
 function openTeamFormationVisualizer() {
+  if (typeof _lastMatchVisualizerPayload !== 'undefined') _lastMatchVisualizerPayload = null;
   if (!curTeam && activeAdminPlayerTeamId) {
     curTeam = teams.find(t => t.id === activeAdminPlayerTeamId);
   }
@@ -5505,6 +5507,88 @@ function buildFormationSyncPayload(targetTeam) {
   return payload;
 }
 
+let _lastMatchVisualizerPayload = null;
+
+function buildMatchFormationSyncPayload(side) {
+  if (!curMatch) return null;
+  const targetSide = side === 'away' ? 'away' : 'home';
+  const sideData = curMatch[targetSide] || {};
+  const teamId = sideData.teamId;
+  const teamObj = (teams && teams.find(t => t.id === teamId)) || null;
+  const lineup = sideData.lineup || {};
+  const formationKey = lineup.formation || (teamObj?.squad?.formation) || '4-4-2';
+  const formationDef = FORMATIONS[formationKey] || null;
+
+  // Starters
+  const rawStarters = Array.isArray(lineup.starters) ? lineup.starters : [];
+  const starters = rawStarters.map(p => {
+    if (!p) return null;
+    const fullP = (allPlayersCache && allPlayersCache.find(x => x.id === (p.playerId || p.id))) || p;
+    const disp = String(p.displayName || fullP.displayName || p.shortName || fullP.shortName || getPlayerDisplayName(fullP) || getPlayerDisplayName(p) || p.name || '').trim();
+    return {
+      id: p.playerId || p.id || ('xi_' + String(Math.random()).slice(2, 8)),
+      name: p.name || '',
+      displayName: disp,
+      shortName: disp,
+      number: p.jersey || p.number || p.playernum || '-',
+      position: toFBPositionCode(p.matchPosition || p.position)
+    };
+  });
+
+  // Subs
+  const rawSubs = Array.isArray(lineup.subs) ? lineup.subs : [];
+  const subs = rawSubs.map(p => {
+    if (!p) return null;
+    const fullP = (allPlayersCache && allPlayersCache.find(x => x.id === (p.playerId || p.id))) || p;
+    const disp = String(p.displayName || fullP.displayName || p.shortName || fullP.shortName || getPlayerDisplayName(fullP) || getPlayerDisplayName(p) || p.name || '').trim();
+    return {
+      id: p.playerId || p.id || ('sub_' + String(Math.random()).slice(2, 8)),
+      name: p.name || '',
+      displayName: disp,
+      shortName: disp,
+      number: p.jersey || p.number || p.playernum || '-',
+      position: toFBPositionCode(p.position)
+    };
+  }).filter(Boolean);
+
+  const teamName = sideData.name || (targetSide === 'home' ? 'Home Team' : 'Away Team');
+  const source = `Live Match: ${teamName} (${formationKey})`;
+
+  const payload = {
+    formation: formationKey,
+    formationDef,
+    starters,
+    subs,
+    source,
+    teamId: teamId || targetSide,
+    teamName: teamName,
+    matchId: curMatch.id,
+    matchSide: targetSide
+  };
+
+  if (!starters.some(Boolean)) {
+    const teamPlayers = teamId ? (allPlayersCache || []).filter(p => p.teamId === teamId) : [];
+    if (teamPlayers.length) {
+      payload.players = teamPlayers.map(p => {
+        const disp = String(p.displayName || p.shortName || getPlayerDisplayName(p) || p.name || '').trim();
+        return {
+          id: p.id || ('p_' + String(Math.random()).slice(2, 8)),
+          name: p.name || '',
+          displayName: disp,
+          shortName: disp,
+          number: p.jersey || p.number || p.playernum || '-',
+          position: toFBPositionCode(p.position)
+        };
+      });
+      delete payload.starters;
+      delete payload.subs;
+    }
+  }
+
+  return payload;
+}
+window.buildMatchFormationSyncPayload = buildMatchFormationSyncPayload;
+
 function sendAdmFormationSync(teamId) {
   const frame = $('adm-formation-frame');
   const targetId = teamId || $('adm-formation-team-select')?.value;
@@ -5519,12 +5603,13 @@ function sendAdmFormationSync(teamId) {
 window.sendAdmFormationSync = sendAdmFormationSync;
 
 function openFormationBuilderFullscreen() {
+  _lastMatchVisualizerPayload = null;
   const selId = $('adm-formation-team-select')?.value;
   const targetTeam = (selId ? teams.find(t => t.id === selId) : null) || curTeam || (teams && teams.length ? teams[0] : null);
   if (targetTeam) {
     buildFormationSyncPayload(targetTeam);
   }
-  window.open('formation-builder.html?v=73.0', '_blank');
+  window.open('formation-builder.html?v=74.0', '_blank');
 }
 window.openFormationBuilderFullscreen = openFormationBuilderFullscreen;
 
@@ -5565,10 +5650,37 @@ window.addEventListener('message', e => {
     const teamFrame = $('formation-builder-frame');
     const pubFrame = $('pv-formation-frame');
     const admFrame = $('adm-formation-frame');
-    if (teamFrame && e.source === teamFrame.contentWindow) sendFormationSync();
-    if (pubFrame && e.source === pubFrame.contentWindow) sendPubFormationSync();
-    if (admFrame && e.source === admFrame.contentWindow) sendAdmFormationSync();
+    if (teamFrame && e.source === teamFrame.contentWindow) {
+      sendFormationSync();
+      return;
+    }
+    if (pubFrame && e.source === pubFrame.contentWindow) {
+      sendPubFormationSync();
+      return;
+    }
+    if (admFrame && e.source === admFrame.contentWindow) {
+      sendAdmFormationSync();
+      return;
+    }
     if (e.source && (e.source !== window)) {
+      if (d.side && curMatch) {
+        const matchPayload = buildMatchFormationSyncPayload(d.side);
+        if (matchPayload) {
+          e.source.postMessage(Object.assign({ type: 'ff-sync' }, matchPayload), '*');
+          return;
+        }
+      }
+      if (d.teamId) {
+        const teamObj = teams && teams.find(t => t.id === d.teamId);
+        if (teamObj) {
+          e.source.postMessage(Object.assign({ type: 'ff-sync' }, buildFormationSyncPayload(teamObj)), '*');
+          return;
+        }
+      }
+      if (_lastMatchVisualizerPayload) {
+        e.source.postMessage(Object.assign({ type: 'ff-sync' }, _lastMatchVisualizerPayload), '*');
+        return;
+      }
       const selId = $('adm-formation-team-select')?.value;
       const targetTeam = (selId ? teams.find(t => t.id === selId) : null) || curTeam || (teams && teams.length ? teams[0] : null);
       if (targetTeam) {
@@ -13443,83 +13555,17 @@ async function deleteMatchEvent(eventId) {
   function openMatchFormationVisualizer(side) {
     if (!curMatch) return;
     const targetSide = side === 'away' ? 'away' : 'home';
-    const sideData = curMatch[targetSide] || {};
-    const teamId = sideData.teamId;
-    const teamObj = teams.find(t => t.id === teamId);
-    const lineup = sideData.lineup || {};
-    const formationKey = lineup.formation || (teamObj?.squad?.formation) || '4-4-2';
-    const formationDef = FORMATIONS[formationKey] || null;
+    const payload = buildMatchFormationSyncPayload(targetSide);
+    if (!payload) return;
 
-    // Starters
-    const rawStarters = Array.isArray(lineup.starters) ? lineup.starters : [];
-    const starters = rawStarters.map(p => {
-      if (!p) return null;
-      const fullP = (allPlayersCache && allPlayersCache.find(x => x.id === (p.playerId || p.id))) || p;
-      const disp = String(p.displayName || fullP.displayName || p.shortName || fullP.shortName || getPlayerDisplayName(fullP) || getPlayerDisplayName(p) || p.name || '').trim();
-      return {
-        id: p.playerId || p.id || ('xi_' + String(Math.random()).slice(2, 8)),
-        name: p.name || '',
-        displayName: disp,
-        shortName: disp,
-        number: p.jersey || p.number || p.playernum || '-',
-        position: toFBPositionCode(p.matchPosition || p.position)
-      };
-    });
-
-    // Subs
-    const rawSubs = Array.isArray(lineup.subs) ? lineup.subs : [];
-    const subs = rawSubs.map(p => {
-      if (!p) return null;
-      const fullP = (allPlayersCache && allPlayersCache.find(x => x.id === (p.playerId || p.id))) || p;
-      const disp = String(p.displayName || fullP.displayName || p.shortName || fullP.shortName || getPlayerDisplayName(fullP) || getPlayerDisplayName(p) || p.name || '').trim();
-      return {
-        id: p.playerId || p.id || ('sub_' + String(Math.random()).slice(2, 8)),
-        name: p.name || '',
-        displayName: disp,
-        shortName: disp,
-        number: p.jersey || p.number || p.playernum || '-',
-        position: toFBPositionCode(p.position)
-      };
-    }).filter(Boolean);
-
-    const teamName = sideData.name || (targetSide === 'home' ? 'Home Team' : 'Away Team');
-    const source = `Live Match: ${teamName} (${formationKey})`;
-
-    const payload = {
-      formation: formationKey,
-      formationDef,
-      starters,
-      subs,
-      source,
-      teamId: teamId || targetSide,
-      teamName: teamName,
-      matchId: curMatch.id
-    };
-
-    if (!starters.some(Boolean)) {
-      const teamPlayers = teamId ? allPlayersCache.filter(p => p.teamId === teamId) : [];
-      if (teamPlayers.length) {
-        payload.players = teamPlayers.map(p => {
-          const disp = String(p.displayName || p.shortName || getPlayerDisplayName(p) || p.name || '').trim();
-          return {
-            id: p.id || ('p_' + String(Math.random()).slice(2, 8)),
-            name: p.name || '',
-            displayName: disp,
-            shortName: disp,
-            number: p.jersey || p.number || p.playernum || '-',
-            position: toFBPositionCode(p.position)
-          };
-        });
-        delete payload.starters;
-        delete payload.subs;
-      }
-    }
+    _lastMatchVisualizerPayload = payload;
 
     try {
       localStorage.setItem('ems_active_formation_payload', JSON.stringify(payload));
     } catch (e) { }
 
-    window.open('formation-builder.html?v=73.0', '_blank');
+    const teamId = payload.teamId || '';
+    window.open(`formation-builder.html?side=${encodeURIComponent(targetSide)}&teamId=${encodeURIComponent(teamId)}&matchId=${encodeURIComponent(curMatch.id)}&v=74.0`, '_blank');
   }
   window.openMatchFormationVisualizer = openMatchFormationVisualizer;
 
