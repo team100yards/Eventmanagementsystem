@@ -80,21 +80,39 @@
     // Standardized to the same 15 codes used across the whole app:
     // GK, RB, LB, CB, RWB, LWB, CDM, CM, CAM, RM, LM, RW, LW, CF, ST
     const ALIASES = {
-      GK: "GK", GOALKEEPER: "GK", GOALIE: "GK",
-      RB: "RB", RIGHTBACK: "RB", DR: "RB",
-      LB: "LB", LEFTBACK: "LB", DL: "LB",
-      CB: "CB", "CENTRE-BACK": "CB", CENTERBACK: "CB", CENTREBACK: "CB", DC: "CB", D: "CB", DF: "CB", DEF: "CB", SWEEPER: "CB", CD: "CB",
-      RWB: "RWB", RIGHTWINGBACK: "RWB",
-      LWB: "LWB", LEFTWINGBACK: "LWB",
-      CDM: "CDM", DM: "CDM", DMC: "CDM",
-      CM: "CM", MC: "CM", MID: "CM", MIDFIELDER: "CM", M: "CM",
-      CAM: "CAM", AM: "CAM", AMC: "CAM", "10": "CAM",
-      RM: "RM", RIGHTMID: "RM", RIGHTMIDFIELDER: "RM",
-      LM: "LM", LEFTMID: "LM", LEFTMIDFIELDER: "LM",
-      RW: "RW", RIGHTWINGER: "RW",
-      LW: "LW", LEFTWINGER: "LW",
-      CF: "CF", CENTREFORWARD: "CF", CENTERFORWARD: "CF", SECONDSTRIKER: "CF",
-      ST: "ST", STRIKER: "ST", FW: "ST", FORWARD: "ST", F: "ST", ATT: "ST",
+      // Goalkeepers
+      GK: "GK", GOALKEEPER: "GK", GOALIE: "GK", KEEPER: "GK", GKP: "GK", GOAL: "GK",
+      // Defenders - Left
+      LB: "LB", LEFTBACK: "LB", DL: "LB", "LEFT-BACK": "LB", LEFTDEFENDER: "LB", LEFTDEF: "LB",
+      LWB: "LWB", LEFTWINGBACK: "LWB", "LEFT-WING-BACK": "LWB", "LEFTWING-BACK": "LWB",
+      // Defenders - Center
+      CB: "CB", "CENTRE-BACK": "CB", CENTERBACK: "CB", CENTREBACK: "CB", "CENTER-BACK": "CB",
+      DC: "CB", D: "CB", DF: "CB", DEF: "CB", DEFENDER: "CB", DEFENSE: "CB", DEFENCE: "CB",
+      SWEEPER: "CB", SW: "CB", CD: "CB", CENTRALDEFENDER: "CB", CENTRALDEF: "CB",
+      // Defenders - Right
+      RB: "RB", RIGHTBACK: "RB", DR: "RB", "RIGHT-BACK": "RB", RIGHTDEFENDER: "RB", RIGHTDEF: "RB",
+      RWB: "RWB", RIGHTWINGBACK: "RWB", "RIGHT-WING-BACK": "RWB", "RIGHTWING-BACK": "RWB",
+      // Midfielders - Defensive
+      CDM: "CDM", DM: "CDM", DMC: "CDM", DEFENSIVEMID: "CDM", DEFENSIVEMIDFIELDER: "CDM",
+      "DEFENSIVE-MID": "CDM", "DEFENSIVE-MIDFIELDER": "CDM", HOLDINGMID: "CDM", HOLDINGMIDFIELDER: "CDM",
+      // Midfielders - Central
+      CM: "CM", MC: "CM", MID: "CM", MIDFIELDER: "CM", MIDFIELD: "CM", M: "CM", MF: "CM",
+      CENTRALMID: "CM", CENTRALMIDFIELDER: "CM", "CENTRAL-MID": "CM", "CENTRAL-MIDFIELDER": "CM",
+      CENTREMID: "CM", CENTREMIDFIELDER: "CM", "CENTRE-MID": "CM", "CENTRE-MIDFIELDER": "CM",
+      // Midfielders - Attacking
+      CAM: "CAM", AM: "CAM", AMC: "CAM", "10": "CAM", ATTACKINGMID: "CAM", ATTACKINGMIDFIELDER: "CAM",
+      "ATTACKING-MID": "CAM", "ATTACKING-MIDFIELDER": "CAM", PLAYMAKER: "CAM",
+      // Midfielders - Wide
+      LM: "LM", LEFTMID: "LM", LEFTMIDFIELDER: "LM", "LEFT-MID": "LM", "LEFT-MIDFIELDER": "LM",
+      RM: "RM", RIGHTMID: "RM", RIGHTMIDFIELDER: "RM", "RIGHT-MID": "RM", "RIGHT-MIDFIELDER": "RM",
+      // Forwards - Wings
+      LW: "LW", LEFTWINGER: "LW", "LEFT-WINGER": "LW", LEFTWING: "LW", LEFTFORWARD: "LW", LF: "LW",
+      RW: "RW", RIGHTWINGER: "RW", "RIGHT-WINGER": "RW", RIGHTWING: "RW", RIGHTFORWARD: "RW", RF: "RW",
+      // Forwards - Central / Strikers
+      CF: "CF", CENTREFORWARD: "CF", CENTERFORWARD: "CF", "CENTRE-FORWARD": "CF", "CENTER-FORWARD": "CF",
+      SECONDSTRIKER: "CF", "SECOND-STRIKER": "CF", SS: "CF",
+      ST: "ST", STRIKER: "ST", FW: "ST", FWD: "ST", FORWARD: "ST", F: "ST",
+      ATT: "ST", ATTACK: "ST", ATTACKER: "ST"
     };
     const GROUP = {
       GK: "GK",
@@ -109,7 +127,61 @@
     };
     const canonicalize = (raw) => {
       const key = String(raw || "").trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
-      return ALIASES[key] || (key ? key : "ST");
+      if (ALIASES[key]) return ALIASES[key];
+      const withoutDigits = key.replace(/\d+/g, "");
+      if (ALIASES[withoutDigits]) return ALIASES[withoutDigits];
+      if (key.includes("GK") || key.includes("GOAL") || key.includes("KEEP")) return "GK";
+      if (key.includes("DEF") || key.includes("BACK")) {
+        if (key.includes("LEFT")) return "LB";
+        if (key.includes("RIGHT")) return "RB";
+        return "CB";
+      }
+      if (key.includes("MID")) {
+        if (key.includes("LEFT")) return "LM";
+        if (key.includes("RIGHT")) return "RM";
+        if (key.includes("DEF") || key.includes("HOLD")) return "CDM";
+        if (key.includes("ATT")) return "CAM";
+        return "CM";
+      }
+      if (key.includes("WING")) return key.includes("LEFT") ? "LW" : "RW";
+      if (key.includes("FORW") || key.includes("STRIK") || key.includes("ATT")) return "ST";
+      return key || "ST";
+    };
+
+    const formatShortName = (raw) => {
+      if (!raw) return "";
+      const parts = String(raw).trim().split(/\s+/).filter(Boolean);
+      if (parts.length <= 1) return raw;
+      if (parts.length === 2) return `${parts[0][0]}. ${parts[1]}`;
+      return `${parts[0][0]}. ${parts[parts.length - 1]}`;
+    };
+
+    const canonicalizePlayer = (p) => {
+      if (!p) return null;
+      const rawPos = p.rawPosition || p.position || "";
+      const canonical = canonicalize(rawPos);
+      let group = GROUP[canonical];
+      let side = SIDE[canonical];
+      if (!group) {
+        const u = String(rawPos).toUpperCase();
+        if (u.includes("GK") || u.includes("GOAL") || u.includes("KEEP")) { group = "GK"; side = "C"; }
+        else if (u.includes("DEF") || u.includes("BACK")) { group = "DEF"; side = u.includes("LEFT") ? "L" : (u.includes("RIGHT") ? "R" : "C"); }
+        else if (u.includes("MID")) { group = "MID"; side = u.includes("LEFT") ? "L" : (u.includes("RIGHT") ? "R" : "C"); }
+        else if (u.includes("FORW") || u.includes("STRIKE") || u.includes("ATT") || u.includes("WING")) { group = "FWD"; side = u.includes("LEFT") ? "L" : (u.includes("RIGHT") ? "R" : "C"); }
+        else { group = "MID"; side = "C"; }
+      }
+      return {
+        id: p.id || `p-${Math.random().toString(36).slice(2, 8)}`,
+        number: (p.number != null && p.number !== "") ? String(p.number) : ((p.jersey != null && p.jersey !== "") ? String(p.jersey) : "-"),
+        name: p.name || "",
+        displayName: p.displayName || p.shortName || formatShortName(p.name || ""),
+        shortName: p.shortName || p.displayName || formatShortName(p.name || ""),
+        rawPosition: rawPos,
+        type: p.type || "start",
+        canonical,
+        group: group || "MID",
+        side: side || "C"
+      };
     };
 
     const POSITION_OPTIONS = [
@@ -296,66 +368,189 @@
     const ZONE_SIZE = { GK: [22, 15], DEF: [30, 20], MID: [34, 22], FWD: [30, 22] };
 
 
-    function assignToFormation(players, slots) {
-      const starters = players.filter(p => p.type === "start");
-      const bench = players.filter(p => p.type !== "start");
+    const getSlotGroup = (slot) => {
+      if (!slot) return "MID";
+      if (slot.code === "GK" || slot.y >= 88) return "GK";
+      if (GROUP[slot.code]) return GROUP[slot.code];
+      if (slot.y >= 68) return "DEF";
+      if (slot.y >= 35) return "MID";
+      return "FWD";
+    };
 
-      const primaryPool = starters.length ? [...starters] : [...players];
-      const secondaryPool = starters.length ? [...bench] : [];
+    const getSlotSide = (slot) => {
+      if (!slot) return "C";
+      if (slot.code === "GK") return "C";
+      if (slot.x <= 25) return "L";
+      if (slot.x >= 75) return "R";
+      if (SIDE[slot.code]) return SIDE[slot.code];
+      return "C";
+    };
 
-      const findMatchIndex = (pool, slotCode) => {
-        if (!pool || !pool.length) return -1;
-        let idx = pool.findIndex((p) => p.canonical === slotCode);
-        if (idx !== -1) return idx;
+    // Compatibility scoring function: computes how well a player fits a specific formation slot
+    const calcCompatibilityScore = (p, slot) => {
+      const pCanon = p.canonical || "CM";
+      const pGroup = p.group || GROUP[pCanon] || "MID";
+      const pSide = p.side || SIDE[pCanon] || "C";
 
-        if (slotCode === "CDM") idx = pool.findIndex((p) => p.canonical === "CM" || p.canonical === "CAM");
-        else if (slotCode === "CM") idx = pool.findIndex((p) => p.canonical === "CDM" || p.canonical === "CAM" || p.canonical === "RM" || p.canonical === "LM");
-        else if (slotCode === "CAM") idx = pool.findIndex((p) => p.canonical === "CM" || p.canonical === "CF");
-        else if (slotCode === "ST") idx = pool.findIndex((p) => p.canonical === "CF" || p.canonical === "LW" || p.canonical === "RW");
-        else if (slotCode === "CF") idx = pool.findIndex((p) => p.canonical === "ST");
-        else if (slotCode === "LB") idx = pool.findIndex((p) => p.canonical === "LWB");
-        else if (slotCode === "RB") idx = pool.findIndex((p) => p.canonical === "RWB");
-        else if (slotCode === "LWB") idx = pool.findIndex((p) => p.canonical === "LB" || p.canonical === "LM");
-        else if (slotCode === "RWB") idx = pool.findIndex((p) => p.canonical === "RB" || p.canonical === "RM");
-        else if (slotCode === "LW") idx = pool.findIndex((p) => p.canonical === "LM");
-        else if (slotCode === "RW") idx = pool.findIndex((p) => p.canonical === "RM");
-        else if (slotCode === "LM") idx = pool.findIndex((p) => p.canonical === "LW");
-        else if (slotCode === "RM") idx = pool.findIndex((p) => p.canonical === "RW");
-        if (idx !== -1) return idx;
+      const sCanon = slot.code;
+      const sGroup = getSlotGroup(slot);
+      const sSide = getSlotSide(slot);
 
-        const group = GROUP[slotCode] || "MID";
-        const side = SIDE[slotCode] || "C";
-        idx = pool.findIndex((p) => p.group === group && p.side === side);
-        if (idx !== -1) return idx;
+      // Rule 1: Goalkeeper rules (absolute priority & protection)
+      if (sGroup === "GK" || sCanon === "GK") {
+        if (pGroup === "GK" || pCanon === "GK") return 1000;
+        return -500; // Outfield player in goal is heavily penalized
+      }
+      if (pGroup === "GK" || pCanon === "GK") {
+        return -1000; // Goalkeeper should NEVER play outfield
+      }
 
-        idx = pool.findIndex((p) => p.group === group);
-        return idx;
+      // Rule 2: Exact canonical match
+      if (pCanon === sCanon) return 100;
+
+      // Rule 3: Natural tactical equivalents
+      const EQUIV = {
+        LB: ["LWB", "CB", "DF"],
+        RB: ["RWB", "CB", "DF"],
+        CB: ["SW", "CD", "DEF", "LB", "RB", "CDM"],
+        LWB: ["LB", "LM", "LW"],
+        RWB: ["RB", "RM", "RW"],
+        CDM: ["CM", "CAM", "CB"],
+        CM: ["CDM", "CAM", "LM", "RM"],
+        CAM: ["CM", "CDM", "CF", "ST", "LM", "RM"],
+        LM: ["LW", "LWB", "CM"],
+        RM: ["RW", "RWB", "CM"],
+        LW: ["LM", "LF", "ST", "CF"],
+        RW: ["RM", "RF", "ST", "CF"],
+        CF: ["ST", "CAM", "LW", "RW"],
+        ST: ["CF", "LW", "RW", "CAM"]
       };
+      if (EQUIV[sCanon]) {
+        const idx = EQUIV[sCanon].indexOf(pCanon);
+        if (idx !== -1) return 92 - (idx * 4);
+      }
 
-      const filled = slots.map((slot) => {
-        let idx = findMatchIndex(primaryPool, slot.code);
-        let fromPrimary = true;
+      // Rule 4: Same positional group
+      if (pGroup === sGroup) {
+        let score = 65;
+        if (pSide === sSide) score += 20; // Same flank (e.g. Left defender in Left Back)
+        else if (pSide === "C" || sSide === "C") score += 10; // Central flexibility
+        else score -= 15; // Flank mismatch (e.g. Left player in Right slot)
+        return score;
+      }
 
-        if (idx === -1 && secondaryPool.length > 0) {
-          idx = findMatchIndex(secondaryPool, slot.code);
-          if (idx !== -1) fromPrimary = false;
+      // Rule 5: Adjacent positional line (flexibility)
+      if ((pGroup === "DEF" && sGroup === "MID") || (pGroup === "MID" && sGroup === "DEF")) {
+        let score = 30;
+        if (pSide === sSide) score += 10;
+        return score;
+      }
+      if ((pGroup === "MID" && sGroup === "FWD") || (pGroup === "FWD" && sGroup === "MID")) {
+        let score = 30;
+        if (pSide === sSide) score += 10;
+        return score;
+      }
+
+      // Rule 6: Opposite line (DEF <-> FWD)
+      return 5;
+    };
+
+    function assignTacticalLineup(startersPool, subsPool, slots) {
+      if (!slots || !slots.length) return { filled: [], subs: [] };
+
+      const primary = (startersPool || []).map(canonicalizePlayer).filter(Boolean);
+      const secondary = (subsPool || []).map(canonicalizePlayer).filter(Boolean);
+
+      let pool = primary.length ? [...primary] : [...secondary];
+      let bench = primary.length ? [...secondary] : [];
+
+      const assignments = new Array(slots.length).fill(null);
+      const available = [...pool];
+
+      // Iterative global highest-compatibility matching on primary pool
+      while (assignments.some((a) => a === null) && available.length > 0) {
+        let bestScore = -Infinity;
+        let bestSlotIdx = -1;
+        let bestPlayerIdx = -1;
+
+        for (let sIdx = 0; sIdx < slots.length; sIdx++) {
+          if (assignments[sIdx] !== null) continue;
+          const slot = slots[sIdx];
+          for (let pIdx = 0; pIdx < available.length; pIdx++) {
+            const p = available[pIdx];
+            const score = calcCompatibilityScore(p, slot);
+            if (score > bestScore) {
+              bestScore = score;
+              bestSlotIdx = sIdx;
+              bestPlayerIdx = pIdx;
+            }
+          }
         }
 
-        if (idx === -1) {
-          if (primaryPool.length > 0) { fromPrimary = true; idx = 0; }
-          else if (secondaryPool.length > 0) { fromPrimary = false; idx = 0; }
+        if (bestSlotIdx !== -1 && bestPlayerIdx !== -1) {
+          assignments[bestSlotIdx] = available.splice(bestPlayerIdx, 1)[0];
+        } else {
+          break;
         }
+      }
 
-        if (idx === -1) return { slot, player: null };
-        const player = fromPrimary ? primaryPool.splice(idx, 1)[0] : secondaryPool.splice(idx, 1)[0];
-        return { slot, player };
+      // If any slots remain unfilled and secondary pool has players, fill from secondary
+      if (assignments.some((a) => a === null) && bench.length > 0) {
+        while (assignments.some((a) => a === null) && bench.length > 0) {
+          let bestScore = -Infinity;
+          let bestSlotIdx = -1;
+          let bestBenchIdx = -1;
+
+          for (let sIdx = 0; sIdx < slots.length; sIdx++) {
+            if (assignments[sIdx] !== null) continue;
+            const slot = slots[sIdx];
+            for (let bIdx = 0; bIdx < bench.length; bIdx++) {
+              const p = bench[bIdx];
+              const score = calcCompatibilityScore(p, slot);
+              if (score > bestScore) {
+                bestScore = score;
+                bestSlotIdx = sIdx;
+                bestBenchIdx = bIdx;
+              }
+            }
+          }
+
+          if (bestSlotIdx !== -1 && bestBenchIdx !== -1) {
+            assignments[bestSlotIdx] = bench.splice(bestBenchIdx, 1)[0];
+          } else {
+            break;
+          }
+        }
+      }
+
+      // Build filled slots
+      const filled = slots.map((slot, i) => ({
+        slot,
+        player: assignments[i] ? { ...assignments[i], type: "start" } : null,
+      }));
+
+      // Combine leftover primary + leftover secondary for the bench
+      const allRemaining = [...available, ...bench];
+      const orderRank = { GK: 0, DEF: 1, MID: 2, FWD: 3 };
+      allRemaining.sort((a, b) => {
+        const rA = orderRank[a.group] != null ? orderRank[a.group] : 9;
+        const rB = orderRank[b.group] != null ? orderRank[b.group] : 9;
+        if (rA !== rB) return rA - rB;
+        const nA = parseInt(a.number, 10);
+        const nB = parseInt(b.number, 10);
+        if (!isNaN(nA) && !isNaN(nB) && nA !== nB) return nA - nB;
+        return String(a.name || "").localeCompare(String(b.name || ""));
       });
 
-      const remainingSubs = [...primaryPool, ...secondaryPool];
-      const order = { GK: 0, DEF: 1, MID: 2, FWD: 3 };
-      remainingSubs.sort((a, b) => (order[a.group] - order[b.group]) || (a.name || '').localeCompare(b.name || ''));
+      const subs = allRemaining.map((p) => ({ ...p, type: "sub" }));
 
-      return { filled, subs: remainingSubs };
+      return { filled, subs };
+    }
+
+    function assignToFormation(players, slots) {
+      const starters = (players || []).filter((p) => p.type === "start");
+      const bench = (players || []).filter((p) => p.type !== "start");
+      return assignTacticalLineup(starters, bench, slots);
     }
 
     function FormationBuilder() {
@@ -433,12 +628,8 @@
         if (data.formation && !FORMATIONS[data.formation] && data.formationDef) {
           FORMATIONS[data.formation] = autoLayoutFormation(data.formationDef);
         }
-        if (data.customPos && typeof data.customPos === "object") {
-          setCustomPos(data.customPos);
-        }
-        if (data.ballPos && typeof data.ballPos === "object" && data.ballPos.x != null) {
-          setBallPos(data.ballPos);
-        }
+        setCustomPos((data.customPos && typeof data.customPos === "object") ? data.customPos : {});
+        setBallPos((data.ballPos && typeof data.ballPos === "object" && data.ballPos.x != null) ? data.ballPos : { x: 50, y: 50 });
         if (data.formation && FORMATIONS[data.formation]) {
           setFormationKey(data.formation);
         }
@@ -616,23 +807,6 @@
         setManualPlayers((prev) => prev.filter((p) => p.id !== id));
       };
 
-      const canonicalizePlayer = (p) => {
-        if (!p) return null;
-        const canonical = canonicalize(p.position);
-        return {
-          id: p.id,
-          number: (p.number != null && p.number !== "") ? String(p.number) : ((p.jersey != null && p.jersey !== "") ? String(p.jersey) : "-"),
-          name: p.name,
-          displayName: p.displayName || p.shortName || formatShortName(p.name),
-          shortName: p.shortName || p.displayName || formatShortName(p.name),
-          rawPosition: p.position,
-          type: p.type,
-          canonical,
-          group: GROUP[canonical] || "MID",
-          side: SIDE[canonical] || "C",
-        };
-      };
-
       const manualPlayersParsed = useMemo(() => {
         return manualPlayers
           .filter((p) => p.name.trim())
@@ -644,74 +818,65 @@
 
       const { filled, subs } = useMemo(() => {
         const curSlots = FORMATIONS[formationKey] || FORMATIONS["4-3-3"];
-        if (exactStarters && exactStarters.length && !isDirty) {
+
+        // If the coach manually swapped or edited players in the studio, preserve their explicit slot placements
+        if (isDirty && exactStarters && exactStarters.length) {
           const filledSlots = curSlots.map((slot, i) => {
             const p = exactStarters[i] || null;
-            if (!p) return { slot, player: null };
-            const canonical = canonicalize(p.position || slot.code);
             return {
               slot,
-              player: {
-                id: p.id || `st-${i}`,
-                name: p.name || "",
-                displayName: p.displayName || p.shortName || formatShortName(p.name),
-                shortName: p.shortName || p.displayName || formatShortName(p.name),
-                number: (p.number != null && p.number !== "") ? String(p.number) : ((p.jersey != null && p.jersey !== "") ? String(p.jersey) : "-"),
-                rawPosition: p.position || slot.code,
-                canonical,
-                group: GROUP[canonical] || "MID",
-                side: SIDE[canonical] || "C",
-                type: "start"
-              }
+              player: p ? canonicalizePlayer({ ...p, type: "start" }) : null
             };
           });
-          const remainingSubs = (exactSubs || []).map((p, i) => {
-            const canonical = canonicalize(p.position || "ST");
-            return {
-              id: p.id || `sub-${i}`,
-              name: p.name || "",
-              displayName: p.displayName || p.shortName || formatShortName(p.name),
-              shortName: p.shortName || p.displayName || formatShortName(p.name),
-              number: (p.number != null && p.number !== "") ? String(p.number) : ((p.jersey != null && p.jersey !== "") ? String(p.jersey) : "-"),
-              rawPosition: p.position || "ST",
-              canonical,
-              group: GROUP[canonical] || "MID",
-              side: SIDE[canonical] || "C",
-              type: "sub"
-            };
-          });
+          const remainingSubs = (exactSubs || []).map((p) => canonicalizePlayer({ ...p, type: "sub" })).filter(Boolean);
           return { filled: filledSlots, subs: remainingSubs };
         }
-        return assignToFormation(players, curSlots);
+
+        // On team load, formation switch, or auto-layout:
+        // Use our intelligent tactical assignment engine to place each player into their optimal pitch position
+        let startersPool = [];
+        let subsPool = [];
+
+        if (exactStarters && exactStarters.length) {
+          startersPool = exactStarters.map((p) => canonicalizePlayer({ ...p, type: "start" })).filter(Boolean);
+          subsPool = (exactSubs || []).map((p) => canonicalizePlayer({ ...p, type: "sub" })).filter(Boolean);
+        } else if (players && players.length) {
+          startersPool = players.filter((p) => p.type === "start");
+          subsPool = players.filter((p) => p.type !== "start");
+          if (!startersPool.length) {
+            startersPool = [...players];
+            subsPool = [];
+          }
+        }
+
+        return assignTacticalLineup(startersPool, subsPool, curSlots);
       }, [players, slots, exactStarters, exactSubs, isDirty, formationKey]);
 
       const swapBenchWithStarter = (benchPlayer, starterIndex) => {
         if (!benchPlayer) return;
-        const starterToReplace = filled[starterIndex]?.player || (exactStarters ? exactStarters[starterIndex] : null);
+        const starterToReplace = filled[starterIndex]?.player;
 
-        let newStarters = exactStarters ? [...exactStarters] : filled.map(f => f.player);
-        let newSubs = exactSubs ? [...exactSubs] : [...subs];
-
-        const benchIdx = newSubs.findIndex(p => p && (p.id === benchPlayer.id || p.name === benchPlayer.name));
-        if (benchIdx !== -1) {
-          if (starterToReplace) {
-            newSubs[benchIdx] = { ...starterToReplace, type: "sub" };
-          } else {
-            newSubs.splice(benchIdx, 1);
+        let newStarters = filled.map((f, idx) => {
+          if (idx === starterIndex) {
+            return canonicalizePlayer({ ...benchPlayer, type: "start" });
           }
-        }
+          return f.player ? canonicalizePlayer({ ...f.player, type: "start" }) : null;
+        });
 
-        newStarters[starterIndex] = { ...benchPlayer, type: "start" };
+        let newSubs = (subs || []).filter((p) => p && (p.id !== benchPlayer.id && p.name !== benchPlayer.name));
+        if (starterToReplace) {
+          newSubs.unshift(canonicalizePlayer({ ...starterToReplace, type: "sub" }));
+        }
 
         setExactStarters(newStarters);
         setExactSubs(newSubs);
         setIsDirty(true);
 
         const flat = [
-          ...newStarters.filter(Boolean).map(p => ({ ...p, type: "start" })),
-          ...newSubs.filter(Boolean).map(p => ({ ...p, type: "sub" }))
+          ...newStarters.filter(Boolean).map((p) => ({ ...p, type: "start" })),
+          ...newSubs.filter(Boolean).map((p) => ({ ...p, type: "sub" }))
         ];
-        setManualPlayers(flat.map(p => ({
+        setManualPlayers(flat.map((p) => ({
           id: p.id || `sync-${Math.random().toString(36).slice(2, 8)}`,
           name: p.name || "",
           displayName: p.displayName || p.shortName || formatShortName(p.name),
@@ -771,6 +936,7 @@
     };
 
     const resetPositions = () => {
+      setIsDirty(false);
       setCustomPos((prev) => {
         const next = { ...prev };
         Object.keys(next).forEach((k) => {
@@ -783,6 +949,7 @@
 
     const onFormationChange = (newKey) => {
       setFormationKey(newKey);
+      setIsDirty(false);
       saveVisualizerPositions(customPos, ballPos, newKey);
     };
 

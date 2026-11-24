@@ -988,7 +988,7 @@ function openLiveMatchDeskDirect() {
 window.openLiveMatchDeskDirect = openLiveMatchDeskDirect;
 
 function openFormationBuilderDirect() {
-  window.open('formation-builder.html?v=54.0', '_blank');
+  window.open('formation-builder.html?v=55.0', '_blank');
 }
 window.openFormationBuilderDirect = openFormationBuilderDirect;
 
@@ -1323,7 +1323,7 @@ function showAdminTab(tab, keepTeam = false) {
     populateAdminFormationTeamSelect();
     const f = $('adm-formation-frame');
     if (f && (!f.src || f.src === 'about:blank' || !f.src.includes('formation-builder.html'))) {
-      f.src = 'formation-builder.html?v=54.0';
+      f.src = 'formation-builder.html?v=55.0';
     } else {
       setTimeout(() => sendAdmFormationSync(), 150);
       setTimeout(() => sendAdmFormationSync(), 450);
@@ -2883,7 +2883,7 @@ function showTab(n) {
   if (n === 'formation') {
     const frame = $('formation-builder-frame');
     if (frame && (!frame.src || frame.src === 'about:blank' || !frame.src.includes('formation-builder.html'))) {
-      frame.src = 'formation-builder.html?v=54.0';
+      frame.src = 'formation-builder.html?v=55.0';
     } else {
       setTimeout(() => sendFormationSync(), 150);
       setTimeout(() => sendFormationSync(), 450);
@@ -4458,13 +4458,22 @@ function flattenFormation(key) {
 }
 function classifyPos(position) {
   const code = String(posCode(position) || position || '').toUpperCase().trim();
-  if (code === 'GK' || code === 'GKP' || code === 'GOALKEEPER' || code === 'GOALIE') return 'GK';
-  if (code === 'RB' || code === 'LB' || code === 'CB' || code === 'RWB' || code === 'LWB' || code === 'DEF' || code === 'FB' || code === 'WB' || code === 'CD' || code === 'SW' || code === 'LD' || code === 'RD' || code === 'DF' || code === 'DEFENDER') return 'DEF';
-  if (code === 'RW' || code === 'LW' || code === 'CF' || code === 'ST' || code === 'FWD' || code === 'FW' || code === 'SS' || code === 'ATT' || code === 'RF' || code === 'LF' || code === 'RS' || code === 'LS' || code === 'FORWARD' || code === 'ATTACKER' || code === 'WINGER') return 'FWD';
-  if (code === 'CM' || code === 'CDM' || code === 'CAM' || code === 'RM' || code === 'LM' || code === 'MID' || code === 'DM' || code === 'AM' || code === 'MF' || code === 'MIDFIELDER' || code === 'MC') return 'MID';
+  if (code === 'GK' || code === 'GKP' || code === 'GOALKEEPER' || code === 'GOALIE' || code === 'KEEPER' || code === 'GOAL') return 'GK';
+  if (code === 'RB' || code === 'LB' || code === 'CB' || code === 'RWB' || code === 'LWB' || code === 'DEF' || code === 'FB' || code === 'WB' || code === 'CD' || code === 'SW' || code === 'LD' || code === 'RD' || code === 'DF' || code === 'DEFENDER' || code === 'DEFENSE' || code === 'DEFENCE') return 'DEF';
+  if (code === 'RW' || code === 'LW' || code === 'CF' || code === 'ST' || code === 'FWD' || code === 'FW' || code === 'SS' || code === 'ATT' || code === 'RF' || code === 'LF' || code === 'RS' || code === 'LS' || code === 'FORWARD' || code === 'ATTACKER' || code === 'ATTACK' || code === 'WINGER') return 'FWD';
+  if (code === 'CM' || code === 'CDM' || code === 'CAM' || code === 'RM' || code === 'LM' || code === 'MID' || code === 'DM' || code === 'AM' || code === 'MF' || code === 'MIDFIELDER' || code === 'MIDFIELD' || code === 'MC') return 'MID';
   return 'MID';
 }
-function toFBPositionCode(position) { return posCode(position) || 'ST'; }
+function toFBPositionCode(position) {
+  const code = posCode(position);
+  if (code) return code;
+  const raw = String(position || '').trim().toUpperCase();
+  if (raw === 'DEFENDER' || raw === 'DEF' || raw === 'DEFENSE' || raw === 'DEFENCE') return 'CB';
+  if (raw === 'MIDFIELDER' || raw === 'MID' || raw === 'MIDFIELD') return 'CM';
+  if (raw === 'FORWARD' || raw === 'ATTACKER' || raw === 'ATT' || raw === 'ATTACK') return 'ST';
+  if (raw === 'GOALKEEPER' || raw === 'KEEPER' || raw === 'GOALIE' || raw === 'GOAL') return 'GK';
+  return 'ST';
+}
 
 function sortPlayersByPitchPosition(playerList) {
   if (!Array.isArray(playerList) || !playerList.length) return [];
@@ -4490,7 +4499,11 @@ function sortPlayersByPitchPosition(playerList) {
     const codeB = toFBPositionCode(b.matchPosition || b.position);
     const rankA = posRank[codeA] ?? 999;
     const rankB = posRank[codeB] ?? 999;
-    return rankA - rankB;
+    if (rankA !== rankB) return rankA - rankB;
+    const numA = parseInt(a.jersey || a.playernum, 10);
+    const numB = parseInt(b.jersey || b.playernum, 10);
+    if (!isNaN(numA) && !isNaN(numB) && numA !== numB) return numA - numB;
+    return String(a.name || '').localeCompare(String(b.name || ''));
   });
 }
 
@@ -4657,7 +4670,7 @@ function openFormationBuilderFullscreen() {
   if (targetTeam) {
     buildFormationSyncPayload(targetTeam);
   }
-  window.open('formation-builder.html?v=54.0', '_blank');
+  window.open('formation-builder.html?v=55.0', '_blank');
 }
 window.openFormationBuilderFullscreen = openFormationBuilderFullscreen;
 
